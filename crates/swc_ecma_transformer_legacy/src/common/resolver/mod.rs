@@ -4,7 +4,10 @@
 
 pub(crate) mod context;
 
-use std::collections::{HashMap, HashSet};
+use self::context::{NodeContext, Symbols};
+use std::collections::HashSet;
+
+use rustc_hash::FxHashMap;
 
 use swc_next_allocator::{Idx, IndexVec};
 
@@ -16,18 +19,17 @@ use crate::common::build::for_each_binding_ident;
 /// hoist-then-resolve algorithm.
 ///
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L136>.
-pub(crate) fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver {
+fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver {
     let mut scopes = IndexVec::new();
     let unresolved_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
     let top_level_scope_id = scopes.push(Scope::new(ScopeKind::Fn, None));
     let label_scope_id = ScopeId::from_usize(ScopeId::MAX);
 
-    let node_scopes = IndexVec::from_vec(vec![None; ast.node_count()]);
-
     let mut resolver = Resolver {
         ast,
         scopes,
-        node_scopes,
+        nodes: IndexVec::from_vec(vec![NodeContext::None; ast.node_count()]),
+        symbols: Symbols::default(),
         top_level_scope_id,
         unresolved_scope_id,
         label_scope_id,
@@ -43,50 +45,32 @@ pub(crate) fn resolver<'ast>(ast: &'ast Ast<'ast>) -> JsNameResolver {
         top_level_scope_id,
         unresolved_scope_id,
         next_scope: resolver.scopes.len(),
-        node_scopes: IndexVec::from_vec(
-            resolver
-                .node_scopes
-                .into_iter()
-                .map(|scope| scope.unwrap_or(unresolved_scope_id))
-                .collect(),
-        ),
+        nodes: resolver.nodes,
+        symbols: resolver.symbols,
     }
 }
 
-/// Scope assignments produced by [`resolver`].
-///
-/// The old tree AST stored a symbol id on every `Ident`. The flat AST already
-/// gives every binding, reference, and label a stable [`NodeId`], so the same
-/// information is kept in a side table indexed by that id.
-#[derive(Debug)]
-pub(crate) struct JsNameResolver {
+struct JsNameResolver {
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
-    pub(crate) node_scopes: IndexVec<NodeId, ScopeId>,
-    pub(crate) next_scope: usize,
-}
-
-impl JsNameResolver {
-    #[inline]
-    /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
-    pub(crate) fn top_level_scope_id(&self) -> ScopeId {
-        self.top_level_scope_id
-    }
-
-    #[inline]
-    /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
-    pub(crate) fn unresolved_scope_id(&self) -> ScopeId {
-        self.unresolved_scope_id
-    }
+    nodes: IndexVec<NodeId, NodeContext>,
+    symbols: Symbols,
+    next_scope: usize,
 }
 
 #[derive(Debug)]
 struct Scope<'ast> {
     parent: Option<ScopeId>,
     kind: ScopeKind,
-    declared_symbols: HashMap<&'ast [u8], DeclKind>,
-    context: Option<ScopeId>,
-    declared_types: HashSet<&'ast [u8]>,
+    declared_symbols: FxHashMap<&'ast [u8], Binding>,
+    declared_types: FxHashMap<&'ast [u8], SymbolId>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Binding {
+    kind: DeclKind,
+    // Bare enum member references use the unresolved context for TS lowering.
+    symbol: Option<SymbolId>,
 }
 
 impl<'ast> Scope<'ast> {
@@ -95,27 +79,8 @@ impl<'ast> Scope<'ast> {
         Self {
             parent,
             kind,
-            declared_symbols: HashMap::new(),
-            context: None,
-            declared_types: HashSet::new(),
-        }
-    }
-}
-
-/// Identifier-like AST nodes that can be assigned a resolved scope.
-enum SymbolNode {
-    LabelIdentifier(LabelIdentifier),
-    JsxIdentifier(JsxIdentifier),
-    ModuleExportName(IdentifierName),
-}
-
-impl SymbolNode {
-    /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
-    fn node_id(self) -> NodeId {
-        match self {
-            Self::LabelIdentifier(node) => node.node_id(),
-            Self::JsxIdentifier(node) => node.node_id(),
-            Self::ModuleExportName(node) => node.node_id(),
+            declared_symbols: FxHashMap::default(),
+            declared_types: FxHashMap::default(),
         }
     }
 }
@@ -200,7 +165,8 @@ impl ScopeOwner {
 struct Resolver<'ast> {
     ast: &'ast Ast<'ast>,
     scopes: IndexVec<ScopeId, Scope<'ast>>,
-    node_scopes: IndexVec<NodeId, Option<ScopeId>>,
+    nodes: IndexVec<NodeId, NodeContext>,
+    symbols: Symbols,
     top_level_scope_id: ScopeId,
     unresolved_scope_id: ScopeId,
     label_scope_id: ScopeId,
@@ -225,27 +191,30 @@ impl<'ast> Resolver<'ast> {
     /// import/export classification needs their contexts after erasure.
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L334>.
     fn declare_type(&mut self, identifier: BindingIdentifier) {
-        let name = self.name(identifier.name(self.ast));
-        self.scopes[self.current].declared_types.insert(name);
-        self.set_scope_once(identifier.node_id(), self.current);
+        let name = identifier.name(self.ast);
+        let symbol = self.symbols.intern(self.ast, self.current, name);
+        let bytes = self.name(name);
+        self.scopes[self.current]
+            .declared_types
+            .insert(bytes, symbol);
+        self.set_symbol_once(identifier.node_id(), symbol);
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L373>.
-    fn scope_of_export(&self, name: &[u8]) -> ScopeId {
-        if let Some(scope) = self.scope_for_ref_inner(name, false)
-            && scope != self.unresolved_scope_id
-        {
-            return scope;
+    fn resolve_export(&mut self, name: AstUtf8) -> SymbolId {
+        let bytes = self.name(name);
+        if let Some(symbol) = self.resolve_value(bytes) {
+            return symbol;
         }
         let mut scope = Some(self.current);
         while let Some(id) = scope {
-            if self.scopes[id].declared_types.contains(name) {
-                return id;
+            if let Some(&symbol) = self.scopes[id].declared_types.get(bytes) {
+                return symbol;
             }
             scope = self.scopes[id].parent;
         }
-        self.scope_for_ref_inner(name, false)
-            .unwrap_or(self.unresolved_scope_id)
+        self.symbols
+            .intern(self.ast, self.unresolved_scope_id, name)
     }
 
     /// Next AST adapter for SWC's nested namespace declarations.
@@ -255,11 +224,8 @@ impl<'ast> Resolver<'ast> {
             self.declare_namespace_segments(left);
         }
         let right = name.right(self.ast);
-        let name = self.name(right.name(self.ast));
-        self.scopes[self.current]
-            .declared_symbols
-            .insert(name, DeclKind::Lexical);
-        self.set_scope_once(right.node_id(), self.current);
+        let symbol = self.declare(right.name(self.ast), DeclKind::Lexical);
+        self.set_symbol_once(right.node_id(), symbol);
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
@@ -272,8 +238,8 @@ impl<'ast> Resolver<'ast> {
         let mut scope = Some(start_scope);
         while let Some(scope_id) = scope {
             let current = &self.scopes[scope_id];
-            if let Some(kind) = current.declared_symbols.get(name) {
-                return Some(*kind);
+            if let Some(binding) = current.declared_symbols.get(name) {
+                return Some(binding.kind);
             }
             scope = current.parent;
         }
@@ -301,37 +267,26 @@ impl<'ast> Resolver<'ast> {
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
-    fn set_scope_once(&mut self, node: NodeId, scope: ScopeId) {
-        let slot = &mut self.node_scopes[node];
-        if slot.is_none() {
-            *slot = Some(scope);
+    fn set_symbol_once(&mut self, node: NodeId, symbol: SymbolId) {
+        if matches!(self.nodes[node], NodeContext::None) {
+            self.nodes[node] = NodeContext::Symbol(symbol);
         }
     }
 
-    /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
-    fn set_symbol_scope_once(&mut self, symbol: SymbolNode, scope: ScopeId) {
-        self.set_scope_once(symbol.node_id(), scope);
-    }
-
-    /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L449>.
     fn set_owner_scope_once(&mut self, owner: ScopeOwner, scope: ScopeId) {
-        self.set_scope_once(owner.node_id(), scope);
+        let slot = &mut self.nodes[owner.node_id()];
+        if matches!(slot, NodeContext::None) {
+            *slot = NodeContext::Scope(scope);
+        }
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L366>.
-    fn scope_for_ref_inner(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<ScopeId> {
+    fn lookup_value(&self, name: &[u8], stop_at_fn_scope: bool) -> Option<(ScopeId, Binding)> {
         let mut scope = Some(self.current);
         while let Some(scope_id) = scope {
             let current = &self.scopes[scope_id];
-            if current.declared_symbols.contains_key(name) {
-                return if (name == b"undefined" || name == b"NaN" || name == b"Infinity")
-                    && scope_id == self.top_level_scope_id
-                    && !self.is_module
-                {
-                    Some(self.unresolved_scope_id)
-                } else {
-                    Some(current.context.unwrap_or(scope_id))
-                };
+            if let Some(&binding) = current.declared_symbols.get(name) {
+                return Some((scope_id, binding));
             }
             if current.kind == ScopeKind::Fn && stop_at_fn_scope {
                 return None;
@@ -341,18 +296,45 @@ impl<'ast> Resolver<'ast> {
         None
     }
 
+    fn resolve_value(&self, name: &[u8]) -> Option<SymbolId> {
+        let (scope, binding) = self.lookup_value(name, false)?;
+        if scope == self.top_level_scope_id
+            && !self.is_module
+            && matches!(name, b"undefined" | b"NaN" | b"Infinity")
+        {
+            return None;
+        }
+        binding.symbol
+    }
+
+    fn resolve_ref(&mut self, name: AstUtf8) -> SymbolId {
+        self.resolve_value(self.name(name)).unwrap_or_else(|| {
+            self.symbols
+                .intern(self.ast, self.unresolved_scope_id, name)
+        })
+    }
+
+    fn declare(&mut self, name: AstUtf8, kind: DeclKind) -> SymbolId {
+        let bytes = self.name(name);
+        let binding = self.scopes[self.current]
+            .declared_symbols
+            .entry(bytes)
+            .or_insert(Binding { kind, symbol: None });
+        binding.kind = kind;
+        *binding
+            .symbol
+            .get_or_insert_with(|| self.symbols.intern(self.ast, self.current, name))
+    }
+
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L427>.
     fn modify(&mut self, identifier: BindingIdentifier, kind: DeclKind) {
         let node_index = identifier.node_id();
-        if self.node_scopes[node_index].is_some() {
+        if !matches!(self.nodes[node_index], NodeContext::None) {
             return;
         }
 
-        let name = self.name(identifier.name(self.ast));
-        self.scopes[self.current]
-            .declared_symbols
-            .insert(name, kind);
-        self.node_scopes[node_index] = Some(self.current);
+        let symbol = self.declare(identifier.name(self.ast), kind);
+        self.nodes[node_index] = NodeContext::Symbol(symbol);
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L988>.
@@ -452,14 +434,11 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1055>.
     fn visit_identifier_reference(&mut self, reference: IdentifierReference) {
         let node_index = reference.node_id();
-        if self.node_scopes[node_index].is_some() {
+        if !matches!(self.nodes[node_index], NodeContext::None) {
             return;
         }
-        let name = self.name(reference.name(self.ast));
-        let scope = self
-            .scope_for_ref_inner(name, false)
-            .unwrap_or(self.unresolved_scope_id);
-        self.node_scopes[node_index] = Some(scope);
+        let symbol = self.resolve_ref(reference.name(self.ast));
+        self.nodes[node_index] = NodeContext::Symbol(symbol);
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L684>.
@@ -471,21 +450,24 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1154>.
     fn visit_label_identifier(&mut self, label: LabelIdentifier) {
-        self.set_symbol_scope_once(SymbolNode::LabelIdentifier(label), self.label_scope_id);
+        let symbol = self
+            .symbols
+            .intern(self.ast, self.label_scope_id, label.name(self.ast));
+        self.set_symbol_once(label.node_id(), symbol);
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/resolver/mod.rs#L1031>.
     fn visit_jsx_element_name(&mut self, name: JsxElementName) {
         match self.ast.jsx_element_name_data(name) {
             JsxElementNameData::JsxIdentifier(identifier) => {
-                let name = self.name(identifier.name(self.ast));
-                let scope = if name.first().is_some_and(u8::is_ascii_lowercase) {
-                    self.unresolved_scope_id
+                let name = identifier.name(self.ast);
+                let symbol = if self.name(name).first().is_some_and(u8::is_ascii_lowercase) {
+                    self.symbols
+                        .intern(self.ast, self.unresolved_scope_id, name)
                 } else {
-                    self.scope_for_ref_inner(name, false)
-                        .unwrap_or(self.unresolved_scope_id)
+                    self.resolve_ref(name)
                 };
-                self.set_symbol_scope_once(SymbolNode::JsxIdentifier(identifier), scope);
+                self.set_symbol_once(identifier.node_id(), symbol);
             }
             JsxElementNameData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self);
@@ -498,11 +480,8 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_jsx_member_expression_object(&mut self, object: JsxMemberExpressionObject) {
         match self.ast.jsx_member_expression_object_data(object) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
-                let name = self.name(identifier.name(self.ast));
-                let scope = self
-                    .scope_for_ref_inner(name, false)
-                    .unwrap_or(self.unresolved_scope_id);
-                self.set_symbol_scope_once(SymbolNode::JsxIdentifier(identifier), scope);
+                let symbol = self.resolve_ref(identifier.name(self.ast));
+                self.set_symbol_once(identifier.node_id(), symbol);
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self);
@@ -788,8 +767,8 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
             ExportDefaultDeclarationKindData::Expr(expression) => {
                 expression.visit_with(self);
                 if let Some(id) = expression.as_identifier_reference(self.ast) {
-                    let name = self.name(id.name(self.ast));
-                    self.node_scopes[id.node_id()] = Some(self.scope_of_export(name));
+                    let symbol = self.resolve_export(id.name(self.ast));
+                    self.nodes[id.node_id()] = NodeContext::Symbol(symbol);
                 }
             }
             ExportDefaultDeclarationKindData::Function(function) => {
@@ -820,18 +799,16 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
         if let ModuleExportNameData::IdentifierName(identifier) =
             self.ast.module_export_name_data(local)
         {
-            let name = self.name(identifier.name(self.ast));
-            let scope = self.scope_of_export(name);
-            self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
+            let symbol = self.resolve_export(identifier.name(self.ast));
+            self.set_symbol_once(identifier.node_id(), symbol);
         }
         let exported = specifier.exported(self.ast);
         if exported.span(self.ast) != local.span(self.ast)
             && let ModuleExportNameData::IdentifierName(identifier) =
                 self.ast.module_export_name_data(exported)
         {
-            let name = self.name(identifier.name(self.ast));
-            let scope = self.scope_of_export(name);
-            self.set_symbol_scope_once(SymbolNode::ModuleExportName(identifier), scope);
+            let symbol = self.resolve_export(identifier.name(self.ast));
+            self.set_symbol_once(identifier.node_id(), symbol);
         }
     }
 
@@ -855,7 +832,6 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
     fn visit_ts_enum_declaration(&mut self, declaration: TsEnumDeclaration) {
         self.modify(declaration.id(self.ast), DeclKind::Lexical);
         self.with_child(ScopeOwner::TsEnumDeclaration(declaration), |child| {
-            child.scopes[child.current].context = Some(child.unresolved_scope_id);
             for slot in declaration.body(child.ast).members(child.ast).iter() {
                 let member = child.ast.get_node_in_sub_range(slot);
                 let name = match child.ast.ts_enum_member_name_data(member.id(child.ast)) {
@@ -878,9 +854,13 @@ impl<'ast> Visit<'ast> for Resolver<'ast> {
                         name.as_bytes()
                     }
                 };
-                child.scopes[child.current]
-                    .declared_symbols
-                    .insert(name, DeclKind::Lexical);
+                child.scopes[child.current].declared_symbols.insert(
+                    name,
+                    Binding {
+                        kind: DeclKind::Lexical,
+                        symbol: None,
+                    },
+                );
             }
             declaration.body(child.ast).visit_with(child);
         });
@@ -946,7 +926,7 @@ impl<'resolver, 'ast> Hoister<'resolver, 'ast> {
     fn add_binding(&mut self, identifier: BindingIdentifier) {
         let name = self.resolver.name(identifier.name(self.resolver.ast));
         if self.in_catch_body {
-            if self.resolver.scope_for_ref_inner(name, true).is_some()
+            if self.resolver.lookup_value(name, true).is_some()
                 && self.catch_param_decls.contains(name)
             {
                 return;

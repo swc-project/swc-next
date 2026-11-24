@@ -75,9 +75,9 @@ impl ObjectRestSpreadPass {
                 let mut specifiers = Vec::new();
                 for id in ids {
                     let local = ctx.ast.identifier_name(DUMMY_SP, id.name(ctx.ast));
-                    ctx.state.resolver.register(ctx.ast);
-                    ctx.state.resolver.node_scopes[local.node_id()] =
-                        ctx.state.resolver.node_scopes[id.node_id()];
+                    ctx.state
+                        .resolver
+                        .copy_context(id.node_id(), local.node_id());
                     let name = ModuleExportName::IdentifierName(local);
                     specifiers.push(ctx.ast.export_specifier(
                         DUMMY_SP,

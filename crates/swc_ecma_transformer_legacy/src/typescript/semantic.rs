@@ -4,25 +4,25 @@ use super::{
     ts_enum::{EnumValueComputer, EvalCtx, TsEnumRecord, TsEnumRecordValue},
     utils,
 };
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 use std::collections::{HashMap, HashSet};
 use swc_next_ecma_ast::*;
 
 #[derive(Default)]
 pub(super) struct SemanticInfo {
-    pub(super) usage: HashSet<Id>,
-    pub(super) id_type: HashSet<Id>,
-    pub(super) id_value: HashSet<Id>,
-    pub(super) exported_binding: HashMap<Id, Option<Id>>,
+    pub(super) usage: HashSet<SymbolId>,
+    pub(super) id_type: HashSet<SymbolId>,
+    pub(super) id_value: HashSet<SymbolId>,
+    pub(super) exported_binding: HashMap<SymbolId, Option<SymbolId>>,
     pub(super) enum_record: TsEnumRecord,
     pub(super) ambient_enum_record: TsEnumRecord,
-    pub(super) const_enum: HashSet<Id>,
+    pub(super) const_enum: HashSet<SymbolId>,
     pub(super) namespace_import_equals_usage: HashSet<NodeId>,
-    pub(super) const_vars: HashMap<Id, TsEnumRecordValue>,
+    pub(super) const_vars: HashMap<SymbolId, TsEnumRecordValue>,
 }
 
 impl SemanticInfo {
-    pub(super) fn has_pure_type(&self, id: &Id) -> bool {
+    pub(super) fn has_pure_type(&self, id: &SymbolId) -> bool {
         self.id_type.contains(id) && !self.id_value.contains(id)
     }
 }
@@ -32,7 +32,7 @@ pub(super) fn analyze_program(
     ast: &mut Ast<'_>,
     resolver: &mut Resolver,
     options: &TypeScriptOptions,
-    seed: HashSet<Id>,
+    seed: HashSet<SymbolId>,
 ) -> SemanticInfo {
     let mut analyzer = SemanticAnalyzer {
         ast,
@@ -51,19 +51,18 @@ pub(super) fn analyze_program(
     analyzer.collect_module();
     analyzer.ast.root_program().visit_with(&mut analyzer);
     analyze_import_chain(&mut analyzer.info.usage, &mut analyzer.import_chain);
-    analyzer.resolver.register(analyzer.ast);
     analyzer.info
 }
 
 #[derive(Default)]
 struct NamespaceBlock {
-    usage: HashSet<Id>,
-    import_chain: HashMap<Id, Id>,
-    imports: Vec<(Id, NodeId, bool, bool)>,
+    usage: HashSet<SymbolId>,
+    import_chain: HashMap<SymbolId, SymbolId>,
+    imports: Vec<(SymbolId, NodeId, bool, bool)>,
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L100>.
-fn analyze_import_chain(usage: &mut HashSet<Id>, chain: &mut HashMap<Id, Id>) {
+fn analyze_import_chain(usage: &mut HashSet<SymbolId>, chain: &mut HashMap<SymbolId, SymbolId>) {
     let mut new_usage = HashSet::new();
     for id in usage.iter() {
         let mut next = chain.remove(id);
@@ -83,19 +82,19 @@ struct SemanticAnalyzer<'a, 'ast> {
     resolver: &'a mut Resolver,
     options: &'a TypeScriptOptions,
     info: SemanticInfo,
-    import_chain: HashMap<Id, Id>,
+    import_chain: HashMap<SymbolId, SymbolId>,
     namespace_blocks: Vec<NamespaceBlock>,
-    namespace_id: Option<Id>,
+    namespace_id: Option<SymbolId>,
     skip_transform_info: bool,
     exported: bool,
 }
 
 impl SemanticAnalyzer<'_, '_> {
-    fn binding(&self, id: BindingIdentifier) -> Id {
-        self.resolver.id(id.node_id(), id.name(self.ast), self.ast)
+    fn binding(&self, id: BindingIdentifier) -> SymbolId {
+        self.resolver.symbol_of(id.node_id())
     }
-    fn usage(&mut self, id: Id) {
-        self.info.usage.insert(id.clone());
+    fn usage(&mut self, id: SymbolId) {
+        self.info.usage.insert(id);
         if let Some(block) = self.namespace_blocks.last_mut() {
             block.usage.insert(id);
         }
@@ -188,10 +187,10 @@ impl SemanticAnalyzer<'_, '_> {
                     .insert(self.binding(enumeration.id(self.ast)));
             }
             DeclData::TsModuleDeclaration(module) => {
-                if let Some(&(node, name)) =
-                    utils::namespace_names(self.ast, module.id(self.ast)).first()
+                if let Some(&node) =
+                    utils::namespace_name_nodes(self.ast, module.id(self.ast)).first()
                 {
-                    let id = self.resolver.id(node, name, self.ast);
+                    let id = self.resolver.symbol_of(node);
                     if retain::namespace_body_is_concrete(self.ast, module) {
                         self.info.id_value.insert(id);
                     } else {
@@ -222,7 +221,7 @@ impl SemanticAnalyzer<'_, '_> {
     fn compute(
         &mut self,
         expression: Expr,
-        id: &Id,
+        id: SymbolId,
         context: EvalCtx,
         mutable: bool,
         ambient_mutable: bool,
@@ -256,11 +255,15 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L376>.
     fn visit_identifier_reference(&mut self, id: IdentifierReference) {
-        self.usage(self.resolver.id(id.node_id(), id.name(self.ast), self.ast));
+        if let Some(symbol) = self.resolver.symbol(id.node_id()) {
+            self.usage(symbol);
+        }
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L376>.
     fn visit_jsx_identifier(&mut self, id: JsxIdentifier) {
-        self.usage(self.resolver.id(id.node_id(), id.name(self.ast), self.ast));
+        if let Some(symbol) = self.resolver.symbol(id.node_id()) {
+            self.usage(symbol);
+        }
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L691>.
     fn visit_jsx_element_name(&mut self, name: JsxElementName) {
@@ -287,12 +290,10 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         if let Some(block) = self.namespace_blocks.last_mut() {
             block
                 .imports
-                .push((id.clone(), import.node_id(), self.exported, type_only));
+                .push((id, import.node_id(), self.exported, type_only));
         }
         if !self.skip_transform_info && self.exported {
-            self.info
-                .exported_binding
-                .insert(id.clone(), self.namespace_id.clone());
+            self.info.exported_binding.insert(id, self.namespace_id);
         }
         if type_only {
             return;
@@ -302,15 +303,15 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         else {
             return;
         };
-        let root = self
-            .resolver
-            .id(root.node_id(), root.name(self.ast), self.ast);
+        let Some(root) = self.resolver.symbol(root.node_id()) else {
+            return;
+        };
         if let Some(block) = self.namespace_blocks.last_mut() {
             if self.exported {
-                block.usage.insert(root.clone());
-                block.usage.insert(id.clone());
+                block.usage.insert(root);
+                block.usage.insert(id);
             } else {
-                block.import_chain.insert(id.clone(), root.clone());
+                block.import_chain.insert(id, root);
             }
         }
         if self.exported {
@@ -352,7 +353,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
             for id in ids {
                 self.info
                     .exported_binding
-                    .insert(self.binding(id), self.namespace_id.clone());
+                    .insert(self.binding(id), self.namespace_id);
             }
         } else if export.export_kind(self.ast) == ImportOrExportKind::Value
             && export.source(self.ast).is_none()
@@ -362,11 +363,9 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
                 if specifier.export_kind(self.ast) == ImportOrExportKind::Value
                     && let Some(id) = specifier.local(self.ast).as_identifier_name(self.ast)
                 {
-                    let id = self.resolver.id(id.node_id(), id.name(self.ast), self.ast);
+                    let id = self.resolver.symbol_of(id.node_id());
                     if !self.skip_transform_info {
-                        self.info
-                            .exported_binding
-                            .insert(id.clone(), self.namespace_id.clone());
+                        self.info.exported_binding.insert(id, self.namespace_id);
                     }
                     self.usage(id);
                 }
@@ -380,21 +379,19 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
             && let Some(expression) = export.declaration(self.ast).as_expr(self.ast)
             && let Some(id) = expression.as_identifier_reference(self.ast)
         {
-            self.info.exported_binding.insert(
-                self.resolver.id(id.node_id(), id.name(self.ast), self.ast),
-                self.namespace_id.clone(),
-            );
+            self.info
+                .exported_binding
+                .insert(self.resolver.symbol_of(id.node_id()), self.namespace_id);
         }
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L548>.
     fn visit_ts_module_declaration(&mut self, module: TsModuleDeclaration) {
-        let old = self.namespace_id.clone();
+        let old = self.namespace_id;
         if !self.skip_transform_info
-            && let Some(&(node, name)) =
-                utils::namespace_names(self.ast, module.id(self.ast)).last()
+            && let Some(&node) = utils::namespace_name_nodes(self.ast, module.id(self.ast)).last()
         {
-            self.namespace_id = Some(self.resolver.id(node, name, self.ast));
+            self.namespace_id = Some(self.resolver.symbol_of(node));
         }
         let exported = std::mem::take(&mut self.exported);
         module.body(self.ast).visit_with(self);
@@ -437,7 +434,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
             let id = self.binding(id);
             let value = self.compute(
                 init,
-                &id,
+                id,
                 EvalCtx::CONST_INIT,
                 self.options.ts_enum_is_mutable,
                 self.options.ts_enum_is_mutable,
@@ -453,7 +450,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         enumeration.body(self.ast).visit_with(self);
         let id = self.binding(enumeration.id(self.ast));
         if enumeration.is_const(self.ast) {
-            self.info.const_enum.insert(id.clone());
+            self.info.const_enum.insert(id);
         }
         let ambient = self.skip_transform_info;
         let mut default = if self.options.flow_syntax && !ambient {
@@ -467,7 +464,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
             let value = if let Some(init) = member.initializer(self.ast) {
                 self.compute(
                     init,
-                    &id,
+                    id,
                     if ambient {
                         EvalCtx::CONST_INIT
                     } else {
@@ -489,12 +486,10 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
             default = value.inc();
             if ambient {
                 if value.is_const() {
-                    self.info
-                        .ambient_enum_record
-                        .insert((id.clone(), name), value);
+                    self.info.ambient_enum_record.insert((id, name), value);
                 }
             } else {
-                self.info.enum_record.insert((id.clone(), name), value);
+                self.info.enum_record.insert((id, name), value);
             }
         }
     }

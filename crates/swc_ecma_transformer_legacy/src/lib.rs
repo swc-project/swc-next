@@ -278,7 +278,6 @@ impl Transformer {
             .state
             .helpers
             .inject_helpers(context.ast, context.state.resolver);
-        context.state.resolver.register(context.ast);
         // SWC runs hygiene once, after all transform passes, before its fixer.
         resolver.hygiene(ast);
         TransformerReturn { diagnostics }

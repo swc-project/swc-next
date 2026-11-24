@@ -1,6 +1,6 @@
 //! SWC private-brand checks. Each class gets one syntax context for its brands.
 use crate::common::{
-    TraverseCtx, build as b, constructor::default_constructor, resolver::context::Id,
+    TraverseCtx, build as b, constructor::default_constructor, resolver::context::Resolver,
 };
 use std::collections::HashSet;
 use swc_next_ecma_ast::*;
@@ -8,7 +8,7 @@ use swc_next_ecma_ast::*;
 pub(crate) struct PrivatePropertyInObjectPass {
     classes: Vec<ClassData>,
     prepends: Vec<Vec<Expr>>,
-    injected: HashSet<Id>,
+    injected: HashSet<SymbolId>,
 }
 struct ClassData {
     ident: Option<BindingIdentifier>,
@@ -32,20 +32,14 @@ impl PrivatePropertyInObjectPass {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2022/private_property_in_object.rs#L163>.
-    fn var_name_for_brand_check(&self, ast: &Ast<'_>, name: &str) -> Id {
+    fn brand_symbol(&self, ast: &mut Ast<'_>, resolver: &mut Resolver, name: &str) -> SymbolId {
         let class = self.classes.last().unwrap();
         let name = if !class.statics.contains(name) && class.methods.contains(name) {
-            class.ident.map_or_else(
-                || name.to_owned(),
-                |id| ast.get_utf8(id.name(ast)).to_owned(),
-            )
+            class.ident.map_or(name, |id| ast.get_utf8(id.name(ast)))
         } else {
-            name.to_owned()
+            name
         };
-        Id {
-            name: format!("_brand_check_{name}"),
-            scope: class.scope,
-        }
+        resolver.scoped_symbol(ast, class.scope, &format!("_brand_check_{name}"))
     }
     fn push_var(
         &mut self,
@@ -252,9 +246,9 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for PrivatePropertyInObjectPass {
                 BinaryOperator::StrictEqual,
             ));
         }
-        let brand = self.var_name_for_brand_check(ctx.ast, &name);
-        if class.privates.contains(&name) && self.injected.insert(brand.clone()) {
-            let binding = ctx.state.resolver.binding(ctx.ast, &brand);
+        let brand = self.brand_symbol(ctx.ast, ctx.state.resolver, &name);
+        if class.privates.contains(&name) && self.injected.insert(brand) {
+            let binding = ctx.state.resolver.binding(ctx.ast, brand);
             let weak_set = ctx
                 .state
                 .resolver
@@ -267,14 +261,14 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for PrivatePropertyInObjectPass {
             ));
             self.push_var(ctx.ast, ctx.state.resolver, binding, Some(init));
             if method {
-                let object = b::reference(ctx.ast, ctx.state.resolver, &brand);
+                let object = ctx.state.resolver.symbol_reference(ctx.ast, brand);
                 let callee = b::member(ctx.ast, object, "add");
                 let this = ctx.ast.expr_this_expression(DUMMY_SP);
                 let add = b::call(ctx.ast, callee, [this], false);
                 self.classes.last_mut().unwrap().constructor.push(add);
             }
         }
-        let object = b::reference(ctx.ast, ctx.state.resolver, &brand);
+        let object = ctx.state.resolver.symbol_reference(ctx.ast, brand);
         let callee = b::member(ctx.ast, object, "has");
         TraverseAction::ReplaceSkip(b::call(ctx.ast, callee, [binary.right(ctx.ast)], false))
     }
@@ -290,8 +284,8 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for PrivatePropertyInObjectPass {
         if node.accessor(ctx.ast) || !self.classes.last().unwrap().used.contains(&name) {
             return TraverseAction::Continue;
         }
-        let brand = self.var_name_for_brand_check(ctx.ast, &name);
-        let object = b::reference(ctx.ast, ctx.state.resolver, &brand);
+        let brand = self.brand_symbol(ctx.ast, ctx.state.resolver, &name);
+        let object = ctx.state.resolver.symbol_reference(ctx.ast, brand);
         let callee = b::member(ctx.ast, object, "add");
         let this = ctx.ast.expr_this_expression(DUMMY_SP);
         let add = b::call(ctx.ast, callee, [this], false);

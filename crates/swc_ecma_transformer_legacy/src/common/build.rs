@@ -1,5 +1,5 @@
 //! Next AST construction and syntax-context adapters.
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 use swc_next_ecma_ast::*;
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/utils.rs#L37>.
@@ -103,11 +103,6 @@ pub(crate) fn export(ast: &mut Ast<'_>, declaration: Decl) -> Stmt {
     ))
 }
 
-pub(crate) fn reference(ast: &mut Ast<'_>, resolver: &mut Resolver, id: &Id) -> Expr {
-    let binding = resolver.binding(ast, id);
-    resolver.reference(ast, binding)
-}
-
 /// SWC clones preserve syntax contexts. `CloneIn` copies the Next AST tree;
 /// replaying the same ordinary visitor copies its side-table contexts as well.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_utils/src/constructor.rs#L92>.
@@ -137,9 +132,8 @@ pub(crate) fn clone_expr(ast: &mut Ast<'_>, resolver: &mut Resolver, expression:
     };
     cloned.visit_with(&mut copies);
     let copies = copies.nodes;
-    resolver.register(ast);
     for (original, copied) in original.into_iter().zip(copies) {
-        resolver.node_scopes[copied] = resolver.node_scopes[original];
+        resolver.copy_context(original, copied);
     }
     cloned
 }

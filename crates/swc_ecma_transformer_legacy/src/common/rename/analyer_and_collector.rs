@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet};
 use swc_next_ecma_ast::*;
 
 use super::analyzer::scope::Scope;
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L537>.
 pub(super) fn analyzer_and_collect_unresolved(
     ast: &Ast<'_>,
     resolver: &Resolver,
-) -> HashMap<Id, String> {
+) -> HashMap<SymbolId, String> {
     let mut analyzer = AnalyzerAndCollector {
         ast,
         resolver,
@@ -26,14 +26,18 @@ pub(super) fn analyzer_and_collect_unresolved(
     let unresolved = analyzer
         .ids
         .difference(&analyzer.declarations)
-        .map(|id| id.name.clone())
+        .map(|&id| ast.get_utf8(resolver.symbol_name(id)))
         .collect();
     analyzer.scope.prepare_renaming();
     let mut renames = HashMap::new();
-    analyzer
-        .scope
-        .rename_in_normal_mode(&unresolved, &mut HashMap::new(), &mut renames);
-    renames.retain(|id, name| id.name != *name);
+    analyzer.scope.rename_in_normal_mode(
+        ast,
+        resolver,
+        &unresolved,
+        &mut HashMap::new(),
+        &mut renames,
+    );
+    renames.retain(|id, name| ast.get_utf8(resolver.symbol_name(*id)) != *name);
     renames
 }
 
@@ -41,9 +45,9 @@ struct AnalyzerAndCollector<'visit, 'ast> {
     ast: &'visit Ast<'ast>,
     resolver: &'visit Resolver,
     scope: Scope,
-    hoisted: Vec<Id>,
-    ids: HashSet<Id>,
-    declarations: HashSet<Id>,
+    hoisted: Vec<SymbolId>,
+    ids: HashSet<SymbolId>,
+    declarations: HashSet<SymbolId>,
     pattern: bool,
     hoist: bool,
 }
@@ -67,7 +71,7 @@ impl AnalyzerAndCollector<'_, '_> {
         let child_hoisted = std::mem::replace(&mut self.hoisted, hoisted);
         (self.pattern, self.hoist) = flags;
         for id in child_hoisted {
-            child.add_usage(id.clone());
+            child.add_usage(id);
             self.add_decl(id, true);
         }
         self.scope.children.push(child);
@@ -75,7 +79,7 @@ impl AnalyzerAndCollector<'_, '_> {
 
     /// SWC declaration queue: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L52>.
     /// SWC var hoisting: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L53>.
-    fn add_decl(&mut self, id: Id, hoist: bool) {
+    fn add_decl(&mut self, id: SymbolId, hoist: bool) {
         if hoist && !self.scope.function {
             self.hoisted.push(id);
         } else {
@@ -85,19 +89,24 @@ impl AnalyzerAndCollector<'_, '_> {
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L128>.
     fn binding(&mut self, binding: BindingIdentifier, hoist: bool) {
-        let id = self
-            .resolver
-            .id(binding.node_id(), binding.name(self.ast), self.ast);
-        self.ids.insert(id.clone());
-        self.declarations.insert(id.clone());
-        self.add_decl(id, hoist);
+        let Some(id) = self.resolver.symbol(binding.node_id()) else {
+            return;
+        };
+        self.ids.insert(id);
+        self.declarations.insert(id);
+        if self.ast.get_utf8(binding.name(self.ast)) != "arguments" {
+            self.add_decl(id, hoist);
+        }
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L183>.
     fn usage(&mut self, node: NodeId, name: AstUtf8) {
-        let id = self.resolver.id(node, name, self.ast);
-        self.ids.insert(id.clone());
-        self.scope.add_usage(id);
+        if let Some(id) = self.resolver.symbol(node) {
+            self.ids.insert(id);
+            if self.ast.get_utf8(name) != "arguments" {
+                self.scope.add_usage(id);
+            }
+        }
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L382>.
@@ -407,11 +416,7 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
     fn visit_jsx_element_name(&mut self, node: JsxElementName) {
         match self.ast.jsx_element_name_data(node) {
             JsxElementNameData::JsxIdentifier(identifier) => {
-                self.ids.insert(self.resolver.id(
-                    identifier.node_id(),
-                    identifier.name(self.ast),
-                    self.ast,
-                ));
+                self.ids.extend(self.resolver.symbol(identifier.node_id()));
             }
             JsxElementNameData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self)
@@ -424,11 +429,7 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
     fn visit_jsx_member_expression_object(&mut self, node: JsxMemberExpressionObject) {
         match self.ast.jsx_member_expression_object_data(node) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
-                self.ids.insert(self.resolver.id(
-                    identifier.node_id(),
-                    identifier.name(self.ast),
-                    self.ast,
-                ));
+                self.ids.extend(self.resolver.symbol(identifier.node_id()));
             }
             JsxMemberExpressionObjectData::JsxMemberExpression(member) => {
                 member.object(self.ast).visit_with(self)

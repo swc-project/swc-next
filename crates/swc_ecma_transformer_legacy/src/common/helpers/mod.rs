@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use swc_next_ecma_ast::*;
 
 use crate::common::build;
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 
 #[derive(Default)]
 pub(crate) struct Helpers {
@@ -24,14 +24,8 @@ impl Helpers {
     ) -> Expr {
         self.used.insert(name);
         let scope = *self.scope.get_or_insert_with(|| resolver.fresh_scope());
-        build::reference(
-            ast,
-            resolver,
-            &Id {
-                name: format!("_{name}"),
-                scope,
-            },
-        )
+        let symbol = resolver.scoped_symbol(ast, scope, &format!("_{name}"));
+        resolver.symbol_reference(ast, symbol)
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/helpers/mod.rs#L219>.
@@ -110,12 +104,10 @@ impl InjectHelpers<'_, '_> {
     }
 
     fn binding_and_source(&mut self, name: &str) -> (BindingIdentifier, StringLiteral) {
-        let id = Id {
-            name: format!("_{name}"),
-            scope: self.scope,
-        };
-        let binding = self.resolver.binding(self.ast, &id);
-        let path = self.ast.add_utf8(&format!("@swc/helpers/_/{}", id.name));
+        let name = format!("_{name}");
+        let symbol = self.resolver.scoped_symbol(self.ast, self.scope, &name);
+        let binding = self.resolver.binding(self.ast, symbol);
+        let path = self.ast.add_utf8(&format!("@swc/helpers/_/{name}"));
         let source = self
             .ast
             .string_literal(DUMMY_SP, path.into(), AstUtf8::EMPTY);
@@ -123,7 +115,7 @@ impl InjectHelpers<'_, '_> {
     }
 
     fn map_helper_ref_ident(&mut self, id: IdentifierReference) -> Option<Expr> {
-        if self.resolver.node_scopes[id.node_id()] == self.scope {
+        if self.resolver.scope_of(id.node_id()) == Some(self.scope) {
             let expression = Expr::IdentifierReference(id);
             let span = id.span(self.ast);
             let member = build::member(self.ast, expression, "_");

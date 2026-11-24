@@ -6,10 +6,7 @@ use super::{
     ts_enum::{EnumValueComputer, EvalCtx, TsEnumRecordValue},
     utils,
 };
-use crate::common::{
-    constructor::inject_after_super,
-    resolver::context::{Id, Resolver},
-};
+use crate::common::{constructor::inject_after_super, resolver::context::Resolver};
 use std::collections::{HashMap, HashSet};
 use swc_next_allocator::wtf8::Wtf8Buf;
 use swc_next_ecma_ast::*;
@@ -21,12 +18,12 @@ pub(super) struct Transform<'a, 'ast> {
     pub(super) semantic: SemanticInfo,
     pub(super) diagnostics: Vec<Diagnostic>,
     pub(super) in_namespace: bool,
-    pub(super) namespace_id: Option<Id>,
+    pub(super) namespace_id: Option<SymbolId>,
     pub(super) is_lhs: bool,
     pub(super) rewrite: bool,
-    pub(super) decl_id_record: HashSet<Id>,
-    pub(super) var_list: Vec<Id>,
-    pub(super) export_var_list: Vec<Id>,
+    pub(super) decl_id_record: HashSet<SymbolId>,
+    pub(super) var_list: Vec<SymbolId>,
+    pub(super) export_var_list: Vec<SymbolId>,
     comment_moves: [HashMap<u32, u32>; 2],
 }
 
@@ -125,11 +122,11 @@ impl<'a, 'ast> Transform<'a, 'ast> {
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L2104>.
-    fn variables(&mut self, ids: Vec<Id>) -> Decl {
+    fn variables(&mut self, ids: Vec<SymbolId>) -> Decl {
         let declarations: Vec<_> = ids
             .into_iter()
             .map(|id| {
-                let binding = self.resolver.binding(self.ast, &id);
+                let binding = self.resolver.binding(self.ast, id);
                 self.ast.variable_declarator(
                     DUMMY_SP,
                     BindingPattern::BindingIdentifier(binding),
@@ -189,7 +186,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                                     specifier,
                                 ) => (specifier.local(self.ast), false),
                             };
-                        let id = self.resolver.id(id.node_id(), id.name(self.ast), self.ast);
+                        let id = self.resolver.symbol_of(id.node_id());
                         (!type_only
                             && !self.semantic.id_value.contains(&id)
                             && self.semantic.usage.contains(&id))
@@ -216,11 +213,9 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                         }
                         if export.source(self.ast).is_none()
                             && let Some(id) = specifier.local(self.ast).as_identifier_name(self.ast)
-                            && self.semantic.has_pure_type(&self.resolver.id(
-                                id.node_id(),
-                                id.name(self.ast),
-                                self.ast,
-                            ))
+                            && self
+                                .semantic
+                                .has_pure_type(&self.resolver.symbol_of(id.node_id()))
                         {
                             return None;
                         }
@@ -237,11 +232,8 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                 .as_expr(self.ast)
                 .and_then(|expression| expression.as_identifier_reference(self.ast))
                 .is_some_and(|id| {
-                    self.semantic.has_pure_type(&self.resolver.id(
-                        id.node_id(),
-                        id.name(self.ast),
-                        self.ast,
-                    ))
+                    self.semantic
+                        .has_pure_type(&self.resolver.symbol_of(id.node_id()))
                 }),
             StmtData::Declaration(declaration) => match self.ast.decl_data(declaration) {
                 DeclData::TsImportEqualsDeclaration(import) => {
@@ -306,8 +298,8 @@ impl<'a, 'ast> Transform<'a, 'ast> {
         }
     }
 
-    pub(super) fn binding_id(&self, id: BindingIdentifier) -> Id {
-        self.resolver.id(id.node_id(), id.name(self.ast), self.ast)
+    pub(super) fn binding_id(&self, id: BindingIdentifier) -> SymbolId {
+        self.resolver.symbol_of(id.node_id())
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L872>.
@@ -366,10 +358,10 @@ impl<'a, 'ast> Transform<'a, 'ast> {
         if !self.rewrite {
             return None;
         }
-        let id = self.resolver.id(node, name, self.ast);
-        let owner = self.semantic.exported_binding.get(&id)?.as_ref()?.clone();
-        let object = utils::reference(self.ast, self.resolver, &owner);
-        Some(utils::member(self.ast, object, &id.name))
+        let id = self.resolver.symbol(node)?;
+        let owner = (*self.semantic.exported_binding.get(&id)?)?;
+        let object = self.resolver.symbol_reference(self.ast, owner);
+        Some(utils::member(self.ast, object, self.ast.get_utf8(name)))
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1645>.
@@ -382,7 +374,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             return None;
         }
         let id = member.object(self.ast).as_identifier_reference(self.ast)?;
-        let id = self.resolver.id(id.node_id(), id.name(self.ast), self.ast);
+        let id = self.resolver.symbol(id.node_id())?;
         if self.options.ts_enum_is_mutable && !self.semantic.const_enum.contains(&id) {
             return None;
         }
@@ -679,7 +671,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
             }
             let mut fields = Vec::new();
             for id in properties {
-                let name = self.ast.add_utf8(&id.name);
+                let name = self.resolver.symbol_name(id);
                 let key = self.ast.identifier_name(DUMMY_SP, name);
                 fields.push(self.ast.class_element_property_definition(
                     DUMMY_SP,
@@ -853,7 +845,7 @@ impl Transform<'_, '_> {
     fn reorder_class_prop_decls_and_inits(
         &mut self,
         function: Function,
-        properties: &mut Vec<crate::common::resolver::context::Id>,
+        properties: &mut Vec<SymbolId>,
         initializers: &mut Vec<Expr>,
     ) {
         let parameters = function.params(self.ast);
@@ -986,7 +978,7 @@ impl Transform<'_, '_> {
             }
         };
         let id = self.binding_id(id);
-        let binding = self.resolver.binding(self.ast, &id);
+        let binding = self.resolver.binding(self.ast, id);
         let params = arrow.params(self.ast);
         params.set_kind(self.ast, FormalParameterKind::FormalParameters);
         let function = self.ast.function(
@@ -1089,21 +1081,22 @@ struct AwaitBindingCollector<'a, 'ast> {
     ast: &'a Ast<'ast>,
     resolver: &'a Resolver,
     used: HashSet<String>,
-    seen: HashSet<Id>,
-    bindings: Vec<Id>,
+    seen: HashSet<SymbolId>,
+    bindings: Vec<SymbolId>,
 }
 impl<'ast> Visit<'ast> for AwaitBindingCollector<'_, 'ast> {
     fn ast(&self) -> &Ast<'ast> {
         self.ast
     }
     fn visit_binding_identifier(&mut self, identifier: BindingIdentifier) {
-        let id = self
-            .resolver
-            .id(identifier.node_id(), identifier.name(self.ast), self.ast);
-        if id.name == "await" && self.seen.insert(id.clone()) {
-            self.bindings.push(id.clone());
+        let name = self.ast.get_utf8(identifier.name(self.ast));
+        if name == "await"
+            && let Some(id) = self.resolver.symbol(identifier.node_id())
+            && self.seen.insert(id)
+        {
+            self.bindings.push(id);
         }
-        self.used.insert(id.name);
+        self.used.insert(name.to_owned());
     }
     fn visit_identifier_reference(&mut self, identifier: IdentifierReference) {
         self.used
@@ -1124,10 +1117,22 @@ impl<'ast> Visit<'ast> for AwaitBindingCollector<'_, 'ast> {
 impl Transform<'_, '_> {
     /// SWC `InitArg::{get, or_empty, or_assign_empty}`.
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1014>.
-    fn init_arg(&mut self, id: &Id, owner: Option<&Id>, assign: bool, or_empty: bool) -> Expr {
-        let reference = utils::reference(self.ast, self.resolver, owner.unwrap_or(id));
+    fn init_arg(
+        &mut self,
+        id: SymbolId,
+        owner: Option<SymbolId>,
+        assign: bool,
+        or_empty: bool,
+    ) -> Expr {
+        let reference = self
+            .resolver
+            .symbol_reference(self.ast, owner.unwrap_or(id));
         let reference = if owner.is_some() {
-            utils::member(self.ast, reference, &id.name)
+            utils::member(
+                self.ast,
+                reference,
+                self.ast.get_utf8(self.resolver.symbol_name(id)),
+            )
         } else {
             reference
         };
@@ -1147,14 +1152,14 @@ impl Transform<'_, '_> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1265>.
     fn transform_ts_module(&mut self, module: TsModuleDeclaration, exported: bool) -> Stmt {
-        let names = utils::namespace_names(self.ast, module.id(self.ast));
+        let names = utils::namespace_name_nodes(self.ast, module.id(self.ast));
         let ids: Vec<_> = names
             .iter()
-            .map(|&(node, name)| self.resolver.id(node, name, self.ast))
+            .map(|&node| self.resolver.symbol_of(node))
             .collect();
-        let id = ids.first().unwrap();
-        let owner = self.namespace_id.clone();
-        let saved_namespace = self.namespace_id.replace(ids.last().unwrap().clone());
+        let id = ids[0];
+        let owner = self.namespace_id;
+        let saved_namespace = self.namespace_id.replace(*ids.last().unwrap());
         let saved_in_namespace = std::mem::replace(&mut self.in_namespace, true);
         let mut statements = match self.ast.ts_module_body_data(module.body(self.ast).unwrap()) {
             TsModuleBodyData::TsModuleBlock(block) => {
@@ -1168,11 +1173,11 @@ impl Transform<'_, '_> {
         self.namespace_id = saved_namespace;
         self.in_namespace = saved_in_namespace;
         for index in (0..ids.len()).rev() {
-            let id = &ids[index];
+            let id = ids[index];
             let owner = if index == 0 {
-                owner.as_ref().filter(|_| exported)
+                owner.filter(|_| exported)
             } else {
-                Some(&ids[index - 1])
+                Some(ids[index - 1])
             };
             let argument = self.init_arg(id, owner, true, false);
             let binding = self.resolver.binding(self.ast, id);
@@ -1183,13 +1188,13 @@ impl Transform<'_, '_> {
                     .stmt_expression_statement(module.span(self.ast), call),
             ];
         }
-        if self.decl_id_record.insert(id.clone()) {
+        if self.decl_id_record.insert(id) {
             if exported {
                 if owner.is_none() {
-                    self.export_var_list.push(id.clone());
+                    self.export_var_list.push(id);
                 }
             } else {
-                self.var_list.push(id.clone());
+                self.var_list.push(id);
             }
         }
         statements.pop().unwrap()
@@ -1288,8 +1293,8 @@ impl Transform<'_, '_> {
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1613>.
     fn assign_export(&mut self, binding: BindingIdentifier) -> Stmt {
-        let owner = self.namespace_id.as_ref().unwrap().clone();
-        let object = utils::reference(self.ast, self.resolver, &owner);
+        let owner = self.namespace_id.unwrap();
+        let object = self.resolver.symbol_reference(self.ast, owner);
         let left = utils::member(
             self.ast,
             object,
@@ -1319,9 +1324,13 @@ impl Transform<'_, '_> {
         }
         let init = self.ts_entity_name_to_expr(reference);
         if exported {
-            let owner = self.namespace_id.as_ref().unwrap().clone();
-            let object = utils::reference(self.ast, self.resolver, &owner);
-            let left = utils::member(self.ast, object, &self.binding_id(import.id(self.ast)).name);
+            let owner = self.namespace_id.unwrap();
+            let object = self.resolver.symbol_reference(self.ast, owner);
+            let left = utils::member(
+                self.ast,
+                object,
+                self.ast.get_utf8(import.id(self.ast).name(self.ast)),
+            );
             let assignment = utils::assign(self.ast, left, init);
             Some(
                 self.ast
@@ -1345,7 +1354,7 @@ impl Transform<'_, '_> {
         exported: bool,
     ) -> Option<Stmt> {
         let id = self.binding_id(enumeration.id(self.ast));
-        let first = self.decl_id_record.insert(id.clone());
+        let first = self.decl_id_record.insert(id);
         let remove = !self.options.verbatim_module_syntax
             && enumeration.is_const(self.ast)
             && !exported
@@ -1364,7 +1373,7 @@ impl Transform<'_, '_> {
             let mut value = self
                 .semantic
                 .enum_record
-                .get(&(id.clone(), name.clone()))
+                .get(&(id, name.clone()))
                 .unwrap()
                 .clone();
             if matches!(value, TsEnumRecordValue::Opaque(_))
@@ -1372,7 +1381,7 @@ impl Transform<'_, '_> {
             {
                 let init = init.visit_mut_with(self).unwrap_or(init);
                 value = EnumValueComputer {
-                    enum_id: &id,
+                    enum_id: id,
                     resolver: self.resolver,
                     record: &self.semantic.enum_record,
                     ambient: &self.semantic.ambient_enum_record,
@@ -1385,7 +1394,7 @@ impl Transform<'_, '_> {
                     let mut rewriter = EnumMemberRefQuery {
                         ast: self.ast,
                         resolver: self.resolver,
-                        id: &id,
+                        id,
                         names: &names,
                     };
                     *expression = expression
@@ -1410,14 +1419,14 @@ impl Transform<'_, '_> {
             let name = self
                 .ast
                 .expr_string_literal(DUMMY_SP, name_value, AstUtf8::EMPTY);
-            let object = utils::reference(self.ast, self.resolver, &id);
+            let object = self.resolver.symbol_reference(self.ast, id);
             let left = utils::computed(self.ast, object, name);
             let value = value.expression(self.ast);
             let inner = utils::assign(self.ast, left, value);
             let expression = if string {
                 inner
             } else {
-                let object = utils::reference(self.ast, self.resolver, &id);
+                let object = self.resolver.symbol_reference(self.ast, id);
                 let left = utils::computed(self.ast, object, inner);
                 let name = utils::clone_expr(self.ast, self.resolver, name);
                 utils::assign(self.ast, left, name)
@@ -1427,25 +1436,25 @@ impl Transform<'_, '_> {
         let namespace_export = self.namespace_id.is_some() && exported;
         let iife = !first || namespace_export;
         if !iife {
-            let result = utils::reference(self.ast, self.resolver, &id);
+            let result = self.resolver.symbol_reference(self.ast, id);
             statements.push(self.ast.stmt_return_statement(DUMMY_SP, Some(result)));
         }
-        let kind = if exported || id.scope == self.resolver.top_level() {
+        let kind = if exported || self.resolver.scope_of_symbol(id) == self.resolver.top_level() {
             VariableKind::Var
         } else {
             VariableKind::Let
         };
-        let owner = self.namespace_id.clone().filter(|_| exported);
+        let owner = self.namespace_id.filter(|_| exported);
         let argument = if !first {
-            self.init_arg(&id, owner.as_ref(), false, false)
+            self.init_arg(id, owner, false, false)
         } else if namespace_export {
-            self.init_arg(&id, owner.as_ref(), true, false)
+            self.init_arg(id, owner, true, false)
         } else if exported || kind == VariableKind::Let {
             self.ast.expr_object_expression(DUMMY_SP, SubRange::empty())
         } else {
-            self.init_arg(&id, None, false, true)
+            self.init_arg(id, None, false, true)
         };
-        let binding = self.resolver.binding(self.ast, &id);
+        let binding = self.resolver.binding(self.ast, id);
         let function = utils::function(self.ast, binding, statements);
         let call = utils::call(self.ast, function, [argument], !iife && !opaque);
         Some(if iife {
@@ -1469,14 +1478,9 @@ impl Transform<'_, '_> {
         }
         match self.ast.jsx_element_name_data(name) {
             JsxElementNameData::JsxIdentifier(id) => {
-                let binding = self.resolver.id(id.node_id(), id.name(self.ast), self.ast);
-                let owner = self
-                    .semantic
-                    .exported_binding
-                    .get(&binding)?
-                    .as_ref()?
-                    .clone();
-                Some(jsx_member(self.ast, self.resolver, &owner, id))
+                let binding = self.resolver.symbol(id.node_id())?;
+                let owner = (*self.semantic.exported_binding.get(&binding)?)?;
+                Some(jsx_member(self.ast, self.resolver, owner, id))
             }
             JsxElementNameData::JsxMemberExpression(member) => {
                 rewrite_jsx_object(
@@ -1496,13 +1500,12 @@ impl Transform<'_, '_> {
 fn jsx_member(
     ast: &mut Ast<'_>,
     resolver: &mut crate::common::resolver::context::Resolver,
-    owner: &Id,
+    owner: SymbolId,
     property: JsxIdentifier,
 ) -> JsxElementName {
-    let name = ast.add_utf8(&owner.name);
+    let name = resolver.symbol_name(owner);
     let object = ast.jsx_identifier(DUMMY_SP, name);
-    resolver.register(ast);
-    resolver.node_scopes[object.node_id()] = owner.scope;
+    resolver.set_symbol(object.node_id(), owner);
     JsxElementName::JsxMemberExpression(ast.jsx_member_expression(
         DUMMY_SP,
         JsxMemberExpressionObject::JsxIdentifier(object),
@@ -1514,14 +1517,15 @@ fn jsx_member(
 fn rewrite_jsx_object(
     ast: &mut Ast<'_>,
     resolver: &mut crate::common::resolver::context::Resolver,
-    exports: &std::collections::HashMap<Id, Option<Id>>,
+    exports: &std::collections::HashMap<SymbolId, Option<SymbolId>>,
     member: JsxMemberExpression,
 ) {
     match ast.jsx_member_expression_object_data(member.object(ast)) {
         JsxMemberExpressionObjectData::JsxIdentifier(id) => {
-            let binding = resolver.id(id.node_id(), id.name(ast), ast);
-            if let Some(Some(owner)) = exports.get(&binding) {
-                let replacement = jsx_member(ast, resolver, owner, id)
+            if let Some(binding) = resolver.symbol(id.node_id())
+                && let Some(Some(owner)) = exports.get(&binding)
+            {
+                let replacement = jsx_member(ast, resolver, *owner, id)
                     .as_jsx_member_expression(ast)
                     .unwrap();
                 member.set_object(
@@ -1542,12 +1546,12 @@ fn rewrite_jsx_object(
 struct EnumMemberRefQuery<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a mut crate::common::resolver::context::Resolver,
-    id: &'a Id,
+    id: SymbolId,
     names: &'a HashSet<Wtf8Buf>,
 }
 impl EnumMemberRefQuery<'_, '_> {
     fn matches(&self, node: NodeId, name: AstUtf8) -> bool {
-        self.resolver.node_scopes[node] == self.resolver.unresolved()
+        self.resolver.is_unresolved(node)
             && self
                 .names
                 .contains(&Wtf8Buf::from_str(self.ast.get_utf8(name)))
@@ -1556,7 +1560,7 @@ impl EnumMemberRefQuery<'_, '_> {
         if !self.matches(node, name) {
             return None;
         }
-        let object = utils::reference(self.ast, self.resolver, self.id);
+        let object = self.resolver.symbol_reference(self.ast, self.id);
         let name = self.ast.get_utf8(name).to_owned();
         Some(utils::member(self.ast, object, &name))
     }
@@ -1702,7 +1706,7 @@ impl Transform<'_, '_> {
                         let left = utils::member(
                             self.ast,
                             exports,
-                            &self.binding_id(import.id(self.ast)).name,
+                            self.ast.get_utf8(import.id(self.ast).name(self.ast)),
                         );
                         init = utils::assign(self.ast, left, init);
                     }

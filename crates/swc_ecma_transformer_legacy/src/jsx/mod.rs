@@ -226,7 +226,6 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<Program> {
         self.inject_runtime(program, ctx.ast);
-        self.resolver.register(ctx.ast);
         TraverseAction::Continue
     }
 
@@ -374,7 +373,6 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
         }
         let attributes = ast.add_sub_range(attributes);
         node.set_attributes(ast, attributes);
-        self.resolver.register(ast);
         TraverseAction::Continue
     }
 
@@ -403,7 +401,6 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
         }
         self.top_level_node = top_level_node;
         if let Some(replacement) = replacement {
-            self.resolver.register(ctx.ast);
             TraverseAction::ReplaceSkip(replacement)
         } else {
             TraverseAction::Continue

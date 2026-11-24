@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use swc_next_ecma_ast::*;
 
-use crate::common::{
-    build as b,
-    resolver::context::{Id, Resolver},
-};
+use crate::common::{build as b, resolver::context::Resolver};
 
 /// Uninitialized bindings visible to the iterable, separate from the bindings
 /// created for each iteration.
@@ -31,7 +28,7 @@ impl LoopHeadScope {
             references: bindings
                 .iter()
                 .map(|binding| {
-                    let id = resolver.id(binding.node_id(), binding.name(ast), ast);
+                    let id = resolver.symbol_of(binding.node_id());
                     (id, Vec::new())
                 })
                 .collect(),
@@ -45,13 +42,12 @@ impl LoopHeadScope {
         } = usages;
         let mut aliases = Vec::new();
         for binding in bindings {
-            let id = resolver.id(binding.node_id(), binding.name(ast), ast);
+            let id = resolver.symbol_of(binding.node_id());
             let references = references.remove(&id).unwrap_or_default();
             if has_eval || !references.is_empty() {
-                let alias = resolver.private_binding(ast, &id.name);
-                let scope = resolver.node_scopes[alias.node_id()];
+                let alias = resolver.private_binding(ast, ast.get_utf8(binding.name(ast)));
                 for reference in references {
-                    resolver.node_scopes[reference] = scope;
+                    resolver.copy_context(alias.node_id(), reference);
                 }
                 aliases.push(alias);
             }
@@ -101,7 +97,7 @@ impl LoopHeadScope {
 struct LoopHeadUsages<'a, 'ast> {
     ast: &'a Ast<'ast>,
     resolver: &'a Resolver,
-    references: HashMap<Id, Vec<NodeId>>,
+    references: HashMap<SymbolId, Vec<NodeId>>,
     has_eval: bool,
 }
 
@@ -111,10 +107,9 @@ impl<'ast> Visit<'ast> for LoopHeadUsages<'_, 'ast> {
     }
 
     fn visit_identifier_reference(&mut self, reference: IdentifierReference) {
-        let id = self
-            .resolver
-            .id(reference.node_id(), reference.name(self.ast), self.ast);
-        if let Some(references) = self.references.get_mut(&id) {
+        if let Some(id) = self.resolver.symbol(reference.node_id())
+            && let Some(references) = self.references.get_mut(&id)
+        {
             references.push(reference.node_id());
         }
     }

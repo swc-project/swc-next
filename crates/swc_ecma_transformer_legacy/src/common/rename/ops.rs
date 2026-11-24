@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 use swc_next_ecma_ast::*;
 
-use crate::common::{
-    build::for_each_binding_ident,
-    resolver::context::{Id, Resolver},
-};
+use crate::common::{build::for_each_binding_ident, resolver::context::Resolver};
 
 /// SWC's explicit rename pass, also used by Flow's `await` normalization.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_base/src/rename/mod.rs#L1>.
-pub(crate) fn rename(ast: &mut Ast<'_>, resolver: &mut Resolver, renames: HashMap<Id, AstUtf8>) {
+pub(crate) fn rename(
+    ast: &mut Ast<'_>,
+    resolver: &mut Resolver,
+    renames: &HashMap<SymbolId, AstUtf8>,
+) {
     let program = ast.root_program();
     let mut hygiene = Operator {
         ast,
@@ -22,16 +23,14 @@ pub(crate) fn rename(ast: &mut Ast<'_>, resolver: &mut Resolver, renames: HashMa
 struct Operator<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
     resolver: &'visit mut Resolver,
-    renames: HashMap<Id, AstUtf8>,
+    renames: &'visit HashMap<SymbolId, AstUtf8>,
     exports: HashMap<NodeId, Vec<(BindingIdentifier, AstUtf8)>>,
 }
 
 impl Operator<'_, '_> {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/ops.rs#L649>.
-    fn rename_ident(&self, node: NodeId, name: AstUtf8) -> Option<AstUtf8> {
-        self.renames
-            .get(&self.resolver.id(node, name, self.ast))
-            .copied()
+    fn rename_ident(&self, node: NodeId) -> Option<AstUtf8> {
+        self.renames.get(&self.resolver.symbol(node)?).copied()
     }
 }
 
@@ -63,10 +62,7 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
             }
             let renamed = bindings
                 .into_iter()
-                .filter(|binding| {
-                    self.rename_ident(binding.node_id(), binding.name(self.ast))
-                        .is_some()
-                })
+                .filter(|binding| self.rename_ident(binding.node_id()).is_some())
                 .map(|binding| (binding, binding.name(self.ast)))
                 .collect::<Vec<_>>();
             if !renamed.is_empty() {
@@ -96,9 +92,8 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
                     .into_iter()
                     .map(|(binding, exported)| {
                         let local = self.ast.identifier_name(DUMMY_SP, binding.name(self.ast));
-                        self.resolver.register(self.ast);
-                        self.resolver.node_scopes[local.node_id()] =
-                            self.resolver.node_scopes[binding.node_id()];
+                        self.resolver
+                            .copy_context(binding.node_id(), local.node_id());
                         let exported = ModuleExportName::IdentifierName(
                             self.ast.identifier_name(DUMMY_SP, exported),
                         );
@@ -125,20 +120,18 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
         }
         let body = self.ast.add_sub_range(body);
         program.set_body(self.ast, body);
-        self.resolver.register(self.ast);
         None
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/ops.rs#L154>.
     fn visit_mut_export_specifier(&mut self, node: ExportSpecifier) -> Option<ExportSpecifier> {
         if let Some(local) = node.local(self.ast).as_identifier_name(self.ast)
-            && let Some(name) = self.rename_ident(local.node_id(), local.name(self.ast))
+            && let Some(name) = self.rename_ident(local.node_id())
         {
-            let scope = self.resolver.node_scopes[local.node_id()];
-            let local = self.ast.identifier_name(local.span(self.ast), name);
-            self.resolver.register(self.ast);
-            self.resolver.node_scopes[local.node_id()] = scope;
-            node.set_local(self.ast, ModuleExportName::IdentifierName(local));
+            let replacement = self.ast.identifier_name(local.span(self.ast), name);
+            self.resolver
+                .copy_context(local.node_id(), replacement.node_id());
+            node.set_local(self.ast, ModuleExportName::IdentifierName(replacement));
         }
         None
     }
@@ -148,7 +141,7 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
         &mut self,
         node: BindingIdentifier,
     ) -> Option<BindingIdentifier> {
-        if let Some(name) = self.rename_ident(node.node_id(), node.name(self.ast)) {
+        if let Some(name) = self.rename_ident(node.node_id()) {
             node.set_name(self.ast, name);
         }
         None
@@ -159,7 +152,7 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
         &mut self,
         node: IdentifierReference,
     ) -> Option<IdentifierReference> {
-        if let Some(name) = self.rename_ident(node.node_id(), node.name(self.ast)) {
+        if let Some(name) = self.rename_ident(node.node_id()) {
             node.set_name(self.ast, name);
         }
         None
@@ -211,9 +204,7 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
     fn visit_mut_jsx_element_name(&mut self, node: JsxElementName) -> Option<JsxElementName> {
         match self.ast.jsx_element_name_data(node) {
             JsxElementNameData::JsxIdentifier(identifier) => {
-                if let Some(name) =
-                    self.rename_ident(identifier.node_id(), identifier.name(self.ast))
-                {
+                if let Some(name) = self.rename_ident(identifier.node_id()) {
                     identifier.set_name(self.ast, name);
                 }
             }
@@ -232,9 +223,7 @@ impl<'a> VisitMut<'a> for Operator<'_, 'a> {
     ) -> Option<JsxMemberExpressionObject> {
         match self.ast.jsx_member_expression_object_data(node) {
             JsxMemberExpressionObjectData::JsxIdentifier(identifier) => {
-                if let Some(name) =
-                    self.rename_ident(identifier.node_id(), identifier.name(self.ast))
-                {
+                if let Some(name) = self.rename_ident(identifier.node_id()) {
                     identifier.set_name(self.ast, name);
                 }
             }

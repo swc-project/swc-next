@@ -1,10 +1,10 @@
 //! SWC's enum constant evaluator before #12455.
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 use std::collections::{HashMap, HashSet};
 use swc_next_allocator::wtf8::Wtf8Buf;
 use swc_next_ecma_ast::*;
 
-pub(super) type TsEnumRecord = HashMap<(Id, Wtf8Buf), TsEnumRecordValue>;
+pub(super) type TsEnumRecord = HashMap<(SymbolId, Wtf8Buf), TsEnumRecordValue>;
 
 #[derive(Clone)]
 pub(super) enum TsEnumRecordValue {
@@ -82,13 +82,13 @@ impl EvalCtx {
 }
 
 pub(super) struct EnumValueComputer<'a> {
-    pub(super) enum_id: &'a Id,
+    pub(super) enum_id: SymbolId,
     pub(super) resolver: &'a Resolver,
     pub(super) record: &'a TsEnumRecord,
     pub(super) ambient: &'a TsEnumRecord,
-    pub(super) const_vars: &'a HashMap<Id, TsEnumRecordValue>,
-    pub(super) const_only: Option<&'a HashSet<Id>>,
-    pub(super) ambient_const_only: Option<&'a HashSet<Id>>,
+    pub(super) const_vars: &'a HashMap<SymbolId, TsEnumRecordValue>,
+    pub(super) const_only: Option<&'a HashSet<SymbolId>>,
+    pub(super) ambient_const_only: Option<&'a HashSet<SymbolId>>,
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L134>.
@@ -130,11 +130,10 @@ impl EnumValueComputer<'_> {
                 span: number.span(ast),
             },
             ExprData::IdentifierReference(identifier) => {
-                let id = self
-                    .resolver
-                    .id(identifier.node_id(), identifier.name(ast), ast);
-                if id.scope == self.resolver.unresolved() {
-                    let key = (self.enum_id.clone(), Wtf8Buf::from_str(&id.name));
+                let node = identifier.node_id();
+                if self.resolver.is_unresolved(node) {
+                    let name = ast.get_utf8(identifier.name(ast));
+                    let key = (self.enum_id, Wtf8Buf::from_str(name));
                     if let Some(value) = self.record.get(&key).or_else(|| {
                         (context.allow_const_var && self.ambient_is_resolvable(&key.0))
                             .then(|| self.ambient.get(&key))
@@ -148,7 +147,7 @@ impl EnumValueComputer<'_> {
                             opaque
                         }
                     } else {
-                        match id.name.as_str() {
+                        match name {
                             "Infinity" => TsEnumRecordValue::Number {
                                 value: f64::INFINITY,
                                 raw: Some(identifier.name(ast)),
@@ -162,7 +161,9 @@ impl EnumValueComputer<'_> {
                             _ => opaque,
                         }
                     }
-                } else if context.allow_const_var {
+                } else if context.allow_const_var
+                    && let Some(id) = self.resolver.symbol(node)
+                {
                     self.const_vars.get(&id).cloned().unwrap_or(opaque)
                 } else {
                     opaque
@@ -334,7 +335,7 @@ impl EnumValueComputer<'_> {
         ))
     }
 
-    fn ambient_is_resolvable(&self, id: &Id) -> bool {
+    fn ambient_is_resolvable(&self, id: &SymbolId) -> bool {
         self.ambient_const_only.is_none_or(|set| set.contains(id))
     }
 
@@ -352,9 +353,9 @@ impl EnumValueComputer<'_> {
         let Some(identifier) = member.object(ast).as_identifier_reference(ast) else {
             return opaque;
         };
-        let id = self
-            .resolver
-            .id(identifier.node_id(), identifier.name(ast), ast);
+        let Some(id) = self.resolver.symbol(identifier.node_id()) else {
+            return opaque;
+        };
         if self.const_only.is_some_and(|set| !set.contains(&id)) {
             return opaque;
         }

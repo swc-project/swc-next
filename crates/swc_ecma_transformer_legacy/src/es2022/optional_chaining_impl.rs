@@ -65,9 +65,7 @@ impl OptionalChaining<'_, '_> {
         }
         let resolved = expression
             .as_identifier_reference(self.ast)
-            .is_some_and(|id| {
-                self.resolver.node_scopes[id.node_id()] != self.resolver.unresolved()
-            });
+            .is_some_and(|id| !self.resolver.is_unresolved(id.node_id()));
         if resolved || call && self.options.pure_getter && simple(self.ast, expression) {
             return Memo::Raw(expression);
         }
@@ -431,7 +429,6 @@ pub(crate) fn expression(
     options: Config,
     expression: Expr,
 ) -> (Expr, Vec<VariableDeclarator>) {
-    resolver.register(ast);
     let mut pass = OptionalChaining {
         ast,
         resolver,

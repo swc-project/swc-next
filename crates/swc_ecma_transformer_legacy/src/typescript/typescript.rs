@@ -2,7 +2,7 @@ use super::{TypeScriptOptions, semantic, transform};
 use std::collections::HashSet;
 use swc_next_ecma_ast::*;
 
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 
 /// SWC's TypeScript pipeline before namespace/enum binding changes in #12455.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L43>.
@@ -29,7 +29,7 @@ impl TypeScript<'_> {
         &self,
         ast: &mut Ast<'_>,
         resolver: &mut Resolver,
-        seed: HashSet<Id>,
+        seed: HashSet<SymbolId>,
     ) -> Vec<Diagnostic> {
         let options = self.config;
         let last_module = self.get_last_module_span(ast);
@@ -44,7 +44,6 @@ impl TypeScript<'_> {
             lang => lang,
         };
         ast.set_source_metadata(ast.source_type(), lang);
-        resolver.register(ast);
         diagnostics
     }
 
@@ -122,9 +121,10 @@ fn is_es_module_decl(ast: &Ast<'_>, statement: Stmt) -> bool {
 /// SWC TSX conservatively retains both configured factory roots, even when no
 /// element or fragment needs them. Leading pragma comments add their roots.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L186>.
-fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<Id> {
+fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<SymbolId> {
     let mut usage = HashSet::new();
-    if let Some(id) = id_for_jsx(
+    if let Some(id) = symbol_for_jsx(
+        ast,
         resolver,
         options
             .jsx
@@ -134,7 +134,8 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
     ) {
         usage.insert(id);
     }
-    if let Some(id) = id_for_jsx(
+    if let Some(id) = symbol_for_jsx(
+        ast,
         resolver,
         options
             .jsx
@@ -176,7 +177,7 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
                 let value = words.next();
                 if matches!(directive, "@jsx" | "@jsxFrag")
                     && let Some(value) = value
-                    && let Some(id) = id_for_jsx(resolver, value)
+                    && let Some(id) = symbol_for_jsx(ast, resolver, value)
                 {
                     usage.insert(id);
                 }
@@ -186,10 +187,10 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
     usage
 }
 
-fn id_for_jsx(resolver: &Resolver, value: &str) -> Option<Id> {
+fn symbol_for_jsx(ast: &Ast<'_>, resolver: &Resolver, value: &str) -> Option<SymbolId> {
     let name = value.split('.').next()?.trim();
-    (name != "this").then(|| Id {
-        name: name.into(),
-        scope: resolver.top_level(),
-    })
+    if name == "this" {
+        return None;
+    }
+    resolver.lookup(ast, resolver.top_level(), name)
 }

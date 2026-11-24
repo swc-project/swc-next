@@ -53,8 +53,7 @@ impl ExportNamespaceFromPass<'_, '_> {
                 ImportOrExportKind::Value,
             )));
             let local = ast.identifier_name(export.span(ast), binding.name(ast));
-            resolver.register(ast);
-            resolver.node_scopes[local.node_id()] = resolver.node_scopes[binding.node_id()];
+            resolver.copy_context(binding.node_id(), local.node_id());
             let specifier = ast.export_specifier(
                 export.span(ast),
                 ModuleExportName::IdentifierName(local),

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use swc_next_ecma_ast::*;
 
-use crate::common::resolver::context::{Id, Resolver};
+use crate::common::resolver::context::Resolver;
 
 /// SWC's annotations for calls to known pure React and React DOM APIs.
 /// <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/pure_annotations.rs>.
@@ -40,7 +40,7 @@ pub(super) fn hook(ast: &mut Ast<'_>, resolver: &Resolver, pure_positions: &mut 
                     (namespace.local(ast), "*")
                 }
             };
-            let id = resolver.id(local.node_id(), local.name(ast), ast);
+            let id = resolver.symbol_of(local.node_id());
             imports.insert(id, (src == "react-dom", name.to_owned()));
         }
     }
@@ -57,14 +57,14 @@ pub(super) fn hook(ast: &mut Ast<'_>, resolver: &Resolver, pure_positions: &mut 
 struct PureAnnotations<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a Resolver,
-    imports: HashMap<Id, (bool, String)>,
+    imports: HashMap<SymbolId, (bool, String)>,
     pure_positions: &'a mut HashSet<u32>,
 }
 
 impl PureAnnotations<'_, '_> {
     fn import(&self, expression: Expr) -> Option<&(bool, String)> {
         let id = expression.as_identifier_reference(self.ast)?;
-        let id = self.resolver.id(id.node_id(), id.name(self.ast), self.ast);
+        let id = self.resolver.symbol(id.node_id())?;
         self.imports.get(&id)
     }
 

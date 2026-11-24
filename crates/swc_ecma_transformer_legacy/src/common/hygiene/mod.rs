@@ -11,5 +11,5 @@ pub(crate) fn hygiene(ast: &mut Ast<'_>, resolver: &mut Resolver) {
         .into_iter()
         .map(|(id, name)| (id, ast.add_utf8(&name)))
         .collect();
-    rename(ast, resolver, renames);
+    rename(ast, resolver, &renames);
 }

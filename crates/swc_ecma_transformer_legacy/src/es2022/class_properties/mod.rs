@@ -87,7 +87,6 @@ pub(crate) fn class_properties(
     if !finder.found {
         return Vec::new();
     }
-    ctx.resolver.register(ast);
     let mut pass = ClassProperties {
         ast,
         ctx,
@@ -380,13 +379,9 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                         {
                             let binding = if let Some(id) = super_.as_identifier_reference(self.ast)
                             {
-                                self.ctx.resolver.binding(
-                                    self.ast,
-                                    &crate::common::resolver::context::Id {
-                                        name: self.ast.get_utf8(id.name(self.ast)).to_owned(),
-                                        scope: self.ctx.resolver.node_scopes[id.node_id()],
-                                    },
-                                )
+                                self.ctx
+                                    .resolver
+                                    .binding(self.ast, self.ctx.resolver.symbol_of(id.node_id()))
                             } else {
                                 let name = b::alias_ident_for(self.ast, super_, "_ref");
                                 let binding = self.ctx.resolver.private_binding(self.ast, &name);
@@ -522,9 +517,9 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                 extra.merge_with(self.ast, &mut output, declaration);
                 if kind == 2 {
                     let local = self.ast.identifier_name(DUMMY_SP, id.name(self.ast));
-                    self.ctx.resolver.register(self.ast);
-                    self.ctx.resolver.node_scopes[local.node_id()] =
-                        self.ctx.resolver.node_scopes[id.node_id()];
+                    self.ctx
+                        .resolver
+                        .copy_context(id.node_id(), local.node_id());
                     let default = self.ast.add_utf8("default");
                     let default = self.ast.identifier_name(DUMMY_SP, default);
                     let specifier = self.ast.export_specifier(
@@ -741,10 +736,9 @@ fn replace_class(
             &mut self,
             id: IdentifierReference,
         ) -> Option<IdentifierReference> {
-            if self.ast.get_utf8(id.name(self.ast))
-                == self.ast.get_utf8(self.original.name(self.ast))
-                && self.resolver.node_scopes[id.node_id()]
-                    == self.resolver.node_scopes[self.original.node_id()]
+            if self
+                .resolver
+                .same_symbol(id.node_id(), self.original.node_id())
             {
                 return self
                     .resolver

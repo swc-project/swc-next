@@ -14,10 +14,10 @@ impl<'ast> VisitMut<'ast> for ClassNameTdzFolder<'_, 'ast, '_> {
     }
     fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
         if let Some(id) = node.as_identifier_reference(self.ast) {
-            if self.ast.get_utf8(id.name(self.ast))
-                == self.ast.get_utf8(self.class_name.name(self.ast))
-                && self.ctx.resolver.node_scopes[id.node_id()]
-                    == self.ctx.resolver.node_scopes[self.class_name.node_id()]
+            if self
+                .ctx
+                .resolver
+                .same_symbol(id.node_id(), self.class_name.node_id())
             {
                 let helper = self.ctx.helper(self.ast, "class_name_tdz_error");
                 let name = self.ast.get_utf8(id.name(self.ast)).to_owned();

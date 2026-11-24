@@ -428,7 +428,7 @@ fn could_potentially_throw(
             match ast.expr_data(init) {
                 ExprData::IdentifierReference(id)
                     if ast.get_utf8(id.name(ast)) == "undefined"
-                        && resolver.node_scopes[id.node_id()] == resolver.unresolved() => {}
+                        && resolver.is_unresolved(id.node_id()) => {}
                 ExprData::NullLiteral(_)
                 | ExprData::BooleanLiteral(_)
                 | ExprData::NumericLiteral(_)

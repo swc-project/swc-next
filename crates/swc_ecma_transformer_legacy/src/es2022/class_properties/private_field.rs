@@ -1,8 +1,5 @@
 use super::Config;
-use crate::{
-    common::resolver::context::Id,
-    common::{TraverseCtx, build as b},
-};
+use crate::common::{TraverseCtx, build as b};
 use std::collections::HashMap;
 use swc_next_ecma_ast::*;
 
@@ -36,13 +33,8 @@ impl Private {
         ctx: &mut TraverseCtx<'_>,
         name: &str,
     ) -> BindingIdentifier {
-        ctx.resolver.binding(
-            ast,
-            &Id {
-                name: name.to_owned(),
-                scope: self.scope,
-            },
-        )
+        let symbol = ctx.resolver.scoped_symbol(ast, self.scope, name);
+        ctx.resolver.binding(ast, symbol)
     }
 }
 #[derive(Default)]
@@ -462,9 +454,9 @@ impl<'ast> VisitMut<'ast> for BrandCheckHandler<'_, 'ast, '_> {
         let current = self.private.curr_class();
         let right = binary.right(self.ast);
         if right.as_identifier_reference(self.ast).is_some_and(|id| {
-            self.ast.get_utf8(id.name(self.ast)) == self.ast.get_utf8(current.class.name(self.ast))
-                && self.ctx.resolver.node_scopes[id.node_id()]
-                    == self.ctx.resolver.node_scopes[current.class.node_id()]
+            self.ctx
+                .resolver
+                .same_symbol(id.node_id(), current.class.node_id())
         }) {
             let left = self.ctx.resolver.reference(self.ast, current.class);
             return Some(self.ast.expr_binary_expression(
