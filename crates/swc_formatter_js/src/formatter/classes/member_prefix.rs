@@ -379,9 +379,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || self
                 .suppression_positions(comments, span.end)
                 .all(|position| matches!(position, SuppressionPosition::Inline));
+        // A relocated comment follows the final prefix token.
+        let requires_same_line = match expected_keyword {
+            Some(keyword) => matches!(keyword, "async" | "accessor"),
+            None => MODIFIERS
+                .iter()
+                .rfind(|(_, bit)| expected & bit != 0)
+                .is_some_and(|(_, bit)| *bit != STATIC),
+        };
         let has_line_terminator = comments.iter().any(|comment| {
-            comment.kind == CommentKind::Line
-                || self.line_breaks(comment.span.start, comment.span.end) != 0
+            if comment.kind == CommentKind::Line {
+                return true;
+            }
+            let span = comment.span;
+            if requires_same_line {
+                self.source_line_breaks(span.start, span.end) != 0
+            } else {
+                self.line_breaks(span.start, span.end) != 0
+            }
         });
         let mode = if binding.allows_relocation(target) && inline && !has_line_terminator {
             PrefixMode::Formatted

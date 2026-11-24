@@ -34090,6 +34090,44 @@
         "prettierNative": "class A {\n  static readonly // c\n  x: number\n}\n"
       }
     ],
+    "ts/class-member-modifiers/line-boundaries/unicode-async.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class A {\n  static /* note  */ async f() {}\n}\n",
+        "prettierNative": "class A {\n  static async /* note  */ f() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class A {\n  static /* note  */ async f() {}\n}\n",
+        "prettierNative": "class A {\n  static async /* note  */ f() {}\n}\n"
+      }
+    ],
+    "ts/class-member-modifiers/line-boundaries/unicode-readonly.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class A {\n  static /* note  */ readonly x = 1;\n}\n",
+        "prettierNative": "class A {\n  static readonly /* note  */ x = 1;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class A {\n  static /* note  */ readonly x = 1\n}\n",
+        "prettierNative": "class A {\n  static readonly /* note  */ x = 1\n}\n"
+      }
+    ],
     "ts/class-member-modifiers/semi-false/export-field.ts": [
       {
         "options": {
