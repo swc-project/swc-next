@@ -1,0 +1,34 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for /* Header */ (/* Empty initializer */ ; /* Empty test */ ; /* Empty update */) {
+  break;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for /* Header */ ( /* Empty initializer */; /* Empty test */; /* Empty update */) {
+  break;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for /* Header */ ( /* Empty initializer */; /* Empty test */; /* Empty update */) {
+  break
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+for /* Header */ ( /* Empty initializer */; /* Empty test */; /* Empty update */) {
+  break;
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
+---------- Output ----------
+for /* Header */ ( /* Empty initializer */; /* Empty test */; /* Empty update */) {
+	break;
+}

@@ -6,27 +6,27 @@ for(/* first */;/* second */;/* third */) {call();}
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
-for (;;) /* first */ /* second */ /* third */ {
+for ( /* first */; /* second */; /* third */) {
   call();
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
-for (;;) /* first */ /* second */ /* third */ {
+for ( /* first */; /* second */; /* third */) {
   call();
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
-for (;;) /* first */ /* second */ /* third */ {
+for ( /* first */; /* second */; /* third */) {
   call()
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-for (;;) /* first */ /* second */ /* third */ {
+for ( /* first */; /* second */; /* third */) {
   call()
 }

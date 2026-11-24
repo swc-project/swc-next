@@ -71,7 +71,6 @@ struct HeaderToken {
 struct HeaderSyntax<'ast> {
     comments: CommentCursor<'ast>,
     keyword_end: u32,
-    opening: Span,
     closing: Span,
     tokens: [Option<HeaderToken>; 4],
     classic: bool,
@@ -86,17 +85,9 @@ enum HeaderRelation {
 }
 
 #[derive(Clone, Copy)]
-enum HeaderGapOwner {
-    Syntax,
-    Node,
-    Body,
-}
-
-#[derive(Clone, Copy)]
 enum HeaderHeadLayout {
     Grouped,
     Inline,
-    Source(LineConstraint),
 }
 
 struct PreparedHeaderToken<'ast, 'header> {
@@ -112,7 +103,6 @@ struct HeaderGap<'ast> {
     tokens: std::ops::Range<usize>,
     leading: &'ast [Comment],
     source: bool,
-    owner: HeaderGapOwner,
     head_layout: HeaderHeadLayout,
     preceding: ContentMode,
     following: ContentMode,
@@ -129,7 +119,6 @@ enum HeaderGapOutput<'ast> {
         leading: &'ast [Comment],
         following: CommentGap,
         adjacency: PreparedCommentAdjacency,
-        head_gap: Option<LineConstraint>,
         head_layout: CommentRunLayout,
     },
     Source {
@@ -152,12 +141,11 @@ struct PreparedHeader<'ast, 'header> {
     trailing: HeaderGap<'ast>,
     final_tail: Option<&'ast [Comment]>,
     iteration: Option<IterationGap>,
-    opening_gaps: [Option<(u32, CommentGap)>; 2],
+    classic_opening: Option<(u32, PreparedHeaderToken<'ast, 'header>)>,
     closing: Span,
     classic: bool,
     empty: bool,
     body_mode: ContentMode,
-    body_head_end: u32,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -273,7 +261,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let syntax = HeaderSyntax {
             comments,
             keyword_end,
-            opening: opening.span,
             closing: closing.span,
             tokens: [Some(opening), Some(first), Some(second), None],
             classic: true,
@@ -428,7 +415,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let syntax = HeaderSyntax {
             comments,
             keyword_end,
-            opening: opening.span,
             closing,
             tokens: [await_token, Some(opening), Some(operator), None],
             classic: false,
@@ -583,7 +569,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         nodes: &'header [Option<HeaderNode<'ast>>; 3],
         body: Stmt,
     ) -> PreparedHeader<'ast, 'header> {
-        let empty_init = syntax.classic && nodes[0].is_none();
         let mut nodes = nodes
             .iter()
             .enumerate()
@@ -608,39 +593,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &mut tokens,
             syntax.keyword_end,
         );
-        let target = nodes.peek().map_or(body_span, |(_, node)| node.span);
-        let count = before
-            .comments
-            .partition_point(|comment| comment.span.end <= syntax.opening.start);
-        let before_opening = &before.comments[..count];
-        let relocate = (!before_opening.is_empty() || empty_init && !before.comments.is_empty())
-            && self
-                .for_prefix_binding(before.comments, before.span, syntax.opening, target)
-                .allows_relocation(Some(target));
-        let body_head_end = if relocate && empty {
-            syntax.keyword_end
+        let classic_opening = if syntax.classic && !before.source {
+            // The opener is part of the header, at the keyword's indentation.
+            let opening = tokens[0].take().expect("classic for opener");
+            before.span.start = opening.token.span.end;
+            before.comments = &before.comments[opening.before.len()..];
+            Some((syntax.keyword_end, opening))
         } else {
-            syntax.closing.end
+            None
         };
-        let mut opening_gaps = [None; 2];
-        if relocate {
-            before.owner = if empty {
-                HeaderGapOwner::Body
-            } else {
-                HeaderGapOwner::Node
-            };
-            before.source = false;
-            if !empty
-                && before.following == ContentMode::Verbatim
-                && let Some(comment) = before.comments.last()
-            {
-                before.head_layout = HeaderHeadLayout::Source(
-                    self.source_line_constraint(comment.span.end, target.start),
-                );
-            } else if matches!(before.head_layout, HeaderHeadLayout::Inline) {
-                opening_gaps = self.prepare_iteration_opening_gaps(&before, &tokens);
-            }
-        }
         let mut items = [None, None, None];
         while let Some((index, node)) = nodes.next() {
             let (end, relation) = if let Some((_, next)) = nodes.peek() {
@@ -696,86 +657,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing: before,
             final_tail: None,
             iteration: None,
-            opening_gaps,
+            classic_opening,
             closing: syntax.closing,
             classic: syntax.classic,
             empty,
             body_mode,
-            body_head_end,
         }
-    }
-
-    fn prepare_iteration_opening_gaps(
-        &self,
-        gap: &HeaderGap<'ast>,
-        tokens: &[Option<PreparedHeaderToken<'ast, '_>>; 4],
-    ) -> [Option<(u32, CommentGap)>; 2] {
-        let mut projected = [None; 2];
-        let mut gaps = projected.iter_mut();
-        // Only `await` and `(` can precede the left-hand iteration head.
-        let mut tokens = tokens[gap.tokens.clone()].iter().flatten().peekable();
-        while let Some(token) = tokens.next() {
-            let Some(last) = token.before.last() else {
-                continue;
-            };
-            let next_start = tokens
-                .peek()
-                .and_then(|next| next.before.first())
-                .or_else(|| gap.leading.first())
-                .map_or(gap.span.end, |next| next.span.start);
-            let first = gap
-                .comments
-                .first()
-                .is_some_and(|comment| comment.span == last.span);
-            let prepared =
-                self.prepare_leading_comment_gap(last.span, last.kind, next_start, first);
-            // A line occupied by the moved opener does not make a blank line
-            // in the new comment gap. Preserve a real blank after the comment.
-            let following = if last.kind == CommentKind::Block
-                && prepared.source_breaks > 1
-                && matches!(prepared.gap, CommentGap::Source(LineConstraint::NewLine(1)))
-                && (first || !self.layout_position_starts_line(last.span.start))
-            {
-                CommentGap::Source(LineConstraint::Unconstrained)
-            } else {
-                prepared.gap
-            };
-            *gaps.next().expect("at most two iteration opening gaps") =
-                Some((last.span.end, following));
-        }
-        projected
-    }
-
-    fn for_prefix_binding(
-        &self,
-        comments: &[Comment],
-        boundary: Span,
-        opening: Span,
-        target: Span,
-    ) -> CommentBinding {
-        if self.diagnostic_range_is_sensitive(boundary) {
-            return CommentBinding::SourceBound;
-        }
-        self.comment_run_binding(comments.iter().copied(), |comment| {
-            let semantics = self.comment_semantics(comment);
-            if semantics.is_ordinary() {
-                return CommentBinding::Unbound;
-            }
-            if semantics.suppression {
-                return CommentBinding::BoundTo(target);
-            }
-            if comment.span.end <= opening.start
-                && (semantics.optimizer || semantics.type_cast)
-                && !semantics.diagnostic
-                && !semantics.file_directive
-            {
-                // The opening parenthesis is a statement delimiter, so this
-                // prefix has no expression subject for a target annotation.
-                CommentBinding::Unbound
-            } else {
-                CommentBinding::SourceBound
-            }
-        })
     }
 
     fn prepare_for_gap<'header>(
@@ -830,7 +717,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             remaining
         };
         // Iteration heads start immediately after `(` unless a source constraint
-        // forces a break. Relocated and existing head comments share that placement.
+        // forces a break. Only the comments inside the header use this placement.
         let head_layout = if !comments.is_empty()
             && !syntax.classic
             && matches!(relation, HeaderRelation::First)
@@ -849,7 +736,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             tokens: token_start..token_end,
             leading,
             source: false,
-            owner: HeaderGapOwner::Syntax,
             head_layout,
             preceding: ContentMode::Formatted,
             following: ContentMode::Formatted,
@@ -904,7 +790,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let body = self
             .prepare_controlled_body(
                 statement,
-                header.body_head_end,
+                header.closing.end,
                 ControlledBodyEnd::Enclosing(end),
                 ControlledBodyRole::Body,
                 header.body_mode.into(),
@@ -977,6 +863,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let empty = header.empty;
         let closing = header.closing;
         writer.text("for");
+        if let Some((keyword_end, opening)) = &header.classic_opening {
+            self.format_control_header_gap(
+                opening.before,
+                *keyword_end,
+                opening.token.span.start,
+                writer,
+            )?;
+            writer.text("(");
+        }
         let mut body_operator_tail = None;
         let mut write = |writer: &mut Writer<'ast>| {
             let mut pending = None;
@@ -1026,29 +921,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     HeaderGapOutput::Canonical {
                         leading,
                         following,
-                        head_gap,
                         head_layout,
                         ..
                     } => {
                         layout = head_layout;
                         following.write(writer, flat, default);
-                        if let Some(constraint) = head_gap {
-                            self.comments.claim(leading)?;
-                            self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
-                            constraint.write(writer, FlatSeparator::Space, |_| {});
-                            &[]
-                        } else if first && header.opening_gaps[0].is_some() {
-                            self.comments.claim(leading)?;
-                            self.format_inline_head_with_gaps(
-                                leading,
-                                item.node.span.start,
-                                header.opening_gaps.into_iter().flatten(),
-                                writer,
-                            )?;
-                            &[]
-                        } else {
-                            leading
-                        }
+                        leading
                     }
                     HeaderGapOutput::Source {
                         following,
@@ -1150,7 +1028,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading: completion.following.map_or(&[], |tail| tail.comments),
                 following: CommentGap::LineComment,
                 adjacency,
-                head_gap: None,
                 head_layout: CommentRunLayout::Source,
             });
         }
@@ -1185,7 +1062,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 leading: &[],
                 following: CommentGap::Source(LineConstraint::Unconstrained),
                 adjacency: PreparedCommentAdjacency::default(),
-                head_gap: None,
                 head_layout: CommentRunLayout::Source,
             });
         }
@@ -1201,7 +1077,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<HeaderGapOutput<'ast>, FormatError> {
         if gap.source
-            || !matches!(gap.owner, HeaderGapOwner::Syntax)
             || gap.preceding != ContentMode::Formatted
             || gap.following != ContentMode::Formatted
         {
@@ -1231,7 +1106,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             leading: comments,
             following: CommentGap::Source(LineConstraint::Unconstrained),
             adjacency: PreparedCommentAdjacency::default(),
-            head_gap: None,
             head_layout: CommentRunLayout::FlatLeading(gap.span.end),
         })
     }
@@ -1270,11 +1144,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 trailing,
                 following: after,
             } = prepared;
-            let before = if matches!(gap.owner, HeaderGapOwner::Syntax) {
-                &before[before.partition_point(|comment| comment.span.end <= start)..]
-            } else {
-                &before[..0]
-            };
+            let before = &before[before.partition_point(|comment| comment.span.end <= start)..];
             let completion = if token.ends_node && operator_tail.is_some() {
                 let tail = self
                     .capture_expression_tail(Span::new(start, token.span.start), pending.take())?;
@@ -1317,6 +1187,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     FlatSeparator::Empty => writer.soft_line(),
                     FlatSeparator::Space => writer.line(),
                 });
+            } else if matches!(token.text, "(" | "await") && !before.is_empty() {
+                self.format_control_header_gap(before, start, token.span.start, writer)?;
             } else if token.space || token.text == "(" {
                 self.comments.claim(before)?;
                 let constraint = match following.filter(|_| before.is_empty()) {
@@ -1353,11 +1225,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 PreparedCommentAdjacency::default()
             };
-            let trailing = if matches!(gap.owner, HeaderGapOwner::Syntax) {
-                trailing
-            } else {
-                &trailing[..0]
-            };
             let source_end = if riding {
                 before
                     .last()
@@ -1379,22 +1246,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             following = Some(if adjacency.ends_in_line_comment() {
                 CommentGap::LineComment
-            } else if matches!(gap.owner, HeaderGapOwner::Syntax) {
-                *after
             } else {
-                CommentGap::Source(LineConstraint::Unconstrained)
+                *after
             });
         }
         debug_assert!(operator_tail.is_none());
-        let leading = match gap.owner {
-            HeaderGapOwner::Body => &gap.comments[..0],
-            HeaderGapOwner::Node => gap.comments,
-            HeaderGapOwner::Syntax if following.is_some() => gap.leading,
-            HeaderGapOwner::Syntax => {
-                &gap.comments[gap
-                    .comments
-                    .partition_point(|comment| comment.span.end <= start)..]
-            }
+        let leading = if following.is_some() {
+            gap.leading
+        } else {
+            &gap.comments[gap
+                .comments
+                .partition_point(|comment| comment.span.end <= start)..]
         };
         let following = match following {
             Some(gap) => gap,
@@ -1405,17 +1267,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 CommentGap::Source(self.line_constraint(start, first))
             }
         };
-        let (head_layout, head_gap) = match gap.head_layout {
-            HeaderHeadLayout::Grouped => (CommentRunLayout::GroupedLeading(gap.span.end), None),
-            HeaderHeadLayout::Inline => (CommentRunLayout::InlineLeading(gap.span.end), None),
-            HeaderHeadLayout::Source(constraint) => (CommentRunLayout::Source, Some(constraint)),
+        let head_layout = match gap.head_layout {
+            HeaderHeadLayout::Grouped => CommentRunLayout::GroupedLeading(gap.span.end),
+            HeaderHeadLayout::Inline => CommentRunLayout::InlineLeading(gap.span.end),
         };
         Ok(HeaderGapOutput::Canonical {
             start,
             leading,
             following,
             adjacency,
-            head_gap,
             head_layout,
         })
     }

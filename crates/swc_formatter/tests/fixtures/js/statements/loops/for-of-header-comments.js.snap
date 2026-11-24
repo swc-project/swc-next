@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for // Header
+(/* Binding */ const value of values) {
+  run(value);
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for // Header
+(/* Binding */ const value of values) {
+  run(value);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for // Header
+(/* Binding */ const value of values) {
+  run(value)
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+for // Header
+(/* Binding */ const value of values) {
+  run(
+    value,
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":80}
+---------- Output ----------
+for // Header
+(/* Binding */ const value of values) {
+	run(value);
+}
