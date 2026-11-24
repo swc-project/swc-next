@@ -685,6 +685,7 @@ impl<'ast> CommentText<'ast> {
         match *self {
             Self::Inline(text) => writer.text(text),
             Self::Literal { first, rest } => {
+                writer.line_suffix_boundary();
                 writer.text(first);
                 for line in lines(rest) {
                     writer.literal_line();
@@ -692,6 +693,7 @@ impl<'ast> CommentText<'ast> {
                 }
             }
             Self::Aligned { first, rest, jsdoc } => {
+                writer.line_suffix_boundary();
                 writer.text(first.trim_end());
                 let mut preserve_trailing = false;
                 for line in lines(rest) {

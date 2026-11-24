@@ -563,6 +563,33 @@
         "prettierNative": "target = // @ts-expect-error\n  /** @type {number} */ (first);\n"
       }
     ],
+    "js/assignment-operator-comments/suffix-before-block/literal.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = // first\n  \"text\"; /* second\n third */\n",
+        "prettierNative": "const value = \"text\"; /* second // first\n third */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = // first\n  \"text\"; /* second\n third */\n",
+        "prettierNative": "const value = \"text\"; /* second // first\n third */\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = // first\n  \"text\" /* second\n third */\n",
+        "prettierNative": "const value = \"text\" /* second // first\n third */\n"
+      }
+    ],
     "js/assignment-operator-comments/unicode-initializer-directive.js": [
       {
         "options": {
