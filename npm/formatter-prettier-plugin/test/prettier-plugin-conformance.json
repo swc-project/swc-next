@@ -5876,6 +5876,60 @@
         "prettierNative": "/*#__NO_SIDE_EFFECTS__*/ outer: function f() {\n  effect()\n}\n"
       }
     ],
+    "js/control-flow/label-comment-owners/ignore-prefix-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l /* outer */\n: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "/* outer */\nl: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l /* outer */\n: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "/* outer */\nl: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "l /* outer */\n: /* body */ m // inner\n: // prettier-ignore\nn : f  (x)\n",
+        "prettierNative": "/* outer */\nl: /* body */ m // inner\n: // prettier-ignore\nn : f  (x)\n"
+      }
+    ],
+    "js/control-flow/label-comment-owners/ignore-prefix.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l // outer\n: m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "// outer\nl: m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l // outer\n: m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "// outer\nl: m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "l // outer\n: m // inner\n: // prettier-ignore\nn : f  (x)\n",
+        "prettierNative": "// outer\nl: m // inner\n: // prettier-ignore\nn : f  (x)\n"
+      }
+    ],
     "js/control-flow/label-comment-owners/inactive-annotations.js": [
       {
         "options": {
