@@ -2,9 +2,13 @@
 
 The formatter targets JavaScript, JSX, TypeScript, and TSX using the SWC Next
 AST. Compatibility is defined by printed output and deliberate formatting
-choices. Prettier 3.9.9 provides the pinned conformance corpus; later fixes are evaluated
-separately. Formatting must preserve program semantics.
-Semantic preservation takes precedence over matching reference output.
+choices. Formatting must preserve program semantics. Semantic preservation takes
+precedence over matching reference output.
+
+Prettier 3.9.9 is the pinned conformance baseline. When output differs, check
+the latest Prettier release and current `main` with the same input and equivalent
+options. A difference alone does not establish a bug. Do not reproduce known
+Prettier bugs just to match the pinned output.
 
 ## Public contract
 
