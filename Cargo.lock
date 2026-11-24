@@ -3942,6 +3942,8 @@ dependencies = [
 name = "swc_next_formatter"
 version = "0.8.1"
 dependencies = [
+ "anyhow",
+ "clap",
  "insta",
  "serde",
  "serde_json",
@@ -3954,6 +3956,7 @@ dependencies = [
  "swc_next_formatter_js",
  "swc_next_formatter_markdown",
  "swc_next_markdown_parser",
+ "tempfile",
 ]
 
 [[package]]

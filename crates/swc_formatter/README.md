@@ -32,6 +32,23 @@ let output = swc_next_formatter::markdown::format(
 )?;
 ```
 
+## Command-line example
+
+The `format` example infers the parser from each path and prints formatted
+source to stdout in input order. Use `--check` to report files that would change
+or `--write` to update them in place.
+
+```sh
+cargo run -p swc_next_formatter --example format -- index.ts README.md
+cargo run -p swc_next_formatter --example format -- --check src/*.js
+cargo run -p swc_next_formatter --example format -- --write src/*.tsx README.md
+printf 'const answer:number=42\n' | cargo run -p swc_next_formatter --example format -- --stdin-filepath input.ts
+printf '#  Title\n' | cargo run -p swc_next_formatter --example format -- --parser markdown
+```
+
+The exit status is `0` on success, `1` when `--check` finds a change, and `2`
+for errors.
+
 ## Testing
 
 Unit tests cover binary print options and document printing. The [API and fixture tests](tests) cover options, source and AST entry points, document serialization, and idempotency.

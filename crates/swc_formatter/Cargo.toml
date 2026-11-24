@@ -24,9 +24,12 @@ swc_next_formatter_markdown = { workspace = true }
 swc_next_markdown_parser    = { workspace = true }
 
 [dev-dependencies]
+anyhow             = { workspace = true }
+clap               = { workspace = true }
 insta              = { workspace = true }
 serde_json         = { workspace = true }
 swc_next_allocator = { workspace = true }
+tempfile           = { workspace = true }
 
 [[test]]
 name              = "fixtures"
