@@ -573,14 +573,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         let span = node.node.span(self.ast);
                         let layout = self.continuation_type_layout(span, layout);
                         return self
-                            .format_type_before_continuation(span, writer, |formatter, writer| {
-                                formatter.format_prepared_type_output(
-                                    node,
-                                    TypeContext::Root,
-                                    layout,
-                                    writer,
-                                )
-                            })
+                            .format_type_body_before_continuation(
+                                span,
+                                writer,
+                                |formatter, writer| {
+                                    formatter.format_prepared_type_body(
+                                        node,
+                                        TypeContext::Root,
+                                        layout,
+                                        writer,
+                                    )
+                                },
+                            )
                             .map(|output| output.pending);
                     }
                     return self.format_prepared_type_after_comments(
@@ -603,10 +607,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 AnnotationContent::Formatted(node) => node.node.span(self.ast),
             };
             let layout = self.continuation_type_layout(span, layout);
-            self.format_type_before_continuation(span, writer, |formatter, writer| {
+            self.format_type_body_before_continuation(span, writer, |formatter, writer| {
                 formatter
                     .format_annotation_type_content_with_layout(content.content, layout, writer)
-                    .map(ExpressionOutput::unreported)
+                    .map(TypeOutput::from_pending)
             })
             .map(|output| output.pending)
         } else {
@@ -3434,18 +3438,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    fn format_prepared_type_output(
-        &mut self,
-        node: PreparedType,
-        context: TypeContext,
-        layout: TypeLayout,
-        writer: &mut Writer<'ast>,
-    ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_prepared_type_completed(node, context, layout, writer, |output, right_edge| {
-            ExpressionOutput::local(output.pending, right_edge)
-        })
-    }
-
     fn format_prepared_type_completed<R>(
         &mut self,
         mut node: PreparedType,
@@ -3707,21 +3699,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             gap.write(writer, FlatSeparator::Empty, |_| {});
         }
         Ok(())
-    }
-
-    pub(super) fn format_type_before_continuation(
-        &mut self,
-        span: Span,
-        writer: &mut Writer<'ast>,
-        print: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
-    ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_type_body_at_continuation(
-            span,
-            TypeContinuation::Syntax,
-            writer,
-            |formatter, writer| print(formatter, writer).map(TypeOutput::from_expression),
-        )
-        .map(TypeOutput::into_expression)
     }
 
     pub(super) fn format_type_body_before_continuation(
@@ -4976,7 +4953,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             };
                             if continuation {
                                 return self
-                                    .format_type_before_continuation(
+                                    .format_type_body_before_continuation(
                                         span,
                                         writer,
                                         |formatter, writer| {
@@ -4987,7 +4964,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                                     layout,
                                                     writer,
                                                 )
-                                                .map(ExpressionOutput::unreported)
+                                                .map(TypeOutput::from_pending)
                                         },
                                     )
                                     .map(|output| output.pending);
@@ -5003,7 +4980,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             let span = node.node.span(self.ast);
                             let layout = self.continuation_type_layout(span, TypeLayout::Root);
                             return self
-                                .format_type_before_continuation(
+                                .format_type_body_before_continuation(
                                     span,
                                     writer,
                                     |formatter, writer| {
@@ -5016,7 +4993,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                                 layout,
                                                 writer,
                                             )
-                                            .map(ExpressionOutput::unreported)
+                                            .map(TypeOutput::from_pending)
                                     },
                                 )
                                 .map(|output| output.pending);
@@ -5055,8 +5032,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         };
         if continuation {
-            self.format_type_before_continuation(span, writer, |formatter, writer| {
-                print(formatter, writer).map(ExpressionOutput::unreported)
+            self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+                print(formatter, writer).map(TypeOutput::from_pending)
             })
             .map(|output| output.pending)
         } else {
@@ -5471,21 +5448,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    fn format_binary_type_rhs_head_output_with_layout(
-        &mut self,
-        node: PreparedType,
-        context: TypeContext,
-        after: &CommentBoundary<'ast>,
-        head: BinaryTypeHead<'ast>,
-        layout: TypeLayout,
-        writer: &mut Writer<'ast>,
-    ) -> Result<ExpressionOutput<'ast>, FormatError> {
-        self.format_binary_type_rhs_head_body_with_layout(
-            node, context, after, head, layout, writer,
-        )
-        .map(TypeOutput::into_expression)
-    }
-
     fn format_binary_type_rhs_head_body_with_layout(
         &mut self,
         node: PreparedType,
@@ -5570,8 +5532,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             after.gap().write(writer, FlatSeparator::Empty, |_| {});
             let span = node.node.span(self.ast);
             let layout = self.continuation_type_layout(span, TypeLayout::Root);
-            self.format_type_before_continuation(span, writer, |formatter, writer| {
-                formatter.format_prepared_type_output(
+            self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+                formatter.format_prepared_type_body(
                     node,
                     TypeContext::TypeExpressionRhs,
                     layout,
@@ -5584,8 +5546,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ) {
             let span = node.node.span(self.ast);
             let layout = self.continuation_type_layout(span, TypeLayout::Root);
-            self.format_type_before_continuation(span, writer, |formatter, writer| {
-                formatter.format_binary_type_rhs_head_output_with_layout(
+            self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+                formatter.format_binary_type_rhs_head_body_with_layout(
                     node,
                     TypeContext::TypeExpressionRhs,
                     after,
@@ -5595,7 +5557,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
             })
         } else {
-            self.format_binary_type_rhs_head_output(
+            self.format_binary_type_rhs_head_body(
                 node,
                 TypeContext::TypeExpressionRhs,
                 after,
@@ -5603,6 +5565,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )
         }
+        .map(TypeOutput::into_expression)
     }
 
     pub(super) fn prepare_qualified_name_boundary(
