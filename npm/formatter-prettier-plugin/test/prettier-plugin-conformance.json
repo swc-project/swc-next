@@ -30509,6 +30509,35 @@
         "prettierNative": "let x = /* prettier-ignore */ 1+2\n"
       }
     ],
+    "js/templates/released-comment-tail-assignment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const text = `${\n  (left = right)\n  // tail\n}`;\n",
+        "prettierNative": "const text = `${(left =\n  right)\n  // tail\n}`;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "const text = `${\n  (left = right)\n  // tail\n}`\n",
+        "prettierNative": "const text = `${(left =\n  right)\n  // tail\n}`\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "const text = `${\r\n  (left = right)\r\n  // tail\r\n}`;\r\n",
+        "prettierNative": "const text = `${(left =\r\n  right)\r\n  // tail\r\n}`;\r\n"
+      }
+    ],
     "js/templates/slot-binary-own-line.js": [
       {
         "options": {

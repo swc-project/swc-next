@@ -50,6 +50,15 @@ pub(super) enum TemplateSlotLayout {
     Boundaries(ContentMode),
 }
 
+impl TemplateSlotLayout {
+    fn with_boundaries(self) -> Self {
+        match self {
+            Self::Child => Self::Boundaries(ContentMode::Formatted),
+            Self::Boundaries(_) => self,
+        }
+    }
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn template_slot_head_layout(
         &self,
@@ -91,14 +100,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         closing: CommentGap,
         layout: TemplateSlotLayout,
         writer: &mut Writer<'ast>,
-        format: impl FnOnce(&mut Self, TemplateSlotLayout, &mut Writer<'ast>) -> Result<(), FormatError>,
+        format: impl FnOnce(
+            &mut Self,
+            TemplateSlotLayout,
+            &mut Writer<'ast>,
+        ) -> Result<CommentGap, FormatError>,
     ) -> Result<(), FormatError> {
         if matches!(opening, LineConstraint::NewLine(_)) || closing.requires_line() {
-            let layout = match layout {
-                TemplateSlotLayout::Child => TemplateSlotLayout::Boundaries(ContentMode::Formatted),
-                TemplateSlotLayout::Boundaries(_) => layout,
-            };
-            return Self::write_template_slot(layout, opening, closing, writer, |writer| {
+            let layout = layout.with_boundaries();
+            return Self::write_template_slot(layout, opening, writer, |writer| {
                 format(self, layout, writer)
             });
         }
@@ -109,12 +119,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 TemplateSlotLayout::Boundaries(ContentMode::Verbatim)
             )
         {
-            return Self::write_template_slot(layout, opening, closing, writer, |writer| {
+            return Self::write_template_slot(layout, opening, writer, |writer| {
                 format(self, layout, writer)
             });
         }
-        let (content, ()) = writer.record_with_value(|writer| format(self, layout, writer))?;
-        if !source_newline && !content.preferred_breaks() {
+        let (content, closing) = writer.record_with_value(|writer| format(self, layout, writer))?;
+        let layout = if closing.requires_line() {
+            // A child can release comments from an interior pair. The slot's
+            // actual closing delimiter owns that line even without an outer run.
+            layout.with_boundaries()
+        } else {
+            layout
+        };
+        if !closing.requires_line() && !source_newline && !content.preferred_breaks() {
             if let Some(content) = content.try_flat() {
                 writer.write_flat_fragment(content);
                 return Ok(());
@@ -125,23 +142,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(());
             }
         }
-        Self::write_template_slot(layout, opening, closing, writer, |writer| {
+        Self::write_template_slot(layout, opening, writer, |writer| {
             writer.write_fragment(content);
-            Ok(())
+            Ok(closing)
         })
     }
 
     fn write_template_slot(
         layout: TemplateSlotLayout,
         opening: LineConstraint,
-        closing: CommentGap,
         writer: &mut Writer<'ast>,
-        format: impl FnOnce(&mut Writer<'ast>) -> Result<(), FormatError>,
+        format: impl FnOnce(&mut Writer<'ast>) -> Result<CommentGap, FormatError>,
     ) -> Result<(), FormatError> {
         writer.group(false, |writer| match layout {
-            TemplateSlotLayout::Child => format(writer),
+            TemplateSlotLayout::Child => format(writer).map(|_| ()),
             TemplateSlotLayout::Boundaries(_) => {
-                writer.indent(|writer| {
+                let closing = writer.indent(|writer| {
                     opening.write(writer, FlatSeparator::Empty, Writer::soft_line);
                     format(writer)
                 })?;

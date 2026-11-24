@@ -10,8 +10,10 @@ use super::{
     TailOwner,
 };
 use crate::formatter::Formatter;
-use crate::formatter::comments::{CommentBoundary, CommentRunLayout, ExpressionTail, NodeHead};
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::comments::{
+    CommentBoundary, CommentGap, CommentRunLayout, ExpressionTail, NodeHead,
+};
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::templates::{TemplateSlot, TemplateSlotLayout};
@@ -166,8 +168,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         expression, head, context, None, writer,
                     ),
                 }?;
+                let mut closing = after.gap();
+                if after.is_empty()
+                    && let Some(tail) = &tail
+                    && let Some(last) = tail.comments.last()
+                {
+                    closing = formatter
+                        .prepare_comment_boundary(tail.comments, tail.source_end, slot.interior.end)
+                        .gap();
+                    if matches!(closing, CommentGap::Source(LineConstraint::Unconstrained))
+                        && formatter.line_breaks(tail.source_end, last.span.end) != 0
+                    {
+                        closing = CommentGap::Source(LineConstraint::NewLine(1));
+                    }
+                }
                 let adjacency = formatter.format_expression_tail_adjacency(tail, writer)?;
-                formatter.format_comment_boundary_after(&after, adjacency, writer)
+                formatter.format_comment_boundary_after(&after, adjacency, writer)?;
+                Ok(closing)
             },
         )
     }

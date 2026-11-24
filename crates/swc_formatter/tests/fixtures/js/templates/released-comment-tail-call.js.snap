@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const text = `before${(read()
+// tail
+)}after${value}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const text = `before${
+  read()
+  // tail
+}after${value}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
+---------- Output ----------
+const text = `before${
+  read()
+  // tail
+}after${value}`
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
+---------- Output ----------
+const text = `before${
+  read()
+  // tail
+}after${value}`;
