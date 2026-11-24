@@ -1,0 +1,56 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try {
+  run();
+} catch (error: unknown /* Parameter */) // Catch header
+{
+  // Catch body
+  recover(error);
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try {
+  run();
+} catch (error: unknown /* Parameter */) // Catch header
+{
+  // Catch body
+  recover(error);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+try {
+  run()
+} catch (error: unknown /* Parameter */) // Catch header
+{
+  // Catch body
+  recover(error)
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+try {
+	run();
+} catch (error: unknown /* Parameter */) // Catch header
+{
+	// Catch body
+	recover(error);
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try {
+  run()
+} catch (error: unknown /* Parameter */) // Catch header
+{
+  // Catch body
+  recover(
+    error,
+  )
+}

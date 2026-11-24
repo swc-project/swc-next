@@ -1,0 +1,21 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Example {
+  method(): void
+  // first
+
+  // second
+  {}
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class Example {
+  method(): void
+  // first
+
+  // second
+  {}
+}

@@ -9,8 +9,10 @@ First<T>, Second<T> { value: T; }
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 interface Subject<T>
-  // head
-  extends First<T>, Second<T> {
+  extends
+    // head
+    First<T>,
+    Second<T> {
   value: T;
 }
 
@@ -18,8 +20,8 @@ interface Subject<T>
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 interface Subject<T>
-  // head
   extends
+    // head
     First<T>,
     Second<T> {
   value: T
@@ -29,7 +31,9 @@ interface Subject<T>
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
 ---------- Output ----------
 interface Subject<T>
-	// head
-	extends First<T>, Second<T> {
+	extends
+		// head
+		First<T>,
+		Second<T> {
 	value: T;
 }

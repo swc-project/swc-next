@@ -11,8 +11,8 @@ schedule(function (
   firstValue,
   secondValue,
   thirdValue,
-) {
-  // body boundary
+) // body boundary
+{
   return (
     firstValue +
     secondValue +
@@ -27,8 +27,8 @@ schedule(function (
   firstValue,
   secondValue,
   thirdValue,
-) {
-  // body boundary
+) // body boundary
+{
   return (
     firstValue +
     secondValue +
@@ -39,7 +39,7 @@ schedule(function (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-schedule(function (firstValue, secondValue, thirdValue) {
-  // body boundary
+schedule(function (firstValue, secondValue, thirdValue) // body boundary
+{
   return firstValue + secondValue + thirdValue;
 }, delay);

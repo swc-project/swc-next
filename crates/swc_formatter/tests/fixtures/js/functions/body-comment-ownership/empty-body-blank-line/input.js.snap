@@ -1,0 +1,146 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function declaration()
+// first
+
+// second
+{ // inside
+}
+
+const expression = function() // first
+
+// second
+{};
+
+class Example {
+  constructor()
+  // first
+
+  // second
+  {}
+
+  method()
+  // first
+
+  // second
+  {}
+
+  get value()
+  // first
+
+  // second
+  {}
+
+  set value(next)
+  // first
+
+  // second
+  {}
+}
+
+function nonempty()
+// first
+
+// second
+{ return 1 }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function declaration()
+// first
+
+// second
+{
+  // inside
+}
+
+const expression = function () // first
+
+// second
+{};
+
+class Example {
+  constructor()
+  // first
+
+  // second
+  {}
+
+  method()
+  // first
+
+  // second
+  {}
+
+  get value()
+  // first
+
+  // second
+  {}
+
+  set value(next)
+  // first
+
+  // second
+  {}
+}
+
+function nonempty()
+// first
+
+// second
+{
+  return 1;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function declaration()
+// first
+
+// second
+{
+  // inside
+}
+
+const expression = function () // first
+
+// second
+{}
+
+class Example {
+  constructor()
+  // first
+
+  // second
+  {}
+
+  method()
+  // first
+
+  // second
+  {}
+
+  get value()
+  // first
+
+  // second
+  {}
+
+  set value(next)
+  // first
+
+  // second
+  {}
+}
+
+function nonempty()
+// first
+
+// second
+{
+  return 1
+}

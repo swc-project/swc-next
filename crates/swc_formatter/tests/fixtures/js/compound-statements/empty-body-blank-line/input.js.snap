@@ -1,0 +1,58 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+try
+// try first
+
+// try second
+{}
+catch
+// catch first
+
+// catch second
+{}
+finally
+// finally first
+
+// finally second
+{}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+try
+// try first
+
+// try second
+{
+} catch
+// catch first
+
+// catch second
+{
+} finally
+// finally first
+
+// finally second
+{
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+try
+// try first
+
+// try second
+{
+} catch
+// catch first
+
+// catch second
+{
+} finally
+// finally first
+
+// finally second
+{
+}

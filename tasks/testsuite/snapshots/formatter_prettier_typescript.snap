@@ -1,25 +1,30 @@
 formatter * prettier 3.9.9 * typescript
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 652
+Fixture files: 649
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 805/805 (100.00%)
-Snapshot matched: 805/805
-AST parity: 805/805
-AST mismatched: 0/805
-AST format errors: 0/805
-Mismatched: 0/805
-Format errors: 0/805
-Panicked: 0/805
-Not idempotent: 0/805
-Ignored files: 81
-Parse errors: 0/805
+Passed: 799/801 (99.75%)
+Snapshot matched: 799/801
+AST parity: 801/801
+AST mismatched: 0/801
+AST format errors: 0/801
+Mismatched: 2/801
+Format errors: 0/801
+Panicked: 0/801
+Not idempotent: 0/801
+Ignored files: 84
+Parse errors: 0/801
 Expected parser errors: 1
 Unsupported option sets: 4
 
 # Expected parser errors
 
 - typescript/conformance/types/functions/functionOverloadErrorsSyntax.ts: 1 expected parser error(s)
+
+# Failed
+
+- typescript/class-comment/class-implements.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- typescript/class-comment/declare.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 

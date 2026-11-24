@@ -1287,6 +1287,116 @@
         "prettierNative": "it(`a deliberately long template name that exceeds the ordinary call frame width`, () => {\n  run();\n});\ntest.describe.parallel\n  .only(\"case\", done => {\n  done();\n}, 1000);\nbeforeEach(fakeAsync(() => {\n  /* body */ run();\n}));\nafterAll(waitForAsync(() => value));\nit(\"case\", inject(function (\n  first,\n  second,\n  third,\n) {\n  return first(second, third);\n}));\nother(\n  \"case\",\n  fakeAsync(() => {\n    run();\n  }),\n);\ndescribe?.(\n  \"a deliberately long optional call name that exceeds the ordinary frame width\",\n  done => {},\n);\nit(\"case\", /* boundary */ () => {\n  run();\n});\nit(\"case\", () => {\n  /* body */ run();\n});\nit(\n  \"case\",\n  (first, second) => {\n    run();\n  },\n  1000,\n);\nit(\n  \"case\",\n  (first, second) => {\n    run();\n  },\n  timeout,\n);\nbeforeEach(fakeAsync?.(() => {\n  run();\n}));\nit(\"a long test label which should keep its callback header attached\", fakeAsync(() => {\n  run();\n}));\nit(\"a long test label which should keep its callback header attached\", () => {\n  run();\n});\nit(\"a long test label which should keep its callback header attached\", () => {\n  run();\n}, 1000);\nbeforeEach(fakeAsync?.(\n  (\n    firstLongParameter,\n    secondLongParameter,\n  ) => {\n    /* ordinary body */ run();\n  },\n));\nit(\"a long test label which should keep its callback header attached\", fakeAsync(() => {\n  run();\n}) /* wrapper */);\n"
       }
     ],
+    "js/classes/comments/body-member-ignore.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C // body\n{\n  // prettier-ignore\n  method( ){return  1}\n}\n",
+        "prettierNative": "class C {\n  // body\n  // prettier-ignore\n  method( ){return  1}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C // body\n{\n  // prettier-ignore\n  method( ){return  1}\n}\n",
+        "prettierNative": "class C {\n  // body\n  // prettier-ignore\n  method( ){return  1}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C // body\n{\n  // prettier-ignore\n  method( ){return  1}\n}\n",
+        "prettierNative": "class C {\n  // body\n  // prettier-ignore\n  method( ){return  1}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C // body\n{\n  // prettier-ignore\n  method( ){return  1}\n}\n",
+        "prettierNative": "class C {\n  // body\n  // prettier-ignore\n  method( ){return  1}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class C // body\n{\n\t// prettier-ignore\n\tmethod( ){return  1}\n}\n",
+        "prettierNative": "class C {\n\t// body\n\t// prettier-ignore\n\tmethod( ){return  1}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C // body\n{\n  // prettier-ignore\n  method( ){return  1}\n}\n",
+        "prettierNative": "class C {\n  // body\n  // prettier-ignore\n  method( ){return  1}\n}\n"
+      }
+    ],
+    "js/classes/comments/body-packets.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C /* opening */ // body\n{\n  /* member */ method() {}\n}\n",
+        "prettierNative": "class C {\n  /* opening */ // body\n  /* member */ method() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C /* opening */ // body\n{\n  /* member */ method() {}\n}\n",
+        "prettierNative": "class C {\n  /* opening */ // body\n  /* member */ method() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C /* opening */ // body\n{\n  /* member */ method() {}\n}\n",
+        "prettierNative": "class C {\n  /* opening */ // body\n  /* member */ method() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C /* opening */ // body\n{\n  /* member */ method() {}\n}\n",
+        "prettierNative": "class C {\n  /* opening */ // body\n  /* member */ method() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class C /* opening */ // body\n{\n\t/* member */ method() {}\n}\n",
+        "prettierNative": "class C {\n\t/* opening */ // body\n\t/* member */ method() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C /* opening */ // body\n{\n  /* member */ method() {}\n}\n",
+        "prettierNative": "class C {\n  /* opening */ // body\n  /* member */ method() {}\n}\n"
+      }
+    ],
     "js/classes/comments/computed-key.js": [
       {
         "options": {
@@ -1423,6 +1533,71 @@
         },
         "swcPlugin": "class C {\n  x = 1 + 2; /* prettier-ignore */ y=3+4;\n}\n",
         "prettierNative": "class C {\n  x = 1 + 2\n  /* prettier-ignore */ y=3+4;\n}\n"
+      }
+    ],
+    "js/classes/comments/heritage-lines.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C extends Base // first\n// second\n{}\n",
+        "prettierNative": "class C extends Base {\n  // first\n  // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C extends Base // first\n// second\n{}\n",
+        "prettierNative": "class C extends Base {\n  // first\n  // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C extends Base // first\n// second\n{}\n",
+        "prettierNative": "class C extends Base {\n  // first\n  // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C extends Base // first\n// second\n{}\n",
+        "prettierNative": "class C extends Base {\n  // first\n  // second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class C extends Base // first\n// second\n{}\n",
+        "prettierNative": "class C extends Base {\n\t// first\n\t// second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C extends Base // first\n// second\n{}\n",
+        "prettierNative": "class C extends Base {\n  // first\n  // second\n}\n"
+      }
+    ],
+    "js/classes/comments/leading/header.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C /* first */\n// second\n{\n  field;\n}\n",
+        "prettierNative": "class C {\n  /* first */\n  // second\n  field;\n}\n"
       }
     ],
     "js/classes/comments/member-packet/input.js": [
@@ -1750,6 +1925,116 @@
         "prettierNative": "class C {\n  value = 1\n  in() {}\n}\n"
       }
     ],
+    "js/classes/header-comment-ownership.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Example // Class header\n{\n  // First member\n  read() {\n    return 1;\n  }\n}\n",
+        "prettierNative": "class Example {\n  // Class header\n  // First member\n  read() {\n    return 1;\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Example // Class header\n{\n  // First member\n  read() {\n    return 1;\n  }\n}\n",
+        "prettierNative": "class Example {\n  // Class header\n  // First member\n  read() {\n    return 1;\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Example // Class header\n{\n  // First member\n  read() {\n    return 1\n  }\n}\n",
+        "prettierNative": "class Example {\n  // Class header\n  // First member\n  read() {\n    return 1\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Example // Class header\n{\n  // First member\n  read() {\n    return 1\n  }\n}\n",
+        "prettierNative": "class Example {\n  // Class header\n  // First member\n  read() {\n    return 1\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class Example // Class header\n{\n\t// First member\n\tread() {\n\t\treturn 1;\n\t}\n}\n",
+        "prettierNative": "class Example {\n\t// Class header\n\t// First member\n\tread() {\n\t\treturn 1;\n\t}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Example // Class header\n{\n  // First member\n  read() {\n    return 1\n  }\n}\n",
+        "prettierNative": "class Example {\n  // Class header\n  // First member\n  read() {\n    return 1\n  }\n}\n"
+      }
+    ],
+    "js/classes/header-ignore.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Example // prettier-ignore\n{\n  read( x ) {return   x}\n  write(x) {\n    return x;\n  }\n}\n",
+        "prettierNative": "class Example {\n  // prettier-ignore\n  read( x ) {return   x}\n  write(x) {\n    return x;\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Example // prettier-ignore\n{\n  read( x ) {return   x}\n  write(x) {\n    return x;\n  }\n}\n",
+        "prettierNative": "class Example {\n  // prettier-ignore\n  read( x ) {return   x}\n  write(x) {\n    return x;\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Example // prettier-ignore\n{\n  read( x ) {return   x}\n  write(x) {\n    return x\n  }\n}\n",
+        "prettierNative": "class Example {\n  // prettier-ignore\n  read( x ) {return   x}\n  write(x) {\n    return x\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Example // prettier-ignore\n{\n  read( x ) {return   x}\n  write(x) {\n    return x\n  }\n}\n",
+        "prettierNative": "class Example {\n  // prettier-ignore\n  read( x ) {return   x}\n  write(x) {\n    return x\n  }\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 2
+        },
+        "swcPlugin": "class Example // prettier-ignore\n{\n\tread( x ) {return   x}\n\twrite(x) {\n\t\treturn x;\n\t}\n}\n",
+        "prettierNative": "class Example {\n\t// prettier-ignore\n\tread( x ) {return   x}\n\twrite(x) {\n\t\treturn x;\n\t}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "preserve",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class Example // prettier-ignore\n{\n  read( x ) {return   x}\n  write(x) {\n    return x\n  }\n}\n",
+        "prettierNative": "class Example {\n  // prettier-ignore\n  read( x ) {return   x}\n  write(x) {\n    return x\n  }\n}\n"
+      }
+    ],
     "js/classes/heritage-line-comments/directive-block.js": [
       {
         "options": {
@@ -1798,6 +2083,16 @@
         },
         "swcPlugin": "class C {\n  // eslint-disable-next-line no-magic-numbers\n  [aaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbb] = 42;\n}\n",
         "prettierNative": "class C {\n  // eslint-disable-next-line no-magic-numbers\n  [aaaaaaaaaaaaaaaaaaaa +\n  bbbbbbbbbbbbbbbbbbbb] =\n    42;\n}\n"
+      }
+    ],
+    "js/classes/lint-coverage/opening-line.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Sample extends Parent /* eslint-disable-next-line no-undef */ { first=visible(); other=visible()\n  second=hidden()\n  last = visible();\n}\n",
+        "prettierNative": "class Sample extends Parent /* eslint-disable-next-line no-undef */ {\n  first = visible();\n  other = visible();\n  second = hidden();\n  last = visible();\n}\n"
       }
     ],
     "js/classes/member-terminators/receiver-tail-source-gap.js": [
@@ -2938,6 +3233,44 @@
         "prettierNative": "try {\r\n} catch (e /* prettier-ignore */) {\r\n  g(\r\n    2,\r\n  )\r\n}\r\n"
       }
     ],
+    "js/compound-statements/catch-header-comment-packet.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n  a();\n} // one\ncatch // two\n{\n  b();\n}\n",
+        "prettierNative": "try {\n  a();\n} catch {\n  // one\n  // two\n  b();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try {\n  a()\n} // one\ncatch // two\n{\n  b()\n}\n",
+        "prettierNative": "try {\n  a()\n} catch {\n  // one\n  // two\n  b()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try {\n\ta();\n} // one\ncatch // two\n{\n\tb();\n}\n",
+        "prettierNative": "try {\n\ta();\n} catch {\n\t// one\n\t// two\n\tb();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n  a()\r\n} // one\r\ncatch // two\r\n{\r\n  b()\r\n}\r\n",
+        "prettierNative": "try {\r\n  a()\r\n} catch {\r\n  // one\r\n  // two\r\n  b()\r\n}\r\n"
+      }
+    ],
     "js/compound-statements/catch-lint-line.js": [
       {
         "options": {
@@ -3090,6 +3423,26 @@
         "prettierNative": "switch (\r\n  v\r\n) {\r\n  default: // first // second\r\n}\r\n"
       }
     ],
+    "js/compound-statements/empty-body-blank-line/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try\n// try first\n\n// try second\n{\n} catch\n// catch first\n\n// catch second\n{\n} finally\n// finally first\n\n// finally second\n{\n}\n",
+        "prettierNative": "try {\n  // try first\n  // try second\n} catch {\n  // catch first\n  // catch second\n} finally {\n  // finally first\n  // finally second\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try\r\n// try first\r\n\r\n// try second\r\n{\r\n} catch\r\n// catch first\r\n\r\n// catch second\r\n{\r\n} finally\r\n// finally first\r\n\r\n// finally second\r\n{\r\n}\r\n",
+        "prettierNative": "try {\r\n  // try first\r\n  // try second\r\n} catch {\r\n  // catch first\r\n  // catch second\r\n} finally {\r\n  // finally first\r\n  // finally second\r\n}\r\n"
+      }
+    ],
     "js/compound-statements/empty-case-comments/input.js": [
       {
         "options": {
@@ -3153,6 +3506,44 @@
         },
         "swcPlugin": "switch (\r\n  0\r\n) { /* @ts-expect-error */ /* packet */\r\n}; insideMissing\r\noutsideMissing\r\n",
         "prettierNative": "switch (\r\n  0\r\n) {\r\n  /* @ts-expect-error */\r\n  /* packet */\r\n}\r\ninsideMissing\r\noutsideMissing\r\n"
+      }
+    ],
+    "js/compound-statements/exception-header-ownership.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try // Try header\n{\n  // Try body\n  run();\n} // Before catch\ncatch // Catch header\n{\n  // Catch body\n  recover();\n} // Before finally\nfinally // Finally header\n{\n  // Finally body\n  cleanUp();\n}\n",
+        "prettierNative": "try {\n  // Try header\n  // Try body\n  run();\n} catch {\n  // Before catch\n  // Catch header\n  // Catch body\n  recover();\n} finally {\n  // Before finally\n  // Finally header\n  // Finally body\n  cleanUp();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try // Try header\n{\n  // Try body\n  run()\n} // Before catch\ncatch // Catch header\n{\n  // Catch body\n  recover()\n} // Before finally\nfinally // Finally header\n{\n  // Finally body\n  cleanUp()\n}\n",
+        "prettierNative": "try {\n  // Try header\n  // Try body\n  run()\n} catch {\n  // Before catch\n  // Catch header\n  // Catch body\n  recover()\n} finally {\n  // Before finally\n  // Finally header\n  // Finally body\n  cleanUp()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try // Try header\n{\n\t// Try body\n\trun();\n} // Before catch\ncatch // Catch header\n{\n\t// Catch body\n\trecover();\n} // Before finally\nfinally // Finally header\n{\n\t// Finally body\n\tcleanUp();\n}\n",
+        "prettierNative": "try {\n\t// Try header\n\t// Try body\n\trun();\n} catch {\n\t// Before catch\n\t// Catch header\n\t// Catch body\n\trecover();\n} finally {\n\t// Before finally\n\t// Finally header\n\t// Finally body\n\tcleanUp();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try // Try header\r\n{\r\n  // Try body\r\n  run()\r\n} // Before catch\r\ncatch // Catch header\r\n{\r\n  // Catch body\r\n  recover()\r\n} // Before finally\r\nfinally // Finally header\r\n{\r\n  // Finally body\r\n  cleanUp()\r\n}\r\n",
+        "prettierNative": "try {\r\n  // Try header\r\n  // Try body\r\n  run()\r\n} catch {\r\n  // Before catch\r\n  // Catch header\r\n  // Catch body\r\n  recover()\r\n} finally {\r\n  // Before finally\r\n  // Finally header\r\n  // Finally body\r\n  cleanUp()\r\n}\r\n"
       }
     ],
     "js/compound-statements/finally-lint-next-line.js": [
@@ -9452,6 +9843,58 @@
         },
         "swcPlugin": "schedule(function (firstValue, secondValue, thirdValue) // @ts-expect-error\n{\n  return missingValue;\n}, delay);\n",
         "prettierNative": "schedule(function (firstValue, secondValue, thirdValue) {\n  // @ts-expect-error\n  return missingValue;\n}, delay);\n"
+      }
+    ],
+    "js/expressions/call/first-function-parameters/body-line-comment.mjs": [
+      {
+        "options": {
+          "lineWidth": 32,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "schedule(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) // body boundary\n{\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n}, delay);\n",
+        "prettierNative": "schedule(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) {\n  // body boundary\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n}, delay);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "schedule(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) // body boundary\n{\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n}, delay);\n",
+        "prettierNative": "schedule(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) {\n  // body boundary\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n}, delay);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "schedule(function (firstValue, secondValue, thirdValue) // body boundary\n{\n  return firstValue + secondValue + thirdValue;\n}, delay);\n",
+        "prettierNative": "schedule(function (firstValue, secondValue, thirdValue) {\n  // body boundary\n  return firstValue + secondValue + thirdValue;\n}, delay);\n"
+      }
+    ],
+    "js/expressions/call/first-function-parameters/callee-body-comment.mjs": [
+      {
+        "options": {
+          "lineWidth": 32,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) // body boundary\n{\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n})(1, 2, 3);\n",
+        "prettierNative": "(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) {\n  // body boundary\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n})(1, 2, 3);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) // body boundary\n{\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n})(1, 2, 3);\n",
+        "prettierNative": "(function (\n  firstValue,\n  secondValue,\n  thirdValue,\n) {\n  // body boundary\n  return (\n    firstValue +\n    secondValue +\n    thirdValue\n  );\n})(1, 2, 3);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(function (firstValue, secondValue, thirdValue) // body boundary\n{\n  return firstValue + secondValue + thirdValue;\n})(1, 2, 3);\n",
+        "prettierNative": "(function (firstValue, secondValue, thirdValue) {\n  // body boundary\n  return firstValue + secondValue + thirdValue;\n})(1, 2, 3);\n"
       }
     ],
     "js/expressions/call/fluent-terminal-optional-call.js": [
@@ -20329,6 +20772,88 @@
         "prettierNative": ";[\n  (\n    // @ts-ignore\n    (value) => value\n  )?.(\n    // trailing\n    argument,\n  ),\n]\n"
       }
     ],
+    "js/functions/body-comment-ownership/annotations/pure-iife.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "/*#__PURE__*/ (function f() // note\n{\n  effect();\n})();\nsideEffect();\n",
+        "prettierNative": "/*#__PURE__*/ (function f() {\n  // note\n  effect();\n})();\nsideEffect();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "/*#__PURE__*/ (function f() // note\n{\n  effect();\n})();\nsideEffect();\n",
+        "prettierNative": "/*#__PURE__*/ (function f() {\n  // note\n  effect();\n})();\nsideEffect();\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/body-comment.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // outer\n{\n  // inner\n  return 42;\n}\n",
+        "prettierNative": "function f() {\n  // outer\n  // inner\n  return 42;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // outer\n{\n  // inner\n  return 42;\n}\n",
+        "prettierNative": "function f() {\n  // outer\n  // inner\n  return 42;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() // outer\n{\n  // inner\n  return 42\n}\n",
+        "prettierNative": "function f() {\n  // outer\n  // inner\n  return 42\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/cast-iife.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = /** @type {any} */ (\n  (function f() // note\n  {\n    return \"text\";\n  })()\n);\nvalue.missing();\nconst outside = 1;\noutside.missing();\n",
+        "prettierNative": "const value = /** @type {any} */ (\n  (function f() {\n    // note\n    return \"text\";\n  })()\n);\nvalue.missing();\nconst outside = 1;\noutside.missing();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const value = /** @type {any} */ (\n  (function f() // note\n  {\n    return \"text\";\n  })()\n);\nvalue.missing();\nconst outside = 1;\noutside.missing();\n",
+        "prettierNative": "const value = /** @type {any} */ (\n  (function f() {\n    // note\n    return \"text\";\n  })()\n);\nvalue.missing();\nconst outside = 1;\noutside.missing();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const value = /** @type {any} */ (\n  (function f() // note\n  {\n    return \"text\"\n  })()\n)\nvalue.missing()\nconst outside = 1\noutside.missing()\n",
+        "prettierNative": "const value = /** @type {any} */ (\n  (function f() {\n    // note\n    return \"text\"\n  })()\n)\nvalue.missing()\nconst outside = 1\noutside.missing()\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/covered-opener/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function empty() // eslint-disable-next-line no-undef\n{}\n\nfunction nonempty() // eslint-disable-next-line no-undef\n{ hidden(); }\n\nclass Sample {\n  method() // eslint-disable-next-line no-undef\n  {}\n\n  static // eslint-disable-next-line no-undef\n  { hidden(); }\n}\n",
+        "prettierNative": "function empty() {\n  // eslint-disable-next-line no-undef\n}\n\nfunction nonempty() {\n  // eslint-disable-next-line no-undef\n  hidden();\n}\n\nclass Sample {\n  method() {\n    // eslint-disable-next-line no-undef\n  }\n\n  static {\n    // eslint-disable-next-line no-undef\n    hidden();\n  }\n}\n"
+      }
+    ],
     "js/functions/body-comment-ownership/directive-comment-order.js": [
       {
         "options": {
@@ -20354,6 +20879,160 @@
         },
         "swcPlugin": "function f() // outer\n{\n  /* inner */ \"use strict\"\n  return 42\n}\n",
         "prettierNative": "function f() {\n  /* inner */ \"use strict\"\n  // outer\n  return 42\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/directive-only.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\";\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\";\n  // note\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\";\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\";\n  // note\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\"\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\"\n  // note\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/directive.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\";\n  return this;\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\";\n  // note\n  return this;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\";\n  return this;\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\";\n  // note\n  return this;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\"\n  return this\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\"\n  // note\n  return this\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/empty-before-target.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\";\n  call();\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\";\n  // note\n  call();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\";\n  call();\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\";\n  // note\n  call();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() // note\n{\n  \"use strict\"\n  call()\n}\n",
+        "prettierNative": "function f() {\n  \"use strict\"\n  // note\n  call()\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/empty-body-blank-line/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function declaration()\n// first\n\n// second\n{\n  // inside\n}\n\nconst expression = function () // first\n\n// second\n{};\n\nclass Example {\n  constructor()\n  // first\n\n  // second\n  {}\n\n  method()\n  // first\n\n  // second\n  {}\n\n  get value()\n  // first\n\n  // second\n  {}\n\n  set value(next)\n  // first\n\n  // second\n  {}\n}\n\nfunction nonempty()\n// first\n\n// second\n{\n  return 1;\n}\n",
+        "prettierNative": "function declaration() {\n  // first\n  // second\n  // inside\n}\n\nconst expression = function () {\n  // first\n  // second\n};\n\nclass Example {\n  constructor() {\n    // first\n    // second\n  }\n\n  method() {\n    // first\n    // second\n  }\n\n  get value() {\n    // first\n    // second\n  }\n\n  set value(next) {\n    // first\n    // second\n  }\n}\n\nfunction nonempty() {\n  // first\n\n  // second\n  return 1;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function declaration()\n// first\n\n// second\n{\n  // inside\n}\n\nconst expression = function () // first\n\n// second\n{}\n\nclass Example {\n  constructor()\n  // first\n\n  // second\n  {}\n\n  method()\n  // first\n\n  // second\n  {}\n\n  get value()\n  // first\n\n  // second\n  {}\n\n  set value(next)\n  // first\n\n  // second\n  {}\n}\n\nfunction nonempty()\n// first\n\n// second\n{\n  return 1\n}\n",
+        "prettierNative": "function declaration() {\n  // first\n  // second\n  // inside\n}\n\nconst expression = function () {\n  // first\n  // second\n}\n\nclass Example {\n  constructor() {\n    // first\n    // second\n  }\n\n  method() {\n    // first\n    // second\n  }\n\n  get value() {\n    // first\n    // second\n  }\n\n  set value(next) {\n    // first\n    // second\n  }\n}\n\nfunction nonempty() {\n  // first\n\n  // second\n  return 1\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/empty-body.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{}\n",
+        "prettierNative": "function f() {\n  // note\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{}\n",
+        "prettierNative": "function f() {\n  // note\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() // note\n{}\n",
+        "prettierNative": "function f() {\n  // note\n}\n"
+      }
+    ],
+    "js/functions/body-comment-ownership/function-line.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  return 42;\n}\n",
+        "prettierNative": "function f() {\n  // note\n  return 42;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() // note\n{\n  return 42;\n}\n",
+        "prettierNative": "function f() {\n  // note\n  return 42;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() // note\n{\n  return 42\n}\n",
+        "prettierNative": "function f() {\n  // note\n  return 42\n}\n"
       }
     ],
     "js/functions/diagnostic-closing-line/arrow.js": [
@@ -32342,6 +33021,26 @@
         "prettierNative": "class IgnoredObject extends /* prettier-ignore */ ({ } !) {}\nclass IgnoredNew extends /* prettier-ignore */ ((new   Base( ))!) {}\n"
       }
     ],
+    "ts/classes/covered-opener.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Example // @ts-expect-error\n{ value: string = 1;\n  read() {\n    return this.value;\n  }\n}\n",
+        "prettierNative": "class Example {\n  // @ts-expect-error\n  value: string = 1;\n  read() {\n    return this.value;\n  }\n}\n"
+      }
+    ],
+    "ts/classes/empty-method-body-blank-line.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class Example {\n  method(): void\n  // first\n\n  // second\n  {}\n}\n",
+        "prettierNative": "class Example {\n  method(): void {\n    // first\n    // second\n  }\n}\n"
+      }
+    ],
     "ts/classes/lint-coverage/decorated.ts": [
       {
         "options": {
@@ -33507,6 +34206,82 @@
         },
         "swcPlugin": "type T = keyof (\n  // prettier-ignore\n  | B | C\n);\n",
         "prettierNative": "type T = keyof (\n  // prettier-ignore\n  B | C\n);\n"
+      }
+    ],
+    "ts/compound-statements/catch-header-ownership.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n  run();\n} catch (error: unknown /* Parameter */) // Catch header\n{\n  // Catch body\n  recover(error);\n}\n",
+        "prettierNative": "try {\n  run();\n} catch (\n  error: unknown /* Parameter */ // Catch header\n) {\n  // Catch body\n  recover(error);\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try {\n  run()\n} catch (error: unknown /* Parameter */) // Catch header\n{\n  // Catch body\n  recover(error)\n}\n",
+        "prettierNative": "try {\n  run()\n} catch (\n  error: unknown /* Parameter */ // Catch header\n) {\n  // Catch body\n  recover(error)\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try {\n\trun();\n} catch (error: unknown /* Parameter */) // Catch header\n{\n\t// Catch body\n\trecover(error);\n}\n",
+        "prettierNative": "try {\n\trun();\n} catch (\n\terror: unknown /* Parameter */ // Catch header\n) {\n\t// Catch body\n\trecover(error);\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n  run()\r\n} catch (error: unknown /* Parameter */) // Catch header\r\n{\r\n  // Catch body\r\n  recover(\r\n    error,\r\n  )\r\n}\r\n",
+        "prettierNative": "try {\r\n  run()\r\n} catch (\r\n  error: unknown /* Parameter */ // Catch header\r\n) {\r\n  // Catch body\r\n  recover(\r\n    error,\r\n  )\r\n}\r\n"
+      }
+    ],
+    "ts/compound-statements/try-covered-opener.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try // @ts-expect-error\n{ const value: string = 1;\n  consume(value);\n} catch {}\ndeclare function consume(value: string): void;\n",
+        "prettierNative": "try {\n  // @ts-expect-error\n  const value: string = 1;\n  consume(value);\n} catch {}\ndeclare function consume(value: string): void;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "try // @ts-expect-error\n{ const value: string = 1\n  consume(value)\n} catch {}\ndeclare function consume(\n  value: string,\n): void\n",
+        "prettierNative": "try {\n  // @ts-expect-error\n  const value: string = 1\n  consume(value)\n} catch {}\ndeclare function consume(\n  value: string,\n): void\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "try // @ts-expect-error\n{ const value: string = 1;\n\tconsume(value);\n} catch {}\ndeclare function consume(value: string): void;\n",
+        "prettierNative": "try {\n\t// @ts-expect-error\n\tconst value: string = 1;\n\tconsume(value);\n} catch {}\ndeclare function consume(value: string): void;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try // @ts-expect-error\r\n{ const value: string = 1\r\n  consume(\r\n    value,\r\n  )\r\n} catch {}\r\ndeclare function consume(\r\n  value: string,\r\n): void\r\n",
+        "prettierNative": "try {\r\n  // @ts-expect-error\r\n  const value: string = 1\r\n  consume(\r\n    value,\r\n  )\r\n} catch {}\r\ndeclare function consume(\r\n  value: string,\r\n): void\r\n"
       }
     ],
     "ts/compound-type-continuation/argument.ts": [
@@ -37072,6 +37847,34 @@
         },
         "swcPlugin": "class Subject<T>\r\n\textends Base<  T  > /* prettier-ignore */ implements\r\n// head\r\nFirst<T>,\r\n\tSecond<T>\r\n{\r\n\tvalue: T;\r\n}\r\n",
         "prettierNative": "class Subject<T>\r\n\textends Base<  T  > /* prettier-ignore */\r\n\t// head\r\n\timplements First<T>, Second<T>\r\n{\r\n\tvalue: T;\r\n}\r\n"
+      }
+    ],
+    "ts/heritage-first-item/interface-control.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface Subject<T>\n  extends\n    // head\n    First<T>,\n    Second<T> {\n  value: T;\n}\n",
+        "prettierNative": "interface Subject<T>\n  // head\n  extends First<T>, Second<T> {\n  value: T;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface Subject<T>\n  extends\n    // head\n    First<T>,\n    Second<T> {\n  value: T\n}\n",
+        "prettierNative": "interface Subject<T>\n  // head\n  extends\n    First<T>,\n    Second<T> {\n  value: T\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 100,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface Subject<T>\r\n\textends\r\n\t\t// head\r\n\t\tFirst<T>,\r\n\t\tSecond<T> {\r\n\tvalue: T;\r\n}\r\n",
+        "prettierNative": "interface Subject<T>\r\n\t// head\r\n\textends First<T>, Second<T> {\r\n\tvalue: T;\r\n}\r\n"
       }
     ],
     "ts/heritage-first-item/ordinary-head.ts": [
@@ -44341,6 +45144,142 @@
         "prettierNative": "interface A {\r\n\t// @ts-expect-error\r\n\tproperty: Missing;\r\n}\r\n"
       }
     ],
+    "ts/type-interface/body-member-ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A // body\n{\n  // prettier-ignore\n  method( ) :  void\n}\n",
+        "prettierNative": "interface A {\n  // body\n  // prettier-ignore\n  method( ) :  void\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A // body\n{\n  // prettier-ignore\n  method( ) :  void\n}\n",
+        "prettierNative": "interface A {\n  // body\n  // prettier-ignore\n  method( ) :  void\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface A // body\n{\n  // prettier-ignore\n  method( ) :  void\n}\n",
+        "prettierNative": "interface A {\n  // body\n  // prettier-ignore\n  method( ) :  void\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface A // body\r\n{\r\n\t// prettier-ignore\r\n\tmethod( ) :  void\r\n}\r\n",
+        "prettierNative": "interface A {\r\n\t// body\r\n\t// prettier-ignore\r\n\tmethod( ) :  void\r\n}\r\n"
+      }
+    ],
+    "ts/type-interface/header-lint-line/input.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A // eslint-disable-line\n{\n  x: number;\n}\n\ndeclare interface Ambient // eslint-disable-line\n{\n  y: string;\n}\n",
+        "prettierNative": "interface A {\n  // eslint-disable-line\n  x: number;\n}\n\ndeclare interface Ambient {\n  // eslint-disable-line\n  y: string;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface A // eslint-disable-line\n{\n  x: number\n}\n\ndeclare interface Ambient // eslint-disable-line\n{\n  y: string\n}\n",
+        "prettierNative": "interface A {\n  // eslint-disable-line\n  x: number\n}\n\ndeclare interface Ambient {\n  // eslint-disable-line\n  y: string\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface A // eslint-disable-line\r\n{\r\n\tx: number;\r\n}\r\n\r\ndeclare interface Ambient // eslint-disable-line\r\n{\r\n\ty: string;\r\n}\r\n",
+        "prettierNative": "interface A {\r\n\t// eslint-disable-line\r\n\tx: number;\r\n}\r\n\r\ndeclare interface Ambient {\r\n\t// eslint-disable-line\r\n\ty: string;\r\n}\r\n"
+      }
+    ],
+    "ts/type-interface/heritage-lint-body-line.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface I extends // eslint-disable-next-line no-restricted-syntax\nBase, Other\n{\n  value: number;\n}\n",
+        "prettierNative": "interface I // eslint-disable-next-line no-restricted-syntax\n  extends Base, Other {\n  value: number;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface I extends // eslint-disable-next-line no-restricted-syntax\nBase, Other\n{\n  value: number;\n}\n",
+        "prettierNative": "interface I // eslint-disable-next-line no-restricted-syntax\n  extends\n    Base,\n    Other {\n  value: number;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface I extends // eslint-disable-next-line no-restricted-syntax\nBase, Other\n{\n  value: number\n}\n",
+        "prettierNative": "interface I // eslint-disable-next-line no-restricted-syntax\n  extends\n    Base,\n    Other {\n  value: number\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface I extends // eslint-disable-next-line no-restricted-syntax\r\nBase, Other\r\n{\r\n\tvalue: number;\r\n}\r\n",
+        "prettierNative": "interface I // eslint-disable-next-line no-restricted-syntax\r\n\textends\r\n\t\tBase,\r\n\t\tOther {\r\n\tvalue: number;\r\n}\r\n"
+      }
+    ],
+    "ts/type-interface/heritage-lint-next-line.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A extends\n// eslint-disable-next-line\nLongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}\n\ninterface B extends\n// eslint-disable-next-line\nFirstBase, SecondBase,\n  ThirdBase<boolean> {\n  y: boolean;\n}\n",
+        "prettierNative": "interface A\n  // eslint-disable-next-line\n  extends LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}\n\ninterface B\n  // eslint-disable-next-line\n  extends FirstBase, SecondBase, ThirdBase<boolean> {\n  y: boolean;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A extends\n// eslint-disable-next-line\nLongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}\n\ninterface B extends\n// eslint-disable-next-line\nFirstBase, SecondBase,\n  ThirdBase<boolean> {\n  y: boolean;\n}\n",
+        "prettierNative": "interface A\n  // eslint-disable-next-line\n  extends\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface B\n  // eslint-disable-next-line\n  extends\n    FirstBase,\n    SecondBase,\n    ThirdBase<boolean> {\n  y: boolean;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface A extends\n// eslint-disable-next-line\nLongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}\n\ninterface B extends\n// eslint-disable-next-line\nFirstBase, SecondBase,\n  ThirdBase<boolean> {\n  y: boolean\n}\n",
+        "prettierNative": "interface A\n  // eslint-disable-next-line\n  extends\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface B\n  // eslint-disable-next-line\n  extends\n    FirstBase,\n    SecondBase,\n    ThirdBase<boolean> {\n  y: boolean\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface A extends\r\n// eslint-disable-next-line\r\nLongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}\r\n\r\ninterface B extends\r\n// eslint-disable-next-line\r\nFirstBase, SecondBase,\r\n\tThirdBase<boolean> {\r\n\ty: boolean;\r\n}\r\n",
+        "prettierNative": "interface A\r\n\t// eslint-disable-next-line\r\n\textends\r\n\t\tLongNamespace.FirstBase<string>,\r\n\t\tOtherNamespace.SecondBase<number> {}\r\n\r\ninterface B\r\n\t// eslint-disable-next-line\r\n\textends\r\n\t\tFirstBase,\r\n\t\tSecondBase,\r\n\t\tThirdBase<boolean> {\r\n\ty: boolean;\r\n}\r\n"
+      }
+    ],
     "ts/type-interface/ignored-head.ts": [
       {
         "options": {
@@ -44413,6 +45352,17 @@
         "prettierNative": "interface T\r\n\textends A /* prettier-ignore */.B {\r\n\ta: 12.0;\r\n}\r\n"
       }
     ],
+    "ts/type-interface/ignored-member-separator/input.ts": [
+      {
+        "options": {
+          "lineWidth": 30,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface Sample {\n  first: string; /* prettier-ignore */ kept   ?:   number;\n  last: 1\n}\n\ntype Shape = {\n  first: string; /* prettier-ignore */ kept   ?:   number;\n  last: 1\n  other(): void\n}\n",
+        "prettierNative": "interface Sample {\n  first: string\n  /* prettier-ignore */ kept   ?:   number;\n  last: 1\n}\n\ntype Shape = {\n  first: string\n  /* prettier-ignore */ kept   ?:   number;\n  last: 1\n  other(): void\n}\n"
+      }
+    ],
     "ts/type-interface/incoming-member.ts": [
       {
         "options": {
@@ -44447,6 +45397,42 @@
         },
         "swcPlugin": "interface T /* prettier-ignore */\r\n {\r\n\ta:12.00\r\n}\r\n",
         "prettierNative": "interface T {\r\n\t/* prettier-ignore */\r\n\ta:12.00\r\n}\r\n"
+      }
+    ],
+    "ts/type-interface/lint-line-controls.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A // ordinary header comment\n{\n  x: number;\n}\n\ninterface B\n  extends\n    // ordinary heritage comment\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface C {\n  x: number; // eslint-disable-line\n  y: string;\n}\n",
+        "prettierNative": "interface A {\n  // ordinary header comment\n  x: number;\n}\n\ninterface B\n  // ordinary heritage comment\n  extends LongNamespace.FirstBase<string>, OtherNamespace.SecondBase<number> {}\n\ninterface C {\n  x: number; // eslint-disable-line\n  y: string;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface A // ordinary header comment\n{\n  x: number;\n}\n\ninterface B\n  extends\n    // ordinary heritage comment\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface C {\n  x: number; // eslint-disable-line\n  y: string;\n}\n",
+        "prettierNative": "interface A {\n  // ordinary header comment\n  x: number;\n}\n\ninterface B\n  // ordinary heritage comment\n  extends\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface C {\n  x: number; // eslint-disable-line\n  y: string;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface A // ordinary header comment\n{\n  x: number\n}\n\ninterface B\n  extends\n    // ordinary heritage comment\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface C {\n  x: number // eslint-disable-line\n  y: string\n}\n",
+        "prettierNative": "interface A {\n  // ordinary header comment\n  x: number\n}\n\ninterface B\n  // ordinary heritage comment\n  extends\n    LongNamespace.FirstBase<string>,\n    OtherNamespace.SecondBase<number> {}\n\ninterface C {\n  x: number // eslint-disable-line\n  y: string\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface A // ordinary header comment\r\n{\r\n\tx: number;\r\n}\r\n\r\ninterface B\r\n\textends\r\n\t\t// ordinary heritage comment\r\n\t\tLongNamespace.FirstBase<string>,\r\n\t\tOtherNamespace.SecondBase<number> {}\r\n\r\ninterface C {\r\n\tx: number; // eslint-disable-line\r\n\ty: string;\r\n}\r\n",
+        "prettierNative": "interface A {\r\n\t// ordinary header comment\r\n\tx: number;\r\n}\r\n\r\ninterface B\r\n\t// ordinary heritage comment\r\n\textends\r\n\t\tLongNamespace.FirstBase<string>,\r\n\t\tOtherNamespace.SecondBase<number> {}\r\n\r\ninterface C {\r\n\tx: number; // eslint-disable-line\r\n\ty: string;\r\n}\r\n"
       }
     ],
     "ts/type-keyword-boundaries/callable-constraints.ts": [
@@ -45475,6 +46461,34 @@
         },
         "swcPlugin": "f((\n  () =>\n    a.b(\n      c,\n    ) /* callback */\n) as T satisfies U);\n",
         "prettierNative": "f((() =>\n  a.b(\n    c,\n  )) /* callback */ as T satisfies U);\n"
+      }
+    ],
+    "ts/typed-bindings/catch-tail-ignore.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n} catch (error:( Alpha | Beta ))\n/* prettier-ignore */\n{\n  use(1 + 2);\n}\n",
+        "prettierNative": "try {\n} catch (\n  error:( Alpha | Beta )\n  /* prettier-ignore */\n) {\n  use(1 + 2);\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "try {\n} catch (error:( Alpha | Beta ))\n/* prettier-ignore */\n{\n  use(1 + 2);\n}\n",
+        "prettierNative": "try {\n} catch (\n  error:( Alpha | Beta )\n  /* prettier-ignore */\n) {\n  use(1 + 2);\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "try {\r\n} catch (error:( Alpha | Beta ))\r\n/* prettier-ignore */\r\n{\r\n  use(\r\n    1 +\r\n      2,\r\n  )\r\n}\r\n",
+        "prettierNative": "try {\r\n} catch (\r\n  error:( Alpha | Beta )\r\n  /* prettier-ignore */\r\n) {\r\n  use(\r\n    1 +\r\n      2,\r\n  )\r\n}\r\n"
       }
     ],
     "ts/typed-targets/anonymous-cast-nonnull.ts": [

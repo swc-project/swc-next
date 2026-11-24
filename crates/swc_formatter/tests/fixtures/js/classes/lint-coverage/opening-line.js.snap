@@ -1,0 +1,14 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class Sample extends Parent /* eslint-disable-next-line no-undef */ { first=visible(); other=visible()
+second=hidden()
+last=visible() }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+class Sample extends Parent /* eslint-disable-next-line no-undef */ { first=visible(); other=visible()
+  second=hidden()
+  last = visible();
+}

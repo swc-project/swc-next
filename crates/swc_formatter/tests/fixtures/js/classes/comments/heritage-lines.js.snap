@@ -8,47 +8,41 @@ class C extends Base // first
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-class C extends Base {
-  // first
-  // second
-}
+class C extends Base // first
+// second
+{}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-class C extends Base {
-  // first
-  // second
-}
+class C extends Base // first
+// second
+{}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-class C extends Base {
-  // first
-  // second
-}
+class C extends Base // first
+// second
+{}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
-class C extends Base {
-  // first
-  // second
-}
+class C extends Base // first
+// second
+{}
 
 ---------- Options ----------
 {"indentStyle":"tab","indentWidth":2,"lineWidth":20}
 ---------- Output ----------
-class C extends Base {
-	// first
-	// second
-}
+class C extends Base // first
+// second
+{}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
 ---------- Output ----------
-class C extends Base {
-  // first
-  // second
-}
+class C extends Base // first
+// second
+{}

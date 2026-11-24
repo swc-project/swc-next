@@ -10,9 +10,9 @@ catch // two
 ---------- Output ----------
 try {
   a();
-} catch {
-  // one
-  // two
+} // one
+catch // two
+{
   b();
 }
 
@@ -21,9 +21,9 @@ try {
 ---------- Output ----------
 try {
   a()
-} catch {
-  // one
-  // two
+} // one
+catch // two
+{
   b()
 }
 
@@ -32,9 +32,9 @@ try {
 ---------- Output ----------
 try {
 	a();
-} catch {
-	// one
-	// two
+} // one
+catch // two
+{
 	b();
 }
 
@@ -43,8 +43,8 @@ try {
 ---------- Output ----------
 try {
   a()
-} catch {
-  // one
-  // two
+} // one
+catch // two
+{
   b()
 }

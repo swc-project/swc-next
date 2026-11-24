@@ -7,8 +7,8 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-/*#__PURE__*/ (function f() {
-  // note
+/*#__PURE__*/ (function f() // note
+{
   effect();
 })();
 sideEffect();
@@ -16,8 +16,8 @@ sideEffect();
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":40}
 ---------- Output ----------
-/*#__PURE__*/ (function f() {
-  // note
+/*#__PURE__*/ (function f() // note
+{
   effect();
 })();
 sideEffect();

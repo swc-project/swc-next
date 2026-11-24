@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface Sample { first: string; /* prettier-ignore */ kept   ?:   number; last: 1 }
+
+type Shape = { first: string; /* prettier-ignore */ kept   ?:   number; last: 1; other(): void };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":30,"semicolons":"as-needed"}
+---------- Output ----------
+interface Sample {
+  first: string; /* prettier-ignore */ kept   ?:   number;
+  last: 1
+}
+
+type Shape = {
+  first: string; /* prettier-ignore */ kept   ?:   number;
+  last: 1
+  other(): void
+}

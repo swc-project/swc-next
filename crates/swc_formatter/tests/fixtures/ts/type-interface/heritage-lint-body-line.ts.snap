@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface I extends // eslint-disable-next-line no-restricted-syntax
+Base, Other
+{ value : number }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface I extends // eslint-disable-next-line no-restricted-syntax
+Base, Other
+{
+  value: number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+interface I extends // eslint-disable-next-line no-restricted-syntax
+Base, Other
+{
+  value: number;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+interface I extends // eslint-disable-next-line no-restricted-syntax
+Base, Other
+{
+  value: number
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+interface I extends // eslint-disable-next-line no-restricted-syntax
+Base, Other
+{
+	value: number;
+}

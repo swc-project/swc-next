@@ -72,7 +72,6 @@ struct CatchHead<'ast> {
     binding: Option<CatchBinding<'ast>>,
     body_head: CompoundGap<'ast>,
     body: CompoundBlock<'ast>,
-    leading_before_parameter: bool,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -96,14 +95,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         }
         let mut body = CompoundBlock::new(node.block(ast), EmptyBlock::Expanded);
-        let mut head = self.exception_gap(Span::new(span.start + 3, body.node.span(ast).start));
+        let head = self.exception_gap(Span::new(span.start + 3, body.node.span(ast).start));
         self.prepare_block_head(head, &mut body);
-        self.transfer_block_leading(&mut head, &mut body);
         let handler = node.handler(ast);
         let mut finalizer = node
             .finalizer(ast)
             .map(|body| CompoundBlock::new(body, EmptyBlock::Expanded));
-        let mut catch_gap = handler.map(|handler| {
+        let catch_gap = handler.map(|handler| {
             self.exception_gap(Span::new(body.node.span(ast).end, handler.span(ast).start))
         });
         let mut handler_mode = ContentMode::Formatted;
@@ -120,7 +118,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        let mut finally_head = if let Some(finalizer) = finalizer.as_ref() {
+        let finally_head = if let Some(finalizer) = finalizer.as_ref() {
             let start = handler.map_or(body.node.span(ast).end, |handler| handler.span(ast).end);
             let limit = Span::new(start, finalizer.node.span(ast).start);
             let comments = self.comments.in_range(limit);
@@ -140,7 +138,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        if let (Some(boundary), Some(finalizer)) = (finally_head.as_mut(), finalizer.as_mut()) {
+        if let (Some(boundary), Some(finalizer)) = (finally_head.as_ref(), finalizer.as_mut()) {
             if boundary.before.has_suppression() {
                 for position in
                     self.suppression_positions(boundary.before.comments, boundary.before.span.end)
@@ -160,32 +158,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             self.prepare_block_head(boundary.after, finalizer);
-            self.transfer_handler_leading(&mut boundary.before, &mut boundary.after, finalizer);
         }
-        let mut handler = handler
+        let handler = handler
             .map(|handler| {
                 self.prepare_catch(handler, handler_mode, handler_first, finalizer.is_some())
             })
             .transpose()?;
-        if let (Some(gap), Some(handler)) = (catch_gap.as_mut(), handler.as_mut())
-            && let Some(head) = handler.head.as_mut()
-        {
-            if head.binding.is_none() {
-                self.transfer_handler_leading(gap, &mut head.body_head, &mut head.body);
-            } else if self
-                .comments
-                .in_range(Span::new(
-                    handler.node.span(ast).start,
-                    head.body.node.span(ast).start,
-                ))
-                .is_empty()
-            {
-                head.leading_before_parameter = self.transfer_block_leading(gap, &mut head.body);
-            }
-        }
         writer.text("try");
         self.format_compound_gap(head, FlatSeparator::Space, Writer::space, writer)?;
-        self.comments.claim(body.leading.comments())?;
         self.format_compound_block_part(body, writer)?;
         if let (Some(gap), Some(handler)) = (catch_gap, handler) {
             self.format_compound_gap(gap, FlatSeparator::Space, Writer::space, writer)?;
@@ -195,7 +175,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_compound_gap(boundary.before, FlatSeparator::Space, Writer::space, writer)?;
             writer.text(self.source(boundary.keyword));
             self.format_compound_gap(boundary.after, FlatSeparator::Space, Writer::space, writer)?;
-            self.comments.claim(finalizer.leading.comments())?;
             self.format_compound_block_part(finalizer, writer)?;
         }
         Ok(StatementBoundary::SourceEnd {
@@ -213,41 +192,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             gap.layout = GapLayout::LintLines;
         }
         gap
-    }
-
-    fn transfer_handler_leading(
-        &self,
-        before: &mut CompoundGap<'ast>,
-        after: &mut CompoundGap<'ast>,
-        body: &mut CompoundBlock<'ast>,
-    ) {
-        if after.comments.is_empty() {
-            self.transfer_block_leading(before, body);
-            return;
-        }
-        let Some(after_start) = self.block_leading_start(*after) else {
-            return;
-        };
-        // Move a contiguous suffix in source order when it spans the keyword.
-        // An earlier packet stays where it is if part of the later one stays.
-        if after_start == 0
-            && !before.retains_source()
-            && !after.retains_source()
-            && let Some(before_start) = self.block_leading_start(*before)
-        {
-            let span = Span::new(before.span.start, after.span.end);
-            let mut packet = CompoundGap {
-                span,
-                comments: self.comments.in_range(span),
-                layout: GapLayout::Formatted,
-            };
-            if self.transfer_block_leading_from(&mut packet, before_start, body) {
-                before.comments = packet.comments;
-                after.comments = &[];
-                return;
-            }
-        }
-        self.transfer_block_leading_from(after, after_start, body);
     }
 
     fn prepare_catch(
@@ -379,7 +323,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 binding,
                 body_head,
                 body,
-                leading_before_parameter: false,
             }),
         })
     }
@@ -412,23 +355,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let before_close = tail_comments.partition_point(|comment| comment.span.end <= closing);
-        let after_close = &tail_comments[before_close..];
-        let parameter_end = before_close
-            + after_close.partition_point(|comment| {
-                self.source_line_breaks(comment.span.end, body_start) != 0
-            });
-        let (parameter_tail, body_comments) = tail_comments.split_at(parameter_end);
-        let body_gap_start = parameter_tail
-            .last()
-            .map_or(closing + 1, |comment| comment.span.end.max(closing + 1));
+        let (parameter_tail, body_comments) = tail_comments.split_at(before_close);
         let mut mode = self.catch_binding_mode(span);
         if self.has_suppression {
+            // Preserve the binding and block targets independently of the closing delimiter.
+            let body_line = body_comments.partition_point(|comment| {
+                self.source_line_breaks(comment.span.end, body_start) != 0
+            });
+            let (before_body_line, on_body_line) = body_comments.split_at(body_line);
             if self.content_mode(head_comments) == ContentMode::Verbatim
                 || self.content_mode(parameter_tail) == ContentMode::Verbatim
+                || self.content_mode(before_body_line) == ContentMode::Verbatim
             {
                 mode = ContentMode::Verbatim;
             }
-            if self.content_mode(body_comments) == ContentMode::Verbatim {
+            if self.content_mode(on_body_line) == ContentMode::Verbatim {
                 body.mode = ContentMode::Verbatim;
             }
         }
@@ -469,7 +410,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if matches!(tail, CatchParameterTail::Source(_)) {
                 body_start
             } else {
-                body_gap_start
+                closing + 1
             },
             body_start,
         ));
@@ -579,17 +520,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let Some(handler) = handler.head else {
             return self.format_verbatim(handler.node.span(self.ast), writer);
         };
-        if handler.leading_before_parameter {
-            self.comments.claim(handler.body.leading.comments())?;
-        }
         writer.text("catch");
         if let Some(binding) = handler.binding {
             let binding = match binding {
                 CatchBinding::Annotated(binding) => {
                     self.format_annotated_catch_binding(binding, writer)?;
-                    if !handler.leading_before_parameter {
-                        self.comments.claim(handler.body.leading.comments())?;
-                    }
                     return self.format_compound_block_part(handler.body, writer);
                 }
                 CatchBinding::Plain(binding) => binding,
@@ -687,9 +622,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 Writer::space,
                 writer,
             )?;
-        }
-        if !handler.leading_before_parameter {
-            self.comments.claim(handler.body.leading.comments())?;
         }
         self.format_compound_block_part(handler.body, writer)
     }
