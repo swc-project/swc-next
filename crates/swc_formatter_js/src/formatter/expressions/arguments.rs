@@ -576,6 +576,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.finish_delimited_item_with_array_comments(item, tail, None, writer)
     }
 
+    /// A line comment before a declarator's real comma ends before punctuation.
+    pub(in crate::formatter) fn finish_declarator_item(
+        &mut self,
+        item: PreparedItem,
+        tail: Option<ExpressionTail<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ItemBoundary, FormatError> {
+        if let FollowingItem::Node(next) = item.following
+            && !item.source_following
+            && item
+                .suppression
+                .as_ref()
+                .is_none_or(|source| source.preceding.is_none())
+        {
+            let start = tail
+                .as_ref()
+                .map_or(item.item_span.end, |tail| tail.source_end);
+            let gap = Span::new(start, next.start);
+            let comments = self.comments.in_range(gap);
+            if let Some(line) = comments
+                .iter()
+                .find(|comment| comment.kind == CommentKind::Line)
+                && let Some(comma) = self.find_comma(gap, comments)
+                && line.span.end <= comma
+                && !self.has_line_directive_in(Span::new(start, comma))
+                && !comments
+                    .iter()
+                    .take_while(|comment| comment.span.end <= comma)
+                    .any(|&comment| self.comment_is_diagnostic_directive(comment))
+            {
+                self.format_source_token_gap(start, comma, false, writer)?;
+                writer.text(",");
+                return Ok(ItemBoundary {
+                    end: comma + 1,
+                    separator: Separator::Line,
+                    following_mode: item
+                        .suppression
+                        .map_or(ContentMode::Formatted, |source| source.following),
+                    elisions: ElisionLayout::Formatted,
+                    transition: None,
+                    terminal_close: None,
+                });
+            }
+        }
+        self.finish_delimited_item(item, tail, writer)
+    }
+
     pub(in crate::formatter) fn finish_delimited_item_with_closing(
         &mut self,
         item: PreparedItem,

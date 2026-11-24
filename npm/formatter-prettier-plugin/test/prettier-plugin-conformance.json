@@ -563,6 +563,60 @@
         "prettierNative": "target = // @ts-expect-error\n  /** @type {number} */ (first);\n"
       }
     ],
+    "js/assignment-operator-comments/unicode-initializer-directive.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let a // @ts-expect-error\n  = [missing] // declarator\n  ,\n  b;\n",
+        "prettierNative": "let a =\n    // @ts-expect-error\n    [missing], // declarator\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let a // @ts-expect-error\n  = [missing] // declarator\n  ,\n  b;\n",
+        "prettierNative": "let a =\n    // @ts-expect-error\n    [missing], // declarator\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let a // @ts-expect-error\n  = [missing] // declarator\n  ,\n  b\n",
+        "prettierNative": "let a =\n    // @ts-expect-error\n    [missing], // declarator\n  b\n"
+      }
+    ],
+    "js/assignment-operator-comments/unicode-moved-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let a // initializer\n  =\n    [1] // declarator\n  ,\n  b;\n",
+        "prettierNative": "let a =\n    // initializer\n    [1], // declarator\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let a // initializer\n  =\n    [1] // declarator\n  ,\n  b;\n",
+        "prettierNative": "let a =\n    // initializer\n    [1], // declarator\n  b;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let a // initializer\n  =\n    [1] // declarator\n  ,\n  b\n",
+        "prettierNative": "let a =\n    // initializer\n    [1], // declarator\n  b\n"
+      }
+    ],
     "js/assignment-operator-comments/unicode-own-line.js": [
       {
         "options": {
@@ -9046,6 +9100,77 @@
         },
         "swcPlugin": "({\n  [key(  )] : /* prettier-ignore */\nvalue,\n}) => value;\n",
         "prettierNative": "({ [key(  )] : /* prettier-ignore */\nvalue }) => value;\n"
+      }
+    ],
+    "js/expressions/assignment/array-line-before.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "target // before\n=\n  [first, second];\n",
+        "prettierNative": "target =\n  // before\n  [first, second];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "target // before\n=\n  [first, second]\n",
+        "prettierNative": "target =\n  // before\n  [first, second]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "target // before\n=\n  [first, second];\n",
+        "prettierNative": "target =\n  // before\n  [first, second];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "target // before\n=\n  [\n    first,\n    second,\n  ];\n",
+        "prettierNative": "target =\n  // before\n  [\n    first,\n    second,\n  ];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 4
+        },
+        "swcPlugin": "target // before\n=\n    [first, second];\n",
+        "prettierNative": "target =\n    // before\n    [first, second];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "target // before\n=\n\t[first, second];\n",
+        "prettierNative": "target =\n\t// before\n\t[first, second];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "indentWidth": 1
+        },
+        "swcPlugin": "target // before\n=\n [first, second];\n",
+        "prettierNative": "target =\n // before\n [first, second];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "target // before\r\n=\r\n  [first, second];\r\n",
+        "prettierNative": "target =\r\n  // before\r\n  [first, second];\r\n"
       }
     ],
     "js/expressions/assignment/call-priority/boundary-comment.js": [
