@@ -649,7 +649,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         comments: &comments[split..],
                         layout: GapLayout::Formatted,
                     };
-                    if self.transfer_block_leading(&mut gap, &mut body) {
+                    let block_span = block.span(ast);
+                    // The statement sequence can keep the child block in source
+                    // form when its line or trailing packet protects it.
+                    if !gap.comments.is_empty()
+                        && !self.lint_line_intersects(block_span)
+                        && !self.has_suppression_in(Span::new(block_span.end, span.end))
+                        && self.transfer_block_leading(&mut gap, &mut body)
+                    {
                         prepared.body_leading = body.leading;
                     }
                 }
