@@ -501,6 +501,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(envelope)
     }
 
+    /// Array cover grammar drops target pairs from the AST. Recover just the
+    /// pairs around this element so separators start outside their tokens.
+    pub(in crate::formatter) fn prepare_array_pattern_target(
+        &self,
+        target: SimpleTarget,
+        preceding_end: u32,
+        next_start: u32,
+    ) -> Result<Option<PreparedTarget>, FormatError> {
+        let span = target.span(self.ast);
+        let gap = Span::new(preceding_end, span.start);
+        let comments = self.source_comments_in_range(gap);
+        let Some(opening) = self.find_token(gap, comments, "(") else {
+            return Ok(None);
+        };
+        let mut trailing = self.target_gap(Span::new(span.end, next_start));
+        self.prepare_target_envelope(
+            TargetNode::Simple(target),
+            TargetUse::PatternElement,
+            Span::new(opening, span.start),
+            &mut trailing,
+            None,
+            None,
+        )
+        .map(Some)
+    }
+
     fn target_gap(&self, span: Span) -> TargetGap<'_> {
         TargetGap {
             source: self.ast.source(),

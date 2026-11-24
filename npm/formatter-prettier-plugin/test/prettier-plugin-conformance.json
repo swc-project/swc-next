@@ -681,6 +681,44 @@
         "prettierNative": "[\n  first /* slot */,\n  ,\n  last,\n] = value;\n"
       }
     ],
+    "js/assignment-pattern/array-separator-ownership/parenthesized-ignore.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "[\n  (a) /* prettier-ignore */,\n  b,\n] = e;\n[\n  a /* prettier-ignore */,\n  b,\n] = e;\n[\n  (a), // prettier-ignore\n,\n  b,\n] = e;\n",
+        "prettierNative": "[\n  a /* prettier-ignore */,\n  b,\n] = e;\n[\n  a /* prettier-ignore */,\n  b,\n] = e;\n[\n  a, // prettier-ignore\n  ,\n  b,\n] = e;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "[(a) /* prettier-ignore */, b] = e;\n[a /* prettier-ignore */, b] = e;\n[\n  (a), // prettier-ignore\n,\n  b,\n] = e;\n",
+        "prettierNative": "[a /* prettier-ignore */, b] = e;\n[a /* prettier-ignore */, b] = e;\n[\n  a, // prettier-ignore\n  ,\n  b,\n] = e;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[\n  (a) /* prettier-ignore */,\n  b,\n] = e\n;[\n  a /* prettier-ignore */,\n  b,\n] = e\n;[\n  (a), // prettier-ignore\n,\n  b,\n] = e\n",
+        "prettierNative": ";[\n  a /* prettier-ignore */,\n  b,\n] = e\n;[\n  a /* prettier-ignore */,\n  b,\n] = e\n;[\n  a, // prettier-ignore\n  ,\n  b,\n] = e\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[(a) /* prettier-ignore */, b] = e\n;[a /* prettier-ignore */, b] = e\n;[\n  (a), // prettier-ignore\n,\n  b,\n] = e\n",
+        "prettierNative": ";[a /* prettier-ignore */, b] = e\n;[a /* prettier-ignore */, b] = e\n;[\n  a, // prettier-ignore\n  ,\n  b,\n] = e\n"
+      }
+    ],
     "js/assignment-pattern/ignored-child-own-tail.js": [
       {
         "options": {

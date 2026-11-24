@@ -186,17 +186,26 @@ impl ObjectBindingShape {
 }
 
 enum PreparedBindingValue {
-    Pattern { node: BindingPattern, start: u32 },
+    Pattern { node: BindingPattern, span: Span },
     Target(PreparedTarget),
 }
 
 impl PreparedBindingValue {
-    fn start(&self) -> u32 {
+    fn span(&self) -> Span {
         match self {
-            Self::Pattern { start, .. } => *start,
-            Self::Target(target) => target.span.start,
+            Self::Pattern { span, .. } => *span,
+            Self::Target(target) => target.span,
         }
     }
+
+    fn start(&self) -> u32 {
+        self.span().start
+    }
+}
+
+struct PreparedBindingSlot {
+    holes: usize,
+    value: Option<PreparedBindingValue>,
 }
 
 struct BindingSlot {
@@ -639,10 +648,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )
                 .map(PreparedBindingValue::Target);
         }
-        Ok(PreparedBindingValue::Pattern {
-            node,
-            start: span.start,
-        })
+        Ok(PreparedBindingValue::Pattern { node, span })
     }
 
     fn format_binding_value(
@@ -1134,6 +1140,42 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(tail)
     }
 
+    fn prepare_array_binding_slot(
+        &self,
+        slots: &mut std::iter::Peekable<impl Iterator<Item = BindingSlot>>,
+        preceding_end: u32,
+        closing: u32,
+    ) -> Result<Option<PreparedBindingSlot>, FormatError> {
+        let Some(BindingSlot { holes, binding }) = slots.next() else {
+            return Ok(None);
+        };
+        let value = if let Some(node) = binding {
+            let span = node.span(self.ast);
+            let target = if let BindingPatternData::SimpleAssignmentTarget(target) =
+                self.ast.binding_pattern_data(node)
+            {
+                let next_start = slots
+                    .peek()
+                    .and_then(|slot| slot.binding)
+                    .map_or(closing, |node| node.span(self.ast).start);
+                self.prepare_array_pattern_target(
+                    SimpleTarget::new(self.ast, target),
+                    preceding_end,
+                    next_start,
+                )?
+            } else {
+                None
+            };
+            Some(target.map_or(
+                PreparedBindingValue::Pattern { node, span },
+                PreparedBindingValue::Target,
+            ))
+        } else {
+            None
+        };
+        Ok(Some(PreparedBindingSlot { holes, value }))
+    }
+
     fn format_array_binding(
         &mut self,
         array: ArrayPattern,
@@ -1174,31 +1216,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 let mut has_slot = false;
                 let mut following_mode = None;
                 let mut elisions = ElisionLayout::Formatted;
-                while let Some(slot) = slots.next() {
-                    let mode =
-                        slot.binding.map_or(ContentMode::Formatted, |binding| {
-                            following_mode.unwrap_or_else(|| {
-                                if self.has_suppression {
-                                    self.content_mode(self.comments.in_range(Span::new(
-                                        content.start,
-                                        binding.span(ast).start,
-                                    )))
-                                } else {
-                                    ContentMode::Formatted
-                                }
-                            })
-                        });
+                let mut next =
+                    self.prepare_array_binding_slot(&mut slots, content.start, content.end)?;
+                while let Some(slot) = next.take() {
+                    let span = slot.value.as_ref().map(PreparedBindingValue::span);
+                    let start = span.map_or(content.end, |span| span.start);
+                    let mode = following_mode.unwrap_or_else(|| {
+                        if self.has_suppression && span.is_some() {
+                            self.content_mode(
+                                self.comments.in_range(Span::new(content.start, start)),
+                            )
+                        } else {
+                            ContentMode::Formatted
+                        }
+                    });
                     if slot.holes != 0 {
                         if matches!(separator, Separator::EmptyLine) {
                             writer.break_parent();
                         }
                         (end, separator) = self.format_array_elisions(
                             slot.holes,
-                            Span::new(
-                                end,
-                                slot.binding
-                                    .map_or(content.end, |binding| binding.span(ast).start),
-                            ),
+                            Span::new(end, start),
                             elisions,
                             has_slot.then_some(separator),
                             ArgumentLayout::Lines,
@@ -1206,37 +1244,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         )?;
                         has_slot = true;
                     }
-                    let Some(binding) = slot.binding else {
-                        continue;
+                    let Some(value) = slot.value else {
+                        break;
                     };
+                    let value_span = value.span();
+                    next = self.prepare_array_binding_slot(&mut slots, value_span.end, content.end)?;
                     if has_slot {
                         let next = self
                             .comments
-                            .between(Span::new(end, binding.span(ast).start))?
+                            .between(Span::new(end, start))?
                             .first()
-                            .map_or(binding.span(ast).start, |comment| comment.span.start);
+                            .map_or(start, |comment| comment.span.start);
                         binding_separator(
                             separator,
                             self.source_separator_constraint(end, next, transition.as_ref()),
                             writer,
                         );
                     }
-                    let following = match slots.peek() {
+                    let following = match &next {
                         Some(slot) if slot.holes != 0 => FollowingItem::Elision {
-                            node: slot.binding.map(|node| node.span(ast)),
+                            node: slot.value.as_ref().map(PreparedBindingValue::span),
                             holes: slot.holes,
                         },
-                        Some(slot) => slot.binding.map_or(FollowingItem::End, |node| {
-                            FollowingItem::Node(node.span(ast))
+                        Some(slot) => slot.value.as_ref().map_or(FollowingItem::End, |value| {
+                            FollowingItem::Node(value.span())
                         }),
                         None => FollowingItem::End,
                     };
                     let rest = matches!(
-                        ast.binding_pattern_data(binding),
-                        BindingPatternData::BindingRestElement(_)
+                        value,
+                        PreparedBindingValue::Pattern { node, .. }
+                            if matches!(ast.binding_pattern_data(node), BindingPatternData::BindingRestElement(_))
                     );
                     let mut item = self.prepare_delimited_item(
-                        binding.span(ast),
+                        value_span,
                         following,
                         Span::new(end, content.end),
                         !rest && self.options.trailing_commas != TrailingCommas::None,
@@ -1244,7 +1285,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer,
                     )?;
                     item.set_leading_mode(mode);
-                    let tail = self.format_declaration_binding(binding, item.mode, writer)?;
+                    let tail = self.format_binding_value(value, item.mode, writer)?;
                     let boundary = self.finish_delimited_item(item, tail, writer)?;
                     end = boundary.end;
                     separator = boundary.separator;
