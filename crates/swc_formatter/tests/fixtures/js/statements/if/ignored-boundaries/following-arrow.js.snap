@@ -1,0 +1,20 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if( ready ) { show( 1 ); } // prettier-ignore
+else  show( 2 )
+value => value + 1
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+if( ready ) { show( 1 ); } // prettier-ignore
+else  show( 2 );
+(value) => value + 1;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if( ready ) { show( 1 ); } // prettier-ignore
+else  show( 2 );
+(value) => value + 1

@@ -10,7 +10,7 @@ use super::{
     Condition, ConditionHeader, ConditionLineSuffix, ConditionPrefix, ControlledBodyContent,
     ControlledBodyEnd, ControlledBodyRole, ControlledBodyShape,
 };
-use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
+use crate::formatter::diagnostics::LineConstraint;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, Semicolons, document::Writer};
 
@@ -72,9 +72,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .ok_or_else(|| self.unsupported("do-while keyword boundary", node))?;
         let keyword = Span::new(keyword_start, keyword_start + "while".len() as u32);
         let boundary = self.prepare_loop_boundary(statement, head, keyword, comments);
+        // The condition opener is a grammar delimiter. Comments in the
+        // keyword-to-opener gap belong to the header, outside the condition.
         let prefix = boundary
             .source
-            .map_or(ConditionPrefix::Canonical, |source| {
+            .map_or(ConditionPrefix::PreserveBeforeOpening, |source| {
                 ConditionPrefix::Source {
                     source,
                     mode: boundary.following,
@@ -119,7 +121,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             body = self.with_controlled_body_keyword_fence(body, keyword);
         }
         let keyword_boundary = body.keyword;
-        let body_suffix = body.condition_suffix();
         let condition_suffix = self.prepare_do_condition_suffix(&mut condition);
         let statement_suffix = boundary.source.is_none()
             && matches!(body.shape, ControlledBodyShape::Block)
@@ -135,19 +136,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         && ConditionLineSuffix::new(tail.tail.comments).is_some()
                 });
         if let Some(keyword_boundary) = keyword_boundary
-            && (body_suffix.is_some() || condition_suffix.is_some() || statement_suffix)
+            && (condition_suffix.is_some() || statement_suffix)
         {
             condition.inline = false;
             writer.group(false, |writer| {
                 writer.text("do");
-                let mut printed = self.format_controlled_body(body, writer)?;
-                if let Some(suffix) = body_suffix {
-                    self.format_condition_line_suffix(suffix, FlatSeparator::Space, writer)?;
-                    if let Some(last) = suffix.comments.last() {
-                        printed.boundary = printed.boundary.with_end(last.span.end);
-                    }
-                    printed.pending = None;
-                }
+                let printed = self.format_controlled_body(body, writer)?;
                 self.format_body_keyword(keyword_boundary, "while", printed, writer)?;
                 self.format_condition_with_suffix(condition, condition_suffix, writer)
             })?;
@@ -155,7 +149,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let printed = writer.group(false, |writer| {
             writer.text("do");
-            let printed = self.format_controlled_body(body, writer)?;
+            let mut printed = self.format_controlled_body(body, writer)?;
+            if let Some(source) = boundary.source {
+                printed.retain_pending_before(source.start);
+            }
             self.flush_statement_tail(printed, writer)
                 .map(PrintedStatement::from)
         })?;
@@ -186,12 +183,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut split = 0;
         let mut previous = *opening + 1;
         for comment in condition.leading {
-            if comment.span.start > *opening {
-                if self.line_breaks(previous, comment.span.start) != 0 {
-                    break;
-                }
-                previous = comment.span.start;
+            if self.line_breaks(previous, comment.span.start) != 0 {
+                break;
             }
+            previous = comment.span.start;
             split += 1;
         }
         let comments = &condition.leading[..split];

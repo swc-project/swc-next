@@ -17,8 +17,8 @@ use self::tails::{
 
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
-    ExportDefaultDeclarationKindData, ExprData, FunctionBody, GetSpan, Span, StaticBlock, Stmt,
-    StmtData, SubRange, TsModuleBlock,
+    ExportDefaultDeclarationKindData, Expr, ExprData, FunctionBody, GetSpan, Span, StaticBlock,
+    Stmt, StmtData, SubRange, TsModuleBlock,
 };
 
 use super::Formatter;
@@ -136,6 +136,11 @@ enum DirectivePrologue {
 #[derive(Clone, Copy)]
 enum FollowingSyntax {
     Statement,
+    ExpressionStatement {
+        expression: Expr,
+        string_statement: StringStatement,
+        mode: ContentMode,
+    },
     Keyword,
 }
 
@@ -356,9 +361,20 @@ impl StatementItem {
         }
     }
 
-    fn is_bodyless_function(self, ast: &Ast<'_>) -> bool {
-        self.declaration(ast)
-            .is_some_and(|node| matches!(ast.decl_data(node), DeclData::TsFunction(_)))
+    fn needs_terminator_before_block(mut self, ast: &Ast<'_>) -> bool {
+        while let Self::Statement(statement) = self
+            && let StmtData::LabeledStatement(label) = ast.stmt_data(statement)
+        {
+            self = Self::Statement(label.body(ast));
+        }
+        let Some(declaration) = self.declaration(ast) else {
+            return false;
+        };
+        match ast.decl_data(declaration) {
+            DeclData::TsFunction(_) => true,
+            DeclData::TsModuleDeclaration(module) => module.body(ast).is_none(),
+            _ => false,
+        }
     }
 
     fn has_open_type_tail(self, ast: &Ast<'_>) -> bool {
@@ -523,6 +539,21 @@ struct PrintedStatement<'ast> {
     boundary: StatementBoundary,
     pending: Option<ExpressionTail<'ast>>,
     operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
+}
+
+impl PrintedStatement<'_> {
+    /// An enclosing source gap or annotation packet owns the tail after this point.
+    fn retain_pending_before(&mut self, end: u32) {
+        if let Some(tail) = &mut self.pending {
+            let count = tail
+                .comments
+                .partition_point(|comment| comment.span.end <= end);
+            tail.comments = &tail.comments[..count];
+            if tail.comments.is_empty() {
+                self.pending = None;
+            }
+        }
+    }
 }
 
 impl From<StatementBoundary> for PrintedStatement<'_> {
@@ -912,7 +943,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     || pending.as_ref().is_some_and(|next| {
                         matches!(next.item, StatementItem::Statement(node)
                             if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))
-                    }) && statement.is_bodyless_function(ast))
+                    }) && statement.needs_terminator_before_block(ast))
             {
                 StatementPunctuation::Canonical(Semicolons::Always)
             } else {
@@ -926,6 +957,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     punctuation,
                     StatementPunctuation::Canonical(Semicolons::AsNeeded)
                 ) {
+                let kind = if self.has_suppression
+                    && mode == ContentMode::Formatted
+                    && let Some(next) = pending.as_ref()
+                    && let StatementItem::Statement(next_statement) = next.item
+                    && let StmtData::ExpressionStatement(expression) = ast.stmt_data(next_statement)
+                {
+                    let verbatim = next.mode == ContentMode::Verbatim
+                        || annotation_tail.as_ref().is_some_and(|tail| {
+                            tail.suppression.following == ContentMode::Verbatim
+                        })
+                        || next
+                            .annotation_tail
+                            .as_ref()
+                            .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim);
+                    FollowingSyntax::ExpressionStatement {
+                        expression: expression.expression(ast),
+                        string_statement,
+                        mode: if verbatim {
+                            ContentMode::Verbatim
+                        } else {
+                            ContentMode::Formatted
+                        },
+                    }
+                } else {
+                    kind
+                };
                 ContinuationBoundary::Following {
                     kind,
                     source: if mode == ContentMode::Formatted
@@ -1105,7 +1162,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     terminate_previous: !prior_statement_terminated,
                 };
             }
-            let printed = match statement {
+            let mut printed = match statement {
                 StatementItem::Directive(_) if source_line.owns() => {
                     self.format_node_head(head, expression_start, None, writer)?;
                     self.format_verbatim(statement_span, writer)?;
@@ -1221,6 +1278,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             };
+            if source_packet.is_none()
+                && let Some(first) = annotation_tail
+                    .as_ref()
+                    .and_then(|tail| tail.comments.first())
+            {
+                printed.retain_pending_before(first.span.start);
+            }
             let operator_tail = printed.operator_tail;
             let (mut boundary, pending_tail) =
                 if source_packet.is_some() || annotation_tail.is_some() {

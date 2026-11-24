@@ -9,7 +9,8 @@ while (aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit + anotherCo
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 do /* first */
-{} while ( // tail
+{} // tail
+while (
   aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
   anotherCondition
 );
@@ -18,7 +19,8 @@ do /* first */
 {"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
 do /* first */
-{} while ( // tail
+{} // tail
+while (
 	aVeryLongConditionNameThatDefinitelyExceedsThePrintWidthLimit +
 	anotherCondition
 );

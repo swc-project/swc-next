@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if /* Header */ ( ready ) { show( 1 ); } // prettier-ignore
+else  show( 2 )
+;[1].forEach(show)
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+if /* Header */ ( ready ) { show( 1 ); } // prettier-ignore
+else  show( 2 )
+;
+[1].forEach(show);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if /* Header */ ( ready ) { show( 1 ); } // prettier-ignore
+else  show( 2 )
+;
+[1].forEach(show)

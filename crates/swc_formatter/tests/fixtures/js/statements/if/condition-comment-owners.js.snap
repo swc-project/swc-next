@@ -1,0 +1,51 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+if /* Header */ (/* Condition */ ready) {
+  if // Nested header
+  (/* Nested condition */ enabled) run();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+if /* Header */ (/* Condition */ ready) {
+  if // Nested header
+  (/* Nested condition */ enabled)
+    run();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+if /* Header */ (/* Condition */ ready) {
+  if // Nested header
+  (/* Nested condition */ enabled)
+    run()
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+if /* Header */ (
+  /* Condition */ ready
+) {
+  if // Nested header
+  (
+    /* Nested condition */ enabled
+  )
+    run()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+if /* Header */ (
+	/* Condition */ ready
+) {
+	if // Nested header
+	(
+		/* Nested condition */ enabled
+	)
+		run();
+}
