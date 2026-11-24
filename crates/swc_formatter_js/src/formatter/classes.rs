@@ -22,7 +22,7 @@ use super::expressions::assignment::{
 };
 use super::expressions::objects::{ComputedKeySource, PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::{
-    AccessKind, ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
+    ExpressionContext, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
     ExpressionTypeArguments, OperandIndent, TailOwner,
 };
 use super::functions::bodyless::PreparedBodylessSignature;
@@ -656,8 +656,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let mut mode = prepared.first_mode;
             end = expression.span(ast).end;
             let arguments = if let Some(node) = class.super_type_arguments(ast) {
-                let arguments =
-                    self.prepare_expression_type_arguments(expression, node, AccessKind::Ordinary)?;
+                let arguments = self.prepare_heritage_type_arguments(expression, node)?;
                 if arguments.callee_mode == ContentMode::Verbatim {
                     mode = ContentMode::Verbatim;
                 }

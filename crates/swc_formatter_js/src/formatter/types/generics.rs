@@ -38,6 +38,7 @@ pub(in crate::formatter) enum TypeListKind {
 pub(in crate::formatter) enum TypeArgumentOwner {
     Ordinary,
     TypeQuery,
+    Heritage,
     ArrowVariableAnnotation,
 }
 
@@ -605,7 +606,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_type_arguments_with_owner(node, mode, TypeArgumentOwner::Ordinary, writer)
     }
 
-    pub(super) fn format_type_arguments_with_owner(
+    pub(in crate::formatter) fn format_type_arguments_with_owner(
         &mut self,
         node: TsTypeParameterInstantiation,
         mode: ContentMode,
@@ -821,7 +822,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             DelimitedClose::Source
         };
         let type_query = matches!(node, TypeList::Arguments(_, TypeArgumentOwner::TypeQuery));
-        let opening_comments = if type_query {
+        let separate_angles =
+            type_query || matches!(node, TypeList::Arguments(_, TypeArgumentOwner::Heritage));
+        // Body preparation can claim and record the first comment before the
+        // angle gap is written. It still separates the two tokens in the output.
+        let opening_comments = if separate_angles {
             self.comments.in_range(content)
         } else {
             &[]
@@ -901,7 +906,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 node,
                 TypeList::Arguments(
                     _,
-                    TypeArgumentOwner::Ordinary | TypeArgumentOwner::TypeQuery
+                    TypeArgumentOwner::Ordinary
+                        | TypeArgumentOwner::TypeQuery
+                        | TypeArgumentOwner::Heritage
                 )
             );
             let simple = prepared.source_owner.is_none()
@@ -1036,7 +1043,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             false
         };
-        if type_query
+        if separate_angles
             && first_body.is_none()
             && let Some(GenericMember::Type(first)) = members.peek().copied()
         {
@@ -1044,10 +1051,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 first_type.get_or_insert_with(|| self.prepare_type(first, ContentMode::Formatted));
             first_body = Some(self.prepare_delimited_type(*prepared)?);
         }
-        // The query owns a standalone `<` token. Prepare the actual first body
-        // before choosing its flat gap: transparent wrappers can expose a generic
-        // function, while retained pairs and leading comment packets separate it.
-        let separate_opening = type_query
+        // These grammar positions require a standalone `<` token. Use the
+        // prepared first type: transparent pairs can expose a generic function.
+        let separate_opening = separate_angles
             && first_body.as_ref().is_some_and(|body| {
                 matches!(&body.content, super::compound::PreparedTypeContent::Type(first)
                     if matches!(first.data, TsTypeData::TsFunctionType(function)

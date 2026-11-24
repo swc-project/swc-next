@@ -1,0 +1,26 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+class C extends Base<(<T>() => T)> implements I< <T>() => T> {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+class C extends Base< <T>() => T> implements I< <T>() => T> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+class C
+  extends Base<
+    <T>() => T
+  >
+  implements
+    I<
+      <T>() => T
+    > {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
+---------- Output ----------
+class C extends Base< <T>() => T> implements I< <T>() => T> {}

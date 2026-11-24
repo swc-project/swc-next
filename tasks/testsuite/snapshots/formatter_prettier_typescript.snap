@@ -3,12 +3,12 @@ formatter * prettier 3.9.9 * typescript
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
 Fixture files: 649
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 798/801 (99.63%)
-Snapshot matched: 798/801
+Passed: 797/801 (99.50%)
+Snapshot matched: 797/801
 AST parity: 801/801
 AST mismatched: 0/801
 AST format errors: 0/801
-Mismatched: 3/801
+Mismatched: 4/801
 Format errors: 0/801
 Panicked: 0/801
 Not idempotent: 0/801
@@ -26,6 +26,7 @@ Unsupported option sets: 4
 - typescript/binary-expressions/chain-expression.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/class-implements.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/declare.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- typescript/type-arguments-bit-shift-left-like/3.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 

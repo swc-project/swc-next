@@ -39561,6 +39561,53 @@
         "prettierNative": "interface First {\r\n\tvalue: string;\r\n}\r\nclass Subject\r\n\t// @ts-ignore\r\n\timplements First, MissingFirst, MissingSecond {}\r\nconst outsideSentinel: number = \"outside\";\r\n"
       }
     ],
+    "ts/heritage-first-item/generic-function-interface.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface C extends Base< <T>() => T>, I</* boundary */ <T>() => T> {}\n",
+        "prettierNative": "interface C extends Base<<T>() => T>, I</* boundary */ <T>() => T> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 100,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface C extends Base< <T>() => T>, I</* boundary */ <T>() => T> {}\r\n",
+        "prettierNative": "interface C extends Base<<T>() => T>, I</* boundary */ <T>() => T> {}\r\n"
+      }
+    ],
+    "ts/heritage-first-item/generic-function-superclass.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C extends Base< <T>() => T> implements I< <T>() => T> {}\n",
+        "prettierNative": "class C extends Base<<T>() => T> implements I<<T>() => T> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C\n  extends Base<\n    <T>() => T\n  >\n  implements\n    I<\n      <T>() => T\n    > {}\n",
+        "prettierNative": "class C\n  extends Base<\n    <T>() => T\n  >\n  implements\n    I<<T>() => T> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 100,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "class C extends Base< <T>() => T> implements I< <T>() => T> {}\r\n",
+        "prettierNative": "class C extends Base<<T>() => T> implements I<<T>() => T> {}\r\n"
+      }
+    ],
     "ts/heritage-first-item/heritage-ignore-bridge/after-keyword-head/input.ts": [
       {
         "options": {
