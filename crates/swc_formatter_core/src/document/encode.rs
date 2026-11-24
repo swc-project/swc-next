@@ -2,12 +2,64 @@
 //!
 //! Header: `SWCD`, version u32, fragment count u32, string-pool length u32.
 //! Then (byte length u32, instructions) per fragment, followed by UTF-8 strings.
-//! Integers are little endian. Scope ends identify their opening scope; all indent forms share one end tag.
+//! An optional label table follows the string pool. Its byte length excludes
+//! the length word itself, followed by a nonzero count and length-prefixed
+//! opaque records in label ID order. Integers are little endian.
 use rustc_hash::FxHashMap;
 
-use super::{ConditionTarget, Doc, Group, GroupId, Instruction};
+use super::{ConditionTarget, Doc, DocumentBufferError, Group, GroupId, Instruction};
 
 pub(crate) fn encode<const PRETTIER: bool>(document: Doc<'_>) -> Vec<u8> {
+    let (mut output, _) = encode_layout::<PRETTIER>(&document);
+    output.extend_from_slice(document.label_data);
+    output
+}
+
+pub(super) fn encode_with_label_data(
+    document: Doc<'_>,
+    records: &[impl AsRef<[u8]>],
+) -> Result<Vec<u8>, DocumentBufferError> {
+    let count = u32::try_from(records.len()).map_err(|_| DocumentBufferError::LimitExceeded)?;
+    let (mut output, max_label) = encode_layout::<true>(&document);
+    if count == 0 {
+        return Ok(output);
+    }
+    if max_label.is_some_and(|id| id >= count) {
+        return Err(DocumentBufferError::InvalidDocument);
+    }
+    let start = output.len();
+    reserve_label_data(&mut output, 8)?;
+    output.extend(0u32.to_le_bytes());
+    output.extend(count.to_le_bytes());
+    for record in records {
+        let bytes = record.as_ref();
+        let size = bytes
+            .len()
+            .checked_add(4)
+            .ok_or(DocumentBufferError::LimitExceeded)?;
+        reserve_label_data(&mut output, size)?;
+        word(&mut output, bytes.len());
+        output.extend_from_slice(bytes);
+    }
+    let length = (output.len() - start - 4) as u32;
+    output[start..start + 4].copy_from_slice(&length.to_le_bytes());
+    Ok(output)
+}
+
+fn reserve_label_data(output: &mut Vec<u8>, size: usize) -> Result<(), DocumentBufferError> {
+    if output
+        .len()
+        .checked_add(size)
+        .is_none_or(|len| len > u32::MAX as usize)
+    {
+        return Err(DocumentBufferError::LimitExceeded);
+    }
+    output
+        .try_reserve(size)
+        .map_err(|_| DocumentBufferError::LimitExceeded)
+}
+
+fn encode_layout<const PRETTIER: bool>(document: &Doc<'_>) -> (Vec<u8>, Option<u32>) {
     let mut encoder = Encoder {
         normalize_groups: document.root.has_source_groups(),
         ..Encoder::default()
@@ -30,7 +82,7 @@ pub(crate) fn encode<const PRETTIER: bool>(document: Doc<'_>) -> Vec<u8> {
         output.extend(fragment);
     }
     output.extend(encoder.strings);
-    output
+    (output, encoder.max_label)
 }
 
 #[derive(Default)]
@@ -42,6 +94,7 @@ struct Encoder<'a> {
     group_records: FxHashMap<usize, usize>,
     strings: Vec<u8>,
     string_ids: FxHashMap<&'a str, (usize, usize)>,
+    max_label: Option<u32>,
 }
 
 fn word(output: &mut Vec<u8>, value: usize) {
@@ -178,6 +231,7 @@ impl<'a> Encoder<'a> {
                 Instruction::Trim => output.push(27),
                 Instruction::Cursor => output.push(28),
                 Instruction::StartLabel(id) => {
+                    self.max_label = self.max_label.max(Some(id.0));
                     output.push(29);
                     word(&mut output, id.0 as usize);
                 }

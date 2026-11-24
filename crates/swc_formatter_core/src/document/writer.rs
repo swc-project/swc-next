@@ -197,6 +197,7 @@ impl<'a> Writer<'a> {
 
     /// Associates caller-owned metadata with a scope without affecting layout.
     pub fn label<T>(&mut self, id: LabelId, write: impl FnOnce(&mut Self) -> T) -> T {
+        self.facts.label();
         self.elements.push(Instruction::StartLabel(id));
         let result = write(self);
         self.elements.push(Instruction::EndLabel);
@@ -802,6 +803,7 @@ impl<'a> Writer<'a> {
     /// Each call reserves fresh named group IDs, including their conditional references.
     /// Reusing the returned fragment shares those IDs within this formatting call.
     /// Current-mode conditions and caller-owned label IDs retain their meaning.
+    /// Supply the complete label table when encoding a composed document with label records.
     ///
     /// The document's arena and any borrowed source or encoded buffer must remain
     /// alive for `'a`. Shared scopes are retained while changed instructions are
@@ -859,6 +861,7 @@ impl<'a> Writer<'a> {
             allocator: self.allocator,
             group_count: self.group_count,
             root: self.finish_fragment(),
+            label_data: &[],
         }
     }
 }

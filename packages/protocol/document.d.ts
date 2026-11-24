@@ -10,3 +10,14 @@ export interface EncodedDoc {
  * values dedent once; -Infinity restores the marked root.
  */
 export declare function encodeDoc(doc: unknown): EncodedDoc;
+
+/** Reads the SWCD frame and returns views into the input buffer. */
+export declare function readDocument(
+  buffer: Uint8Array,
+  visitFragment?: (
+    view: DataView,
+    start: number,
+    end: number,
+    fragmentCount: number,
+  ) => void,
+): { stringPool: Uint8Array; labelData: Uint8Array[] };

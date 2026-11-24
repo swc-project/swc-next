@@ -396,6 +396,9 @@ importers:
       '@swc-next/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@swc-next/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       cross-env:
         specifier: 'catalog:'
         version: 10.1.0

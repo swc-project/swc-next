@@ -1,6 +1,6 @@
 use swc_next_allocator::Allocator;
 
-use super::{ConditionTarget, Doc, Fragment, GroupRequest, Instruction, Writer};
+use super::{ConditionTarget, Doc, Fragment, GroupRequest, Instruction, LabelId, Writer};
 use crate::{IndentIfBreakOptions, IndentStyle, LineEnding, PrintOptions};
 
 fn write_comment_suffix<'a>(writer: &mut Writer<'a>, text: &'a str) {
@@ -1579,6 +1579,7 @@ fn deep_indentation() {
         allocator: &allocator,
         root: super::transform::summarize(&allocator, elements),
         group_count: 0,
+        label_data: &[],
     };
     let options = PrintOptions {
         indent_width: 64.try_into().unwrap(),
@@ -4636,6 +4637,77 @@ fn decode_invalid_document() {
     assert!(Doc::decode(&allocator, &cycle).is_err());
 }
 
+#[test]
+fn document_label_data() {
+    let allocator = Allocator::new();
+    let document = doc(&allocator, |writer| {
+        writer.label(LabelId(0), |writer| writer.text("fall"));
+        writer.label(LabelId(0), |writer| writer.text("back"));
+    });
+    let options = PrintOptions::default();
+    let legacy = Doc { ..document }.encode_for_prettier();
+    let empty: &[&[u8]] = &[];
+    let plain = Doc { ..document }.encode_for_prettier_with_label_data(empty);
+    assert_eq!(plain.unwrap(), legacy);
+    assert_eq!(
+        Doc::decode(&allocator, &legacy).unwrap().print(options),
+        "fallback"
+    );
+
+    let records: [&[u8]; 2] = [b"\xff\0", b""];
+    let encoded = document
+        .encode_for_prettier_with_label_data(&records)
+        .unwrap();
+    assert_eq!(&encoded[..legacy.len()], legacy);
+    assert_eq!(
+        &encoded[legacy.len()..],
+        &[14, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 0xff, 0, 0, 0, 0, 0],
+    );
+    let decoded = Doc::decode(&allocator, &encoded).unwrap();
+    assert_eq!(Doc { ..decoded }.encode(), encoded);
+    assert_eq!(Doc { ..decoded }.encode_for_prettier(), encoded);
+    assert_eq!(decoded.print(options), "fallback");
+}
+
+#[test]
+fn invalid_label_data() {
+    let allocator = Allocator::new();
+    let document = doc(&allocator, |writer| writer.label(LabelId(1), |_| {}));
+    let plain = Doc { ..document }.encode_for_prettier();
+    let start = plain.len();
+    let one_record = Doc { ..document }.encode_for_prettier_with_label_data(&[b""]);
+    assert!(matches!(
+        one_record,
+        Err(super::DocumentBufferError::InvalidDocument)
+    ));
+
+    let encoded = document
+        .encode_for_prettier_with_label_data(&[b"", b""])
+        .unwrap();
+    for end in start + 1..encoded.len() {
+        assert!(Doc::decode(&allocator, &encoded[..end]).is_err());
+    }
+
+    let mut extra = encoded.clone();
+    extra.push(0);
+    assert!(Doc::decode(&allocator, &extra).is_err());
+    let length = (extra.len() - start - 4) as u32;
+    extra[start..start + 4].copy_from_slice(&length.to_le_bytes());
+    assert!(Doc::decode(&allocator, &extra).is_err());
+
+    let mut long_record = encoded;
+    long_record[start + 8..start + 12].copy_from_slice(&u32::MAX.to_le_bytes());
+    assert!(Doc::decode(&allocator, &long_record).is_err());
+
+    let mut empty = plain.clone();
+    empty.extend([4, 0, 0, 0, 0, 0, 0, 0]);
+    assert!(Doc::decode(&allocator, &empty).is_err());
+
+    let mut out_of_range = plain;
+    out_of_range.extend([8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+    assert!(Doc::decode(&allocator, &out_of_range).is_err());
+}
+
 fn assert_decoded_prints(doc: Doc<'_>, options: PrintOptions) {
     let allocator = doc.allocator;
     let encoded = Doc { ..doc }.encode();
@@ -5308,7 +5380,18 @@ fn decode_text_work_limit() {
         fragment.extend(start.to_le_bytes());
         fragment.extend(200u32.to_le_bytes());
     }
-    let bytes = document_buffer(&[&fragment], &vec![b'a'; 240]);
+    let mut bytes = document_buffer(&[&fragment], &vec![b'a'; 240]);
+    assert!(matches!(
+        Doc::decode(&allocator, &bytes),
+        Err(super::DocumentBufferError::LimitExceeded)
+    ));
+
+    let padding = [0xff; 400];
+    let record_len = padding.len() as u32;
+    bytes.extend((record_len + 8).to_le_bytes());
+    bytes.extend(1u32.to_le_bytes());
+    bytes.extend(record_len.to_le_bytes());
+    bytes.extend(padding);
     assert!(matches!(
         Doc::decode(&allocator, &bytes),
         Err(super::DocumentBufferError::LimitExceeded)
@@ -5889,6 +5972,57 @@ fn replace_end_of_line_and_group_identity() {
         .replace_end_of_line_with(replacement)
         .print(options);
     assert_eq!(result, "a\nbB");
+}
+
+#[test]
+fn replace_end_of_line_label_data() {
+    fn assert_records(document: Doc<'_>, records: &[&[u8]]) {
+        let encoded = Doc { ..document }.encode_for_prettier();
+        let expected = document
+            .encode_for_prettier_with_label_data(records)
+            .unwrap();
+        assert_eq!(encoded, expected);
+    }
+
+    let allocator = Allocator::new();
+    let source_records: &[&[u8]] = &[b"source"];
+    let replacement_records: &[&[u8]] = &[b"replacement"];
+    let labeled = |text: &'static str, records: &[&[u8]]| {
+        doc(&allocator, |writer| {
+            writer.label(LabelId(0), |w| w.text(text))
+        })
+        .encode_for_prettier_with_label_data(records)
+        .unwrap()
+    };
+    let source = labeled("a\nb", source_records);
+    let document = Doc::decode(&allocator, &source).unwrap();
+    let replacement = labeled("/", replacement_records);
+    let replacement = Doc::decode(&allocator, &replacement).unwrap();
+
+    let separator = doc(&allocator, |writer| writer.text("/"));
+    let replaced = Doc { ..document }.replace_end_of_line_with(separator);
+    assert_eq!(Doc { ..replaced }.print(PrintOptions::default()), "a/b");
+    assert_records(replaced, source_records);
+
+    let plain = doc(&allocator, |writer| writer.text("a\nb"));
+    let replaced = plain.replace_end_of_line_with(Doc { ..replacement });
+    assert_records(replaced, replacement_records);
+
+    let replaced = Doc { ..document }.replace_end_of_line_with(replacement);
+    assert_records(replaced, &[]);
+
+    let shared = labeled("/", source_records);
+    let shared = Doc::decode(&allocator, &shared).unwrap();
+    let replaced = Doc { ..document }.replace_end_of_line_with(shared);
+    assert_records(replaced, source_records);
+
+    let separator = doc(&allocator, |writer| {
+        let primary = record(writer, |writer| writer.text("/"));
+        let dormant = record(writer, |writer| writer.label(LabelId(7), |_| ()));
+        writer.write_group_with_states(GroupRequest::Auto, None, primary, dormant, &[primary]);
+    });
+    let encoded = document.replace_end_of_line_with(separator).encode();
+    assert!(Doc::decode(&allocator, &encoded).is_ok());
 }
 
 #[test]

@@ -14,7 +14,7 @@ pub enum DocumentBufferError {
     InvalidDocument,
     /// The document format version is not supported.
     UnsupportedVersion(u32),
-    /// The input or decoding work exceeds a supported limit.
+    /// The buffer size or decoding work exceeds a supported limit.
     LimitExceeded,
 }
 
@@ -25,7 +25,7 @@ impl fmt::Display for DocumentBufferError {
             Self::UnsupportedVersion(version) => {
                 write!(f, "unsupported document version {version}")
             }
-            Self::LimitExceeded => f.write_str("document decoding limit exceeded"),
+            Self::LimitExceeded => f.write_str("document buffer limit exceeded"),
         }
     }
 }
@@ -73,7 +73,7 @@ struct Reader<'a> {
     at: usize,
 }
 
-impl Reader<'_> {
+impl<'a> Reader<'a> {
     fn byte(&mut self) -> Result<u8> {
         let b = *self
             .bytes
@@ -100,7 +100,7 @@ impl Reader<'_> {
         ))
     }
 
-    fn take(&mut self, len: usize) -> Result<&[u8]> {
+    fn take(&mut self, len: usize) -> Result<&'a [u8]> {
         let end = self
             .at
             .checked_add(len)
@@ -112,6 +112,28 @@ impl Reader<'_> {
         self.at = end;
         Ok(slice)
     }
+}
+
+fn label_count(data: &[u8]) -> Result<Option<u32>> {
+    if data.is_empty() {
+        return Ok(None);
+    }
+    let mut reader = Reader { bytes: data, at: 0 };
+    if reader.word()? as usize != data.len() - reader.at {
+        return Err(DocumentBufferError::InvalidDocument);
+    }
+    let count = reader.word()?;
+    if count == 0 || count as usize > (data.len() - reader.at) / 4 {
+        return Err(DocumentBufferError::InvalidDocument);
+    }
+    for _ in 0..count {
+        let len = reader.word()? as usize;
+        reader.take(len)?;
+    }
+    if reader.at != data.len() {
+        return Err(DocumentBufferError::InvalidDocument);
+    }
+    Ok(Some(count))
 }
 
 fn reference(r: &mut Reader<'_>, count: usize) -> Result<usize> {
@@ -829,18 +851,24 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
         let len = reader.word()? as usize;
         fragments.push(parse_fragment(reader.take(len)?, count)?);
     }
-    if pool_len != bytes.len() - reader.at {
+    let pool = reader.take(pool_len)?;
+    let label_data = &bytes[reader.at..];
+    if let Some(count) = label_count(label_data)?
+        && fragments
+            .iter()
+            .flatten()
+            .any(|op| matches!(op, Op::Start(ScopeStart::Label(LabelId(id))) if *id >= count))
+    {
         return Err(DocumentBufferError::InvalidDocument);
     }
-    let pool = &bytes[reader.at..];
     let order = order(&fragments)?;
     let mut built = vec![None; count];
     let mut ids = HashMap::default();
     let mut strings = StringCache {
         texts: HashMap::default(),
         prefixes: HashMap::default(),
-        budget: bytes
-            .len()
+        budget: reader
+            .at
             .checked_mul(8)
             .ok_or(DocumentBufferError::LimitExceeded)?,
     };
@@ -863,5 +891,6 @@ pub(super) fn decode<'a>(allocator: &'a Allocator, bytes: &'a [u8]) -> Result<Do
         allocator,
         root,
         group_count,
+        label_data,
     })
 }

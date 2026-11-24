@@ -8,7 +8,7 @@ use rustc_hash::FxHashSet;
 use swc_next_allocator::{Allocator, vec::ArenaVec};
 
 use super::{
-    Fragment, GroupId, GroupRequest, Instruction,
+    Fragment, FragmentSummary, GroupId, GroupRequest, Instruction,
     layout::{self, Mode},
 };
 
@@ -131,10 +131,12 @@ pub(super) trait Group<'a>: Copy {
     }
 
     #[inline(always)]
-    fn layout_flags(self) -> u8 {
+    fn layout_flags(self) -> u16 {
         let layouts = self.layouts();
+        // The raw codec retains the first state even when it cannot execute.
+        let stored_labels = self.stored_states()[0].summary.0 & FragmentSummary::HAS_LABELS;
         layouts.alternatives.iter().fold(
-            layouts.primary.summary.0 | layouts.fallback.summary.0,
+            layouts.primary.summary.0 | layouts.fallback.summary.0 | stored_labels,
             |flags, state| flags | state.summary.0,
         )
     }
@@ -218,7 +220,7 @@ impl<'a> Group<'a> for &'a CompactGroup<'a> {
         }
     }
     #[inline(always)]
-    fn layout_flags(self) -> u8 {
+    fn layout_flags(self) -> u16 {
         self.preferred
             .iter()
             .fold(self.fallback.summary.0, |flags, state| {

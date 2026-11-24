@@ -1,3 +1,4 @@
+import { readDocument } from "@swc-next/protocol/document";
 import { builders as b } from "prettier/doc";
 
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
@@ -10,125 +11,106 @@ class FillEntry {
   }
 }
 
-// Private ABI v0; keep in sync with document/encode.rs. Fragments are complete
-// scopes, so their standard Docs can be shared without caller-dependent state.
-export function decodeDoc(buffer, options = { tabWidth: 2 }, labels = []) {
-  const bytes = new Uint8Array(
-    buffer.buffer,
-    buffer.byteOffset,
-    buffer.byteLength,
-  );
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let offset = 0;
-  const word = () => {
-    if (offset + 4 > bytes.length) throw invalid();
+// Private ABI v0; keep the instruction tags in sync with document/encode.rs.
+function decodeFragment(bytes, view, offset, end, count) {
+  const byte = () => {
+    if (offset >= end) throw invalid();
+    return bytes[offset++];
+  };
+  const integer = () => {
+    if (offset + 4 > end) throw invalid();
     const value = view.getUint32(offset, true);
     offset += 4;
     return value;
   };
-  const magic = word();
-  if (word() !== 0) throw invalid();
-  if (magic !== 0x44435753) throw invalid();
-  const count = word();
-  const stringLength = word();
-  if (count === 0 || count > (bytes.length - offset) / 4) throw invalid();
-  const fragments = [];
-  for (let index = 0; index < count; index++) {
-    const end = word() + offset;
-    if (end > bytes.length) throw invalid();
-    const byte = () => {
-      if (offset >= end) throw invalid();
-      return bytes[offset++];
-    };
-    const integer = () => {
-      if (offset + 4 > end) throw invalid();
-      return word();
-    };
-    const reference = () => {
-      const id = integer();
-      if (id >= count) throw invalid();
-      return id;
-    };
-    const ops = [];
-    while (offset < end) {
-      const op = byte();
-      switch (op) {
-        case 0:
-        case 23:
-          ops.push([op, integer(), integer()]);
-          break;
-        case 2:
-        case 17:
-          ops.push([op, byte()]);
-          break;
-        case 3:
-        case 7:
-        case 8:
-          ops.push([op, byte(), integer()]);
-          break;
-        case 4:
-        case 11:
-        case 12:
-        case 14:
-        case 15:
-        case 16:
-        case 24:
-        case 25:
-        case 26:
-        case 27:
-        case 28:
-          ops.push([op]);
-          break;
-        case 6:
-        case 19:
-        case 29:
-          ops.push([op, integer()]);
-          break;
-        case 9:
-          ops.push([op, reference()]);
-          break;
-        case 10: {
+  const reference = () => {
+    const id = integer();
+    if (id >= count) throw invalid();
+    return id;
+  };
+  const ops = [];
+  while (offset < end) {
+    const op = byte();
+    switch (op) {
+      case 0:
+      case 23:
+        ops.push([op, integer(), integer()]);
+        break;
+      case 2:
+      case 17:
+        ops.push([op, byte()]);
+        break;
+      case 3:
+      case 7:
+      case 8:
+        ops.push([op, byte(), integer()]);
+        break;
+      case 4:
+      case 11:
+      case 12:
+      case 14:
+      case 15:
+      case 16:
+      case 24:
+      case 25:
+      case 26:
+      case 27:
+      case 28:
+        ops.push([op]);
+        break;
+      case 6:
+      case 19:
+      case 29:
+        ops.push([op, integer()]);
+        break;
+      case 9:
+        ops.push([op, reference()]);
+        break;
+      case 10: {
+        const length = integer();
+        if (length < 1 || length > (end - offset) / 4) throw invalid();
+        ops.push([op, Array.from({ length }, reference)]);
+        break;
+      }
+      case 21:
+        ops.push([op, integer(), reference(), reference()]);
+        break;
+      case 22: {
+        const flags = byte();
+        if (flags & ~3) throw invalid();
+        const id = integer();
+        const contents = reference();
+        let states;
+        if (flags & 2) {
           const length = integer();
           if (length < 1 || length > (end - offset) / 4) throw invalid();
-          ops.push([op, Array.from({ length }, reference)]);
-          break;
+          states = Array.from({ length }, reference);
         }
-        case 21:
-          ops.push([op, integer(), reference(), reference()]);
-          break;
-        case 22: {
-          const flags = byte();
-          if (flags & ~3) throw invalid();
-          const id = integer();
-          const contents = reference();
-          let states;
-          if (flags & 2) {
-            const length = integer();
-            if (length < 1 || length > (end - offset) / 4) throw invalid();
-            states = Array.from({ length }, reference);
-          }
-          ops.push([op, flags, id, contents, states]);
-          break;
-        }
-        default:
-          throw invalid();
+        ops.push([op, flags, id, contents, states]);
+        break;
       }
+      default:
+        throw invalid();
     }
-    fragments.push(ops);
   }
-  if (offset + stringLength !== bytes.length) throw invalid();
-  const poolStart = offset;
+  return ops;
+}
+
+// Fragments are complete scopes, so their Docs can share caller-independent state.
+export function decodeDoc(buffer, options = { tabWidth: 2 }, labels = []) {
+  const fragments = [];
+  const { stringPool, labelData } = readDocument(
+    buffer,
+    (view, start, end, count) => {
+      fragments.push(decodeFragment(buffer, view, start, end, count));
+    },
+  );
   const strings = new Map();
   const text = (start, length) => {
-    if (start + length > stringLength) throw invalid();
+    if (start + length > stringPool.length) throw invalid();
     const key = `${start}:${length}`;
     if (!strings.has(key))
-      strings.set(
-        key,
-        utf8.decode(
-          bytes.subarray(poolStart + start, poolStart + start + length),
-        ),
-      );
+      strings.set(key, utf8.decode(stringPool.subarray(start, start + length)));
     return strings.get(key);
   };
   const groups = new Map();
@@ -136,6 +118,14 @@ export function decodeDoc(buffer, options = { tabWidth: 2 }, labels = []) {
     if (id === 0) return undefined;
     if (!groups.has(id)) groups.set(id, Symbol());
     return groups.get(id);
+  };
+  const label = (id) => {
+    if (labelData.length !== 0) {
+      if (id >= labelData.length) throw invalid();
+      return id;
+    }
+    if (!Array.isArray(labels) || !Object.hasOwn(labels, id)) throw invalid();
+    return labels[id];
   };
   const docs = [];
   const entryLists = new WeakSet();
@@ -145,7 +135,7 @@ export function decodeDoc(buffer, options = { tabWidth: 2 }, labels = []) {
       text,
       group,
       options,
-      labels,
+      label,
       entryLists,
       hasEntries,
     });
@@ -207,7 +197,7 @@ function fillParts(parts, entryLists) {
 function build(
   ops,
   docs,
-  { text, group, options, labels, entryLists, hasEntries },
+  { text, group, options, label, entryLists, hasEntries },
 ) {
   const stack = [{ op: -1, parts: [] }];
   const append = (doc) => stack.at(-1).parts.push(doc);
@@ -359,12 +349,9 @@ function build(
             append(b.dedentToRoot(doc));
             break;
           case 29:
-            if (!Array.isArray(labels) || !Object.hasOwn(labels, frame.first)) {
-              throw invalid();
-            }
             append({
               type: "label",
-              label: labels[frame.first],
+              label: label(frame.first),
               contents: doc,
             });
             break;

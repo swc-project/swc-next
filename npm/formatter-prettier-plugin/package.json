@@ -34,12 +34,13 @@
   },
   "scripts": {
     "build:js": "pnpm -w exec rslib build --lib formatter-prettier-plugin",
-    "test": "pnpm -w build:js && node test/prettier-plugin-conformance.js",
+    "test": "pnpm -w build:js && node --test test/markdown.test.js && node test/prettier-plugin-conformance.js",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "prepack": "pnpm build:js"
   },
   "devDependencies": {
     "@swc-next/formatter": "workspace:*",
+    "@swc-next/protocol": "workspace:*",
     "cross-env": "catalog:",
     "prettier": "catalog:"
   }

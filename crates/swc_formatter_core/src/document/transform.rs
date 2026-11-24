@@ -23,6 +23,10 @@ pub(super) fn remove_lines<'a>(allocator: &'a Allocator, root: Fragment<'a>) -> 
 pub(super) fn replace_end_of_line<'a>(doc: Doc<'a>, replacement: Option<Doc<'a>>) -> Doc<'a> {
     let allocator = doc.allocator;
     let mut group_count = doc.group_count;
+    let replacement_label_data = replacement
+        .as_ref()
+        .filter(|doc| doc.root.summary.has_labels())
+        .map(|doc| doc.label_data);
     let replacement = match replacement {
         Some(replacement) => import_doc(allocator, &replacement, &mut group_count),
         None => summarize_array(allocator, [Instruction::LiteralLine]),
@@ -39,6 +43,13 @@ pub(super) fn replace_end_of_line<'a>(doc: Doc<'a>, replacement: Option<Doc<'a>>
     };
     if key(updated.elements()) != key(original.elements()) {
         doc.group_count = group_count;
+        if let Some(data) = replacement_label_data {
+            doc.label_data = if !original.summary.has_labels() || doc.label_data == data {
+                data
+            } else {
+                &[]
+            };
+        }
     }
     doc
 }
