@@ -31,6 +31,17 @@ pub struct RegExpOptions {
     pub unicode_sets_regex: bool,
 }
 
+impl RegExpOptions {
+    pub(crate) fn is_enabled(self) -> bool {
+        self.dot_all_regex
+            || self.has_indices
+            || self.lookbehind_assertion
+            || self.sticky_regex
+            || self.unicode_regex
+            || self.unicode_sets_regex
+    }
+}
+
 pub(crate) struct RegexpPass(pub(crate) RegExpOptions);
 
 impl RegexpPass {

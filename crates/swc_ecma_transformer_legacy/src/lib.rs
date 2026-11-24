@@ -270,10 +270,12 @@ impl Transformer {
                 &mut context,
             );
         }
-        let _ = program.traverse_mut_with(
-            &mut crate::regexp::RegexpPass(options.env.regexp),
-            &mut context,
-        );
+        if options.env.regexp.is_enabled() {
+            let _ = program.traverse_mut_with(
+                &mut crate::regexp::RegexpPass(options.env.regexp),
+                &mut context,
+            );
+        }
         context
             .state
             .helpers
