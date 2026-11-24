@@ -1548,6 +1548,7 @@ pub(super) struct CallArgumentPolicy {
 }
 
 pub(super) struct SelectedArgumentSequence {
+    pub(super) protect_runtime_items: bool,
     pub(super) arguments: SubRange<Argument>,
     pub(super) content: Span,
 }
@@ -1814,16 +1815,34 @@ impl<'ast> SourceArguments<'ast> {
     }
 }
 
-/// Facts needed only while recording fluent-chain arguments. Source-dependent
-/// collection policy stays in the language builder, outside document fitting.
 #[derive(Default)]
-pub(super) struct ChainArgumentFacts<'ast> {
+pub(super) struct ChainArgumentFacts {
     pub(super) has_function: bool,
-    pub(super) expansion: Option<ChainArgumentExpansion<'ast>>,
-    pub(super) terminal: bool,
-    pub(super) call_prefix: Option<Fragment<'ast>>,
     /// An argument contains source-expanded objects without intrinsic newlines.
     pub(super) source_expanded_object: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum CallAlternatives {
+    Omit,
+    Record,
+}
+
+/// Both fragments use the opener and comments emitted by the same call.
+pub(super) struct CallArgumentAlternative<'ast> {
+    pub(super) prefix: Option<Fragment<'ast>>,
+    pub(super) expansion: ChainArgumentExpansion<'ast>,
+}
+
+pub(super) struct RecordedChainArguments<'ast> {
+    pub(super) arguments: FormattedArguments<'ast>,
+    pub(super) facts: ChainArgumentFacts,
+    pub(super) alternative: Option<CallArgumentAlternative<'ast>>,
+}
+
+struct ChainRecording<'a, 'ast> {
+    facts: &'a mut ChainArgumentFacts,
+    alternative: Option<&'a mut Option<CallArgumentAlternative<'ast>>>,
 }
 
 pub(super) enum ChainArgumentExpansion<'ast> {
@@ -2132,7 +2151,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         mode: ContentMode,
         binary_indent: OperandIndent,
         jsx_call: Option<CallExpression>,
-        chain_facts: &mut Option<&mut ChainArgumentFacts<'ast>>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if binary_indent == OperandIndent::Expression
@@ -2499,36 +2518,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let output = self.format_source_arguments_with_chain_facts(list, tail, None, writer)?;
-        Ok(output.tail)
+        self.format_observed_source_arguments(list, tail, None, writer)
+            .map(|output| output.tail)
     }
 
-    pub(super) fn format_source_arguments_with_chain_facts(
+    pub(super) fn format_chain_arguments(
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
+        alternatives: CallAlternatives,
         writer: &mut Writer<'ast>,
-    ) -> Result<FormattedArguments<'ast>, FormatError> {
+    ) -> Result<RecordedChainArguments<'ast>, FormatError> {
+        let mut facts = ChainArgumentFacts::default();
+        let mut alternative = None;
+        let recording = ChainRecording {
+            facts: &mut facts,
+            alternative: (alternatives == CallAlternatives::Record).then_some(&mut alternative),
+        };
         let observing = self.source_object_layout.observing;
-        self.source_object_layout.observing |= chain_facts.is_some();
-        let result = self.format_observed_source_arguments(list, tail, chain_facts, writer);
-        // Retain nested discoveries while restoring the caller's observation scope,
-        // including when construction returns an error.
+        self.source_object_layout.observing = true;
+        let result = self.format_observed_source_arguments(list, tail, Some(recording), writer);
         self.source_object_layout.observing = observing;
-        result
+        Ok(RecordedChainArguments {
+            arguments: result?,
+            facts,
+            alternative,
+        })
     }
 
     fn format_observed_source_arguments(
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        mut chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
+        recording: Option<ChainRecording<'_, 'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
-        if let Some(facts) = chain_facts.as_deref_mut() {
-            facts.source_expanded_object = false;
-        }
+        let (mut chain_facts, candidate) = match recording {
+            Some(recording) => (Some(recording.facts), recording.alternative),
+            None => (None, None),
+        };
         let ast = self.ast;
         let SourceArguments {
             arguments,
@@ -2670,19 +2698,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             Ok::<_, FormatError>((content_start, has_outside_prefix))
         };
-        let (content_start, has_outside_prefix) = if carries_operator
-            && let Some(facts) = chain_facts.as_deref_mut()
-            && facts.terminal
-        {
-            // All candidates share the operator and its source-owned comments.
-            let (prefix, opening) =
-                writer.record_with_value(|writer| write_prefix(self, writer))?;
-            writer.write_fragment(prefix);
-            facts.call_prefix = Some(prefix);
-            opening
-        } else {
-            write_prefix(self, writer)?
-        };
+        let ((content_start, has_outside_prefix), call_prefix) =
+            if carries_operator && candidate.is_some() {
+                let (prefix, opening) =
+                    writer.record_with_value(|writer| write_prefix(self, writer))?;
+                writer.write_fragment(prefix);
+                (opening, Some(prefix))
+            } else {
+                (write_prefix(self, writer)?, None)
+            };
         let content_start = source_opening.map_or(content_start, |opening| opening.span.end);
         let content = Span::new(content_start, delimiters.end - 1);
         if first.is_none() {
@@ -2730,10 +2754,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         let format_selected = |formatter: &mut Self,
                                selected: SelectedArgument,
-                               chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
+                               chain_facts: Option<&mut ChainArgumentFacts>,
                                writer: &mut Writer<'ast>| {
-            let tail = formatter.format_selected_arguments(
-                SelectedArgumentSequence { arguments, content },
+            let expansion = formatter.format_selected_arguments(
+                SelectedArgumentSequence {
+                    arguments,
+                    content,
+                    protect_runtime_items,
+                },
                 ArgumentHead {
                     first_mode,
                     source_opening,
@@ -2744,13 +2772,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     constructor,
                     binary_indent,
                 },
-                protect_runtime_items,
                 selected,
                 chain_facts,
+                if candidate.is_some() {
+                    CallAlternatives::Record
+                } else {
+                    CallAlternatives::Omit
+                },
                 writer,
             )?;
+            if let (Some(slot), Some(expansion)) = (candidate, expansion) {
+                *slot = Some(CallArgumentAlternative {
+                    prefix: call_prefix,
+                    expansion,
+                });
+            }
             Ok(FormattedArguments {
-                tail,
+                tail: None,
                 has_outside_prefix,
             })
         };

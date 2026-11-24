@@ -8,7 +8,8 @@ use swc_next_ecma_ast::{
 };
 
 use super::arguments::{
-    ArgumentGroup, ChainArgumentExpansion, ChainArgumentFacts, SourceArguments,
+    ArgumentGroup, CallAlternatives, CallArgumentAlternative, ChainArgumentExpansion,
+    ChainArgumentFacts, SourceArguments,
 };
 use super::members::{
     MemberBoundary, MemberCalleeFrame, MemberLookupLayout, MemberLookupOwner, PreparedMember,
@@ -377,8 +378,8 @@ struct RecordedBoundary<'ast> {
 }
 
 #[derive(Default)]
-struct GroupFacts<'ast> {
-    arguments: ChainArgumentFacts<'ast>,
+struct GroupFacts {
+    arguments: ChainArgumentFacts,
     has_boundary_comments: bool,
     source_break: bool,
     preferred_breaks: bool,
@@ -391,15 +392,11 @@ struct ChainGroup<'ast> {
     /// Complete group with its trailing collection expanded in the existing call frame.
     argument_expansion: Option<Fragment<'ast>>,
     before: Option<RecordedBoundary<'ast>>,
-    facts: GroupFacts<'ast>,
+    facts: GroupFacts,
 }
 
 impl<'ast> ChainGroup<'ast> {
-    fn new(
-        doc: Fragment<'ast>,
-        before: Option<RecordedBoundary<'ast>>,
-        facts: GroupFacts<'ast>,
-    ) -> Self {
+    fn new(doc: Fragment<'ast>, before: Option<RecordedBoundary<'ast>>, facts: GroupFacts) -> Self {
         Self {
             doc,
             source_flat: None,
@@ -1620,7 +1617,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             call_head = true;
                         }
                         end = ChainHeadEnd::Other;
-                        self.write_chain_call(call, arguments, source, &mut facts, writer)?;
+                        self.write_chain_call(
+                            call,
+                            arguments,
+                            source,
+                            &mut facts,
+                            CallAlternatives::Omit,
+                            writer,
+                        )?;
                     }
                     ChainOperation::NonNull(non_null) => {
                         self.write_chain_non_null(non_null, source, &mut facts, writer)?;
@@ -1681,12 +1685,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ChainOperation::Call { call, arguments } => {
                         saw_call = true;
                         if source.parts.peek().is_none() {
-                            let (arguments, ()) = writer.record_with_value(|writer| {
-                                self.write_chain_call(call, arguments, source, &mut facts, writer)
-                            })?;
-                            terminal_arguments = Some(arguments);
+                            terminal_arguments = Some(writer.record_with_value(|writer| {
+                                self.write_chain_call(
+                                    call,
+                                    arguments,
+                                    source,
+                                    &mut facts,
+                                    CallAlternatives::Record,
+                                    writer,
+                                )
+                            })?);
                         } else {
-                            self.write_chain_call(call, arguments, source, &mut facts, writer)?;
+                            self.write_chain_call(
+                                call,
+                                arguments,
+                                source,
+                                &mut facts,
+                                CallAlternatives::Omit,
+                                writer,
+                            )?;
                         }
                     }
                     ChainOperation::NonNull(non_null) => {
@@ -1698,14 +1715,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             Ok::<_, FormatError>(())
         })?;
-        let (doc, source_flat, argument_expansion) = if let Some(arguments) = terminal_arguments {
-            let expansion = facts.arguments.expansion.take();
-            let alternative_prefix = if expansion.is_some()
-                && let Some(call_prefix) = facts.arguments.call_prefix.take()
-            {
-                writer.join_fragments(prefix, false, call_prefix)
-            } else {
-                prefix
+        let (doc, source_flat, argument_expansion) = if let Some((arguments, alternative)) =
+            terminal_arguments
+        {
+            let (alternative_prefix, expansion) = match alternative {
+                Some(CallArgumentAlternative {
+                    prefix: call_prefix,
+                    expansion,
+                }) => (
+                    call_prefix.map_or(prefix, |call_prefix| {
+                        writer.join_fragments(prefix, false, call_prefix)
+                    }),
+                    Some(expansion),
+                ),
+                None => (prefix, None),
             };
             let (source_flat, expanded) = match expansion {
                 Some(ChainArgumentExpansion::Array(expanded)) => (None, Some(expanded)),
@@ -1751,7 +1774,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         member: PendingMember<'ast>,
         boundary_outside: bool,
-        facts: &mut GroupFacts<'ast>,
+        facts: &mut GroupFacts,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         facts.has_boundary_comments |= member.boundary.has_boundary_comments;
@@ -1767,7 +1790,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         non_null: SourceNonNull<'ast>,
         source: &mut ChainSource<'ast, '_>,
-        facts: &mut GroupFacts<'ast>,
+        facts: &mut GroupFacts,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         facts.has_boundary_comments |= non_null.has_comments();
@@ -1780,9 +1803,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         call: CallExpression,
         arguments: SourceArguments<'ast>,
         source: &mut ChainSource<'ast, '_>,
-        facts: &mut GroupFacts<'ast>,
+        facts: &mut GroupFacts,
+        alternatives: CallAlternatives,
         writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
+    ) -> Result<Option<CallArgumentAlternative<'ast>>, FormatError> {
         if let Some((_, head)) = source.operation_head.take_if(|(owner, _)| *owner == call) {
             self.format_node_head(head, ExpressionStart::None, None, writer)?;
             facts.has_boundary_comments = true;
@@ -1802,27 +1826,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // Comments owned by the actual arguments may move inside their opener.
         // Only an outside prefix is a boundary for both merging and expansion.
         facts.has_parent_call_group |= matches!(arguments.group, ArgumentGroup::ParentCall);
-        let mut argument_facts = ChainArgumentFacts {
-            has_function: facts.arguments.has_function,
-            terminal: source.parts.peek().is_none(),
-            ..ChainArgumentFacts::default()
-        };
-        let output = source.head_argument_frame.write(writer, |writer| {
-            self.format_source_arguments_with_chain_facts(
-                arguments,
-                source.tail.take(),
-                Some(&mut argument_facts),
-                writer,
-            )
+        let recorded = source.head_argument_frame.write(writer, |writer| {
+            self.format_chain_arguments(arguments, source.tail.take(), alternatives, writer)
         })?;
-        facts.arguments.has_function = argument_facts.has_function;
-        facts.arguments.expansion = argument_facts.expansion;
-        facts.arguments.call_prefix = argument_facts.call_prefix;
-        facts.arguments.source_expanded_object |= argument_facts.source_expanded_object;
-        facts.has_boundary_comments |= output.has_outside_prefix;
-        facts.source_break |= output.has_outside_prefix;
-        source.tail = output.tail;
-        Ok(())
+        facts.arguments.has_function |= recorded.facts.has_function;
+        facts.arguments.source_expanded_object |= recorded.facts.source_expanded_object;
+        facts.has_boundary_comments |= recorded.arguments.has_outside_prefix;
+        facts.source_break |= recorded.arguments.has_outside_prefix;
+        source.tail = recorded.arguments.tail;
+        Ok(recorded.alternative)
     }
 }
 
