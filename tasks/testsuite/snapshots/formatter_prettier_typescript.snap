@@ -9,6 +9,8 @@ AST parity: 801/801
 AST mismatched: 0/801
 AST format errors: 0/801
 Mismatched: 4/801
+Known mismatches: 2/801
+Unclassified mismatches: 2/801
 Format errors: 0/801
 Panicked: 0/801
 Not idempotent: 0/801
@@ -21,12 +23,20 @@ Unsupported option sets: 4
 
 - typescript/conformance/types/functions/functionOverloadErrorsSyntax.ts: 1 expected parser error(s)
 
+# Known divergences
+
+## Preserve comments on their original side of operator and terminator tokens
+
+- typescript/binary-expressions/chain-expression.ts (default options)
+
+## Separate opening angles in heritage type arguments to preserve TypeScript syntax
+
+- typescript/type-arguments-bit-shift-left-like/3.ts (default options)
+
 # Failed
 
-- typescript/binary-expressions/chain-expression.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/class-implements.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/declare.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/type-arguments-bit-shift-left-like/3.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 

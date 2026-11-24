@@ -18,6 +18,7 @@ use std::{
     },
 };
 
+mod divergences;
 mod options;
 
 use options::{format_options, unsupported_option_names};
@@ -336,6 +337,15 @@ struct CaseResult {
     second_pass_error: bool,
 }
 
+impl CaseResult {
+    fn is_valid_output(&self) -> bool {
+        matches!(self.status, CaseStatus::Matched | CaseStatus::Mismatched)
+            && self.ast_parity == Some(true)
+            && self.ast_error.is_none()
+            && self.idempotent == Some(true)
+    }
+}
+
 enum CaseStatus {
     Matched,
     Mismatched,
@@ -451,10 +461,9 @@ pub fn run_conformance(config: ConformanceConfig) -> ConformanceOutput {
         };
     }
 
-    let report = build_report(config, &results, &discovery);
     ConformanceOutput {
-        report: Some(report),
-        structural_errors: Vec::new(),
+        report: Some(build_report(config, &results, &discovery)),
+        structural_errors: divergences::stale_errors(config, &results),
     }
 }
 
@@ -689,11 +698,7 @@ fn discover_directory(
 }
 
 fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
-    let options = if debug {
-        display_options(&case.spec.snapshot_options)
-    } else {
-        String::new()
-    };
+    let options = display_options(&case.spec.snapshot_options);
     let expected_parser = case
         .spec
         .expected_parser_errors
@@ -815,11 +820,7 @@ fn run_case_catching_panic(case: &FormatCase, debug: bool) -> CaseResult {
         Ok(result) => result,
         Err(payload) => CaseResult {
             path: case.relative_path.clone(),
-            options: if debug {
-                display_options(&case.spec.snapshot_options)
-            } else {
-                String::new()
-            },
+            options: display_options(&case.spec.snapshot_options),
             status: CaseStatus::Panic(panic_message(payload.as_ref())),
             debug_diff: None,
             ast_debug_diff: None,
@@ -989,13 +990,7 @@ fn build_report(
         .count();
     let passed = results
         .iter()
-        .filter(|result| {
-            is_comparison_result(result)
-                && matches!(result.status, CaseStatus::Matched)
-                && result.ast_parity == Some(true)
-                && result.ast_error.is_none()
-                && result.idempotent == Some(true)
-        })
+        .filter(|result| matches!(result.status, CaseStatus::Matched) && result.is_valid_output())
         .count();
     let mismatched = results
         .iter()
@@ -1003,6 +998,14 @@ fn build_report(
             is_comparison_result(result) && matches!(result.status, CaseStatus::Mismatched)
         })
         .count();
+    let mut known_divergences = BTreeMap::<&str, Vec<&CaseResult>>::new();
+    for result in results {
+        if let Some(reason) = divergences::reason_for(result) {
+            known_divergences.entry(reason).or_default().push(result);
+        }
+    }
+    let known = known_divergences.values().map(Vec::len).sum::<usize>();
+    let unclassified = mismatched - known;
     let format_errors = results
         .iter()
         .filter(|result| {
@@ -1058,6 +1061,8 @@ fn build_report(
     writeln!(report, "AST mismatched: {ast_mismatched}/{ast_compared}").unwrap();
     writeln!(report, "AST format errors: {ast_errors}/{total}").unwrap();
     writeln!(report, "Mismatched: {mismatched}/{total}").unwrap();
+    writeln!(report, "Known mismatches: {known}/{total}").unwrap();
+    writeln!(report, "Unclassified mismatches: {unclassified}/{total}").unwrap();
     writeln!(report, "Format errors: {format_errors}/{total}").unwrap();
     writeln!(report, "Panicked: {panics}/{total}").unwrap();
     writeln!(report, "Not idempotent: {not_idempotent}/{total}").unwrap();
@@ -1098,6 +1103,17 @@ fn build_report(
         }
     }
 
+    if !known_divergences.is_empty() {
+        report.push_str("\n# Known divergences\n");
+        for (reason, cases) in known_divergences {
+            writeln!(report, "\n## {reason}\n").unwrap();
+            for case in cases {
+                let options = divergences::option_label(&case.options);
+                writeln!(report, "- {} ({options})", case.path).unwrap();
+            }
+        }
+    }
+
     let mut failures = BTreeMap::<&str, FileFailures>::new();
     for result in results {
         if !is_comparison_result(result) {
@@ -1106,10 +1122,8 @@ fn build_report(
         if matches!(result.status, CaseStatus::ParseError(_)) {
             continue;
         }
-        if matches!(result.status, CaseStatus::Matched)
-            && result.ast_parity == Some(true)
-            && result.ast_error.is_none()
-            && result.idempotent == Some(true)
+        if (matches!(result.status, CaseStatus::Matched) && result.is_valid_output())
+            || divergences::reason_for(result).is_some()
         {
             continue;
         }
@@ -1193,6 +1207,9 @@ fn print_debug_results(results: &[CaseResult]) {
             CaseStatus::Matched => println!("Snapshot matched"),
             CaseStatus::Mismatched => {
                 println!("Snapshot mismatch");
+                if let Some(reason) = divergences::reason_for(result) {
+                    println!("Known divergence: {reason}");
+                }
                 let (expected, actual) = result.debug_diff.as_ref().unwrap();
                 print_text_diff(expected, actual);
             }
@@ -1645,8 +1662,63 @@ fn string_literal(ast: &Ast<'_>, literal: StringLiteral) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{JAVASCRIPT, TYPESCRIPT, prettier_language};
+    use super::{CaseResult, CaseStatus, JAVASCRIPT, TYPESCRIPT, divergences, prettier_language};
     use swc_next_ecma_ast::Lang;
+
+    fn case_result(path: &str, options: &str, status: CaseStatus) -> CaseResult {
+        CaseResult {
+            path: path.to_string(),
+            options: options.to_string(),
+            status,
+            debug_diff: None,
+            ast_debug_diff: None,
+            ast_parity: Some(true),
+            ast_error: None,
+            idempotent: Some(true),
+            second_pass_error: false,
+        }
+    }
+
+    #[test]
+    fn divergence_options() {
+        let path = "js/babel-plugins/bigint.js";
+
+        let mismatch = case_result(path, "", CaseStatus::Mismatched);
+        assert!(divergences::reason_for(&mismatch).is_some());
+        assert!(
+            !divergences::stale_errors(JAVASCRIPT, &[mismatch])
+                .iter()
+                .any(|error| error.starts_with(path))
+        );
+
+        let matched = case_result(path, "", CaseStatus::Matched);
+        let other_option = case_result(path, "semi: false", CaseStatus::Mismatched);
+        assert!(divergences::reason_for(&other_option).is_none());
+        assert!(
+            divergences::stale_errors(JAVASCRIPT, &[matched, other_option])
+                .iter()
+                .any(|error| error.starts_with(path))
+        );
+    }
+
+    #[test]
+    fn divergence_output_checks() {
+        let path = "js/babel-plugins/bigint.js";
+
+        let mut ast_mismatch = case_result(path, "", CaseStatus::Mismatched);
+        ast_mismatch.ast_parity = Some(false);
+        assert!(divergences::reason_for(&ast_mismatch).is_none());
+
+        let mut unstable = case_result(path, "", CaseStatus::Mismatched);
+        unstable.idempotent = Some(false);
+        assert!(divergences::reason_for(&unstable).is_none());
+
+        let invalid = case_result(path, "", CaseStatus::StructuralError(String::new()));
+        assert!(divergences::reason_for(&invalid).is_none());
+
+        let panic = case_result(path, "", CaseStatus::Panic(String::new()));
+        assert!(divergences::reason_for(&panic).is_none());
+    }
 
     #[test]
     fn parser_partition_selection() {

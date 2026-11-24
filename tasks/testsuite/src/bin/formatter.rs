@@ -20,15 +20,13 @@ fn main() -> ExitCode {
 fn update_snapshot(config: ConformanceConfig) -> bool {
     println!("Running Prettier conformance for {}...", config.language);
     let output = run_conformance(config);
-    if !output.structural_errors.is_empty() {
-        for error in output.structural_errors {
-            eprintln!("{error}");
-        }
-        return true;
+    let failed = !output.structural_errors.is_empty();
+    for error in output.structural_errors {
+        eprintln!("{error}");
     }
 
     let Some(report) = output.report else {
-        return false;
+        return failed;
     };
     let snapshot_path = crate_root()
         .join("snapshots")
@@ -38,5 +36,5 @@ fn update_snapshot(config: ConformanceConfig) -> bool {
         return true;
     }
     println!("Updated {}", snapshot_path.display());
-    false
+    failed
 }
