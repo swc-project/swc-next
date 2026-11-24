@@ -1840,9 +1840,10 @@ pub(super) struct RecordedChainArguments<'ast> {
     pub(super) alternative: Option<CallArgumentAlternative<'ast>>,
 }
 
-struct ChainRecording<'a, 'ast> {
-    facts: &'a mut ChainArgumentFacts,
-    alternative: Option<&'a mut Option<CallArgumentAlternative<'ast>>>,
+struct ChainRecording<'ast> {
+    alternatives: CallAlternatives,
+    facts: ChainArgumentFacts,
+    candidate: Option<CallArgumentAlternative<'ast>>,
 }
 
 pub(super) enum ChainArgumentExpansion<'ast> {
@@ -2529,20 +2530,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         alternatives: CallAlternatives,
         writer: &mut Writer<'ast>,
     ) -> Result<RecordedChainArguments<'ast>, FormatError> {
-        let mut facts = ChainArgumentFacts::default();
-        let mut alternative = None;
-        let recording = ChainRecording {
-            facts: &mut facts,
-            alternative: (alternatives == CallAlternatives::Record).then_some(&mut alternative),
+        let mut recording = ChainRecording {
+            alternatives,
+            facts: ChainArgumentFacts::default(),
+            candidate: None,
         };
         let observing = self.source_object_layout.observing;
         self.source_object_layout.observing = true;
-        let result = self.format_observed_source_arguments(list, tail, Some(recording), writer);
+        let result =
+            self.format_observed_source_arguments(list, tail, Some(&mut recording), writer);
         self.source_object_layout.observing = observing;
         Ok(RecordedChainArguments {
             arguments: result?,
-            facts,
-            alternative,
+            facts: recording.facts,
+            alternative: recording.candidate,
         })
     }
 
@@ -2550,11 +2551,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         list: SourceArguments<'ast>,
         tail: Option<ExpressionTail<'ast>>,
-        recording: Option<ChainRecording<'_, 'ast>>,
+        recording: Option<&mut ChainRecording<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<FormattedArguments<'ast>, FormatError> {
         let (mut chain_facts, candidate) = match recording {
-            Some(recording) => (Some(recording.facts), recording.alternative),
+            Some(recording) => (
+                Some(&mut recording.facts),
+                (recording.alternatives == CallAlternatives::Record)
+                    .then_some(&mut recording.candidate),
+            ),
             None => (None, None),
         };
         let ast = self.ast;
