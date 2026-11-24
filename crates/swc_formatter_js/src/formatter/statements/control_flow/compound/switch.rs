@@ -217,7 +217,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     FlatSeparator::Empty
                 };
                 gap.following.write(writer, flat, Writer::soft_line);
-                self.format_expression_with_leading_comments(
+                let tail = self.format_expression_with_leading_comments(
                     discriminant,
                     NodeHead {
                         comments: &[],
@@ -231,6 +231,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     None,
                     writer,
                 )?;
+                self.format_expression_tail(tail, writer)?;
                 self.format_compound_gap(
                     CompoundGap {
                         layout: GapLayout::Source,
