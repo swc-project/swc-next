@@ -60,17 +60,15 @@ impl IdentifierBlocks {
     }
 
     #[inline(always)]
-    fn run_length(&self, shift: u32) -> u32 {
-        // Shift the second mask in without shifting by 64 when `shift` is zero.
-        let run = (self.first >> shift) | ((self.second << 1) << (BLOCK - 1 - shift));
-        (!run).trailing_zeros()
-    }
-
-    #[inline(always)]
     fn scan_in_blocks(&self, source: &[u8], start: u32, shift: u32) -> Option<(u32, TokenTag)> {
-        let len = self.run_length(shift);
+        // Most identifiers end in the first block. Consult the second one
+        // only when the first block has no stop at or after the start.
+        let mut len = (!self.first >> shift).trailing_zeros();
         if len == BLOCK {
-            return scan_ascii_identifier_or_keyword_slow(source, start);
+            len = BLOCK - shift + (!self.second).trailing_zeros();
+            if len >= BLOCK {
+                return scan_ascii_identifier_or_keyword_slow(source, start);
+            }
         }
 
         let end = start + len;
