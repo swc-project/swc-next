@@ -36,6 +36,8 @@ use swc_next_ecma_transformer_v1::{
     typescript::TypeScriptOptions as V1TypeScriptOptions,
 };
 use swc_next_formatter::js::{FormatOptions, format_ast};
+use swc_next_formatter::markdown;
+use swc_next_markdown_parser::{Document, parse as parse_markdown};
 use swc_next_type_strip::{Options as StripOptions, strip_types};
 
 const MINIFIER_SEMANTIC: &str =
@@ -58,6 +60,9 @@ const HONO_TYPES: &str = include_str!("../files/hono-types.ts");
 const EXCALIDRAW_APP: &str = include_str!("../files/App.tsx");
 const RADIX_UI_ADOPTION: &str = include_str!("../files/RadixUIAdoptionSection.jsx");
 const KITCHEN_SINK: &str = include_str!("../files/kitchen-sink.tsx");
+const BIOME_README: &str = include_str!("../fixtures/markdown/biome-readme.zh-CN.md");
+const PRETTIER_OPTIONS: &str = include_str!("../fixtures/markdown/prettier-options.md");
+const NIX_CHANGELOG: &str = include_str!("../fixtures/markdown/nix-changelog.md");
 
 #[library_benchmark]
 #[bench::angular(ANGULAR, Lang::Js)]
@@ -86,6 +91,14 @@ fn bench_parser(source: &str, lang: Lang) {
         )
         .parse(),
     );
+}
+
+#[library_benchmark]
+#[bench::biome_readme(BIOME_README)]
+#[bench::prettier_options(PRETTIER_OPTIONS)]
+#[bench::nix_changelog(NIX_CHANGELOG)]
+fn bench_markdown_parser(source: &'static str) -> Document<'static> {
+    parse_markdown(black_box(source))
 }
 
 fn setup_program(source: &'static str, lang: Lang) -> AstCtx<'static> {
@@ -204,6 +217,18 @@ fn setup_formatter_program(source: &'static str, lang: Lang) -> &'static AstCtx<
 #[bench::hono_types(setup_formatter_program(HONO_TYPES, Lang::Ts))]
 fn bench_formatter(ast: &'static AstCtx<'static>) -> String {
     black_box(format_ast(black_box(ast), FormatOptions::prettier()).unwrap())
+}
+
+#[library_benchmark(setup = parse_markdown)]
+#[bench::biome_readme(BIOME_README)]
+#[bench::prettier_options(PRETTIER_OPTIONS)]
+#[bench::nix_changelog(NIX_CHANGELOG)]
+fn bench_markdown_formatter(ast: Document<'static>) -> (Document<'static>, String) {
+    let mut options = markdown::FormatOptions::default();
+    options.embedded.enabled = false;
+    let output = markdown::format_ast(black_box(&ast), options).unwrap();
+    // Let the harness drop the parsed document outside the measurement.
+    (ast, output)
 }
 
 type TransformInput = (
@@ -484,7 +509,10 @@ fn bench_traverse(ast: AstCtx<'static>) {
     black_box(counter.count);
 }
 
-library_benchmark_group!(name = parser, benchmarks = bench_parser);
+library_benchmark_group!(
+    name = parser,
+    benchmarks = [bench_parser, bench_markdown_parser]
+);
 
 library_benchmark_group!(
     name = semantic,
@@ -497,7 +525,7 @@ library_benchmark_group!(
     name = formatter,
     config =
         LibraryBenchmarkConfig::default().tool(Callgrind::with_args(["--main-stacksize=16777216"])),
-    benchmarks = bench_formatter
+    benchmarks = [bench_formatter, bench_markdown_formatter]
 );
 
 library_benchmark_group!(name = minifier, benchmarks = bench_minifier);

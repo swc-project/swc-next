@@ -20,6 +20,7 @@ swc_next_ecma_semantic    = { workspace = true }
 swc_next_ecma_transformer    = { workspace = true }
 swc_next_ecma_transformer_v1 = { workspace = true }
 swc_next_formatter        = { workspace = true }
+swc_next_markdown_parser  = { workspace = true }
 swc_next_type_strip       = { workspace = true, features = ["benchmarking"] }
 tracy-client              = { workspace = true }
 
