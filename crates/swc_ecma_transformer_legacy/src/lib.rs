@@ -193,10 +193,7 @@ impl Transformer {
             );
         }
         if options.env.es2022.static_blocks {
-            let _ = program.traverse_mut_with(
-                &mut crate::es2022::class_static_block::ClassStaticBlock,
-                &mut context,
-            );
+            crate::es2022::class_static_block::pass(context.ast, &mut context.state.static_blocks);
         }
         if let Some(options) = options.env.es2022.class_properties {
             diagnostics.extend(crate::es2022::class_properties::class_properties(
@@ -255,12 +252,10 @@ impl Transformer {
             .async_to_generator
             .or(es2017.async_generator_functions)
         {
-            let _ = program.traverse_mut_with(
-                &mut crate::es2017::async_to_generator::AsyncToGeneratorPass::new(
-                    es2017.async_to_generator.is_some(),
-                    options,
-                ),
+            crate::es2017::async_to_generator::pass(
                 &mut context,
+                es2017.async_to_generator.is_some(),
+                options,
             );
         }
         if options.env.es2016.exponentiation {
@@ -270,12 +265,7 @@ impl Transformer {
                 &mut context,
             );
         }
-        if options.env.regexp.is_enabled() {
-            let _ = program.traverse_mut_with(
-                &mut crate::regexp::RegexpPass(options.env.regexp),
-                &mut context,
-            );
-        }
+        crate::regexp::pass(context.ast, context.state.resolver, options.env.regexp);
         context
             .state
             .helpers

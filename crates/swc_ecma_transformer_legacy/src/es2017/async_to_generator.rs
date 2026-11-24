@@ -35,7 +35,27 @@ struct FnState {
     use_super: bool,
     in_constructor: bool,
 }
-pub(crate) struct AsyncToGeneratorPass {
+pub(crate) fn pass(
+    context: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
+    transform_async_to_generator: bool,
+    options: AsyncToGeneratorOptions,
+) {
+    context
+        .ast
+        .root_program()
+        .visit_mut_with(&mut AsyncToGeneratorPass {
+            context,
+            transform_async_to_generator,
+            options,
+            fn_state: None,
+            fn_state_stack: Vec::new(),
+            constructors: HashMap::new(),
+            this_var: None,
+        });
+}
+
+struct AsyncToGeneratorPass<'a, 'ctx, 'ast, 'r> {
+    context: &'a mut TraverseMutCtx<'ctx, 'ast, TraverseCtx<'r>>,
     transform_async_to_generator: bool,
     options: AsyncToGeneratorOptions,
     fn_state: Option<FnState>,
@@ -43,20 +63,8 @@ pub(crate) struct AsyncToGeneratorPass {
     constructors: HashMap<NodeId, bool>,
     this_var: Option<BindingIdentifier>,
 }
-impl AsyncToGeneratorPass {
-    pub(crate) fn new(
-        transform_async_to_generator: bool,
-        options: AsyncToGeneratorOptions,
-    ) -> Self {
-        Self {
-            transform_async_to_generator,
-            options,
-            fn_state: None,
-            fn_state_stack: Vec::new(),
-            constructors: HashMap::new(),
-            this_var: None,
-        }
-    }
+
+impl AsyncToGeneratorPass<'_, '_, '_, '_> {
     fn push(&mut self, state: FnState) {
         self.fn_state_stack.push(self.fn_state.take());
         self.fn_state = Some(state);
@@ -64,12 +72,13 @@ impl AsyncToGeneratorPass {
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/lib.rs#L175>.
-impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
-    fn enter_class(
-        &mut self,
-        node: Class,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Class> {
+impl<'ast> VisitMut<'ast> for AsyncToGeneratorPass<'_, '_, 'ast, '_> {
+    fn ast(&mut self) -> &mut Ast<'ast> {
+        self.context.ast
+    }
+
+    fn visit_mut_class(&mut self, node: Class) -> Option<Class> {
+        let ctx = &mut *self.context;
         for slot in node.body(ctx.ast).body(ctx.ast).iter() {
             if let Some(method) = ctx
                 .ast
@@ -83,14 +92,11 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 );
             }
         }
-        TraverseAction::Continue
+        node.visit_mut_children_with(self)
     }
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L157>.
-    fn enter_function(
-        &mut self,
-        node: Function,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Function> {
+    fn visit_mut_function(&mut self, node: Function) -> Option<Function> {
+        let ctx = &mut *self.context;
         if let Some(derived) = self.constructors.get(&node.node_id()) {
             if *derived {
                 self.push(FnState {
@@ -114,14 +120,10 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 ..Default::default()
             });
         }
-        TraverseAction::Continue
-    }
-    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L81>.
-    fn exit_function(
-        &mut self,
-        node: Function,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Function> {
+
+        let replacement = node.visit_mut_children_with(self);
+        let node = replacement.unwrap_or(node);
+        let ctx = &mut *self.context;
         if let Some(derived) = self.constructors.get(&node.node_id()) {
             if *derived {
                 let state = self.fn_state.take().unwrap();
@@ -141,12 +143,12 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 }
                 self.fn_state = self.fn_state_stack.pop().unwrap();
             }
-            return TraverseAction::Continue;
+            return replacement;
         }
         let mut state = self.fn_state.take().unwrap();
         self.fn_state = self.fn_state_stack.pop().unwrap();
         if !state.should_transform {
-            return TraverseAction::Continue;
+            return replacement;
         }
         let body = node.body(ctx.ast);
         let (body, mut statements) = if state.use_super {
@@ -196,13 +198,14 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
             .ast
             .function_body(DUMMY_SP, SubRange::empty(), statements);
         node.set_body(ctx.ast, body);
-        TraverseAction::Continue
+        replacement
     }
-    fn enter_arrow_function_expression(
+    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L198>.
+    fn visit_mut_arrow_function_expression(
         &mut self,
         node: ArrowFunctionExpression,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<ArrowFunctionExpression> {
+    ) -> Option<ArrowFunctionExpression> {
+        let ctx = &mut *self.context;
         if node.r#async(ctx.ast) {
             let in_constructor = self
                 .fn_state
@@ -220,16 +223,12 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 ..Default::default()
             });
         }
-        TraverseAction::Continue
-    }
-    /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L198>.
-    fn exit_arrow_function_expression(
-        &mut self,
-        node: ArrowFunctionExpression,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<ArrowFunctionExpression> {
+
+        let replacement = node.visit_mut_children_with(self);
+        let node = replacement.unwrap_or(node);
+        let ctx = &mut *self.context;
         if !node.r#async(ctx.ast) {
-            return TraverseAction::Continue;
+            return replacement;
         }
         let state = self.fn_state.take().unwrap();
         self.fn_state = self.fn_state_stack.pop().unwrap();
@@ -241,7 +240,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
             parent.use_super |= state.use_super;
         }
         if !state.should_transform {
-            return TraverseAction::Continue;
+            return replacement;
         }
         let body = node.body(ctx.ast);
         let (mut body, mut statements) = if state.use_super {
@@ -280,26 +279,22 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
         node.set_body(ctx.ast, body);
         node.set_expression(ctx.ast, body.is_expr(ctx.ast));
         node.set_async(ctx.ast, false);
-        TraverseAction::Continue
+        replacement
     }
-    fn enter_super(
-        &mut self,
-        _: Super,
-        _: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Super> {
+    fn visit_mut_super(&mut self, _: Super) -> Option<Super> {
         if let Some(state) = &mut self.fn_state {
             state.use_super = true;
         }
-        TraverseAction::Continue
+        None
     }
+
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L347>.
-    fn exit_expr(
-        &mut self,
-        node: Expr,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Expr> {
+    fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
+        let replacement = node.visit_mut_children_with(self);
+        let node = replacement.unwrap_or(node);
+        let ctx = &mut *self.context;
         let Some(state) = &mut self.fn_state else {
-            return TraverseAction::Continue;
+            return replacement;
         };
         if state.should_transform || state.is_arrow {
             if node.is_this_expression(ctx.ast) {
@@ -313,7 +308,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
             }
         }
         if !state.should_transform {
-            return TraverseAction::Continue;
+            return replacement;
         }
         if let Some(await_) = node.as_await_expression(ctx.ast) {
             let mut argument = await_.argument(ctx.ast);
@@ -321,7 +316,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
                 let helper = ctx.state.helper(ctx.ast, "await_async_generator");
                 argument = b::call(ctx.ast, helper, [argument], false);
             }
-            return TraverseAction::ReplaceSkip(Expr::YieldExpression(ctx.ast.yield_expression(
+            return Some(Expr::YieldExpression(ctx.ast.yield_expression(
                 await_.span(ctx.ast),
                 Some(argument),
                 false,
@@ -335,45 +330,36 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for AsyncToGeneratorPass {
             let argument = b::call(ctx.ast, helper, [argument], false);
             let helper = ctx.state.helper(ctx.ast, "async_generator_delegate");
             let argument = b::call(ctx.ast, helper, [argument], false);
-            return TraverseAction::ReplaceSkip(Expr::YieldExpression(ctx.ast.yield_expression(
+            return Some(Expr::YieldExpression(ctx.ast.yield_expression(
                 yield_.span(ctx.ast),
                 Some(argument),
                 true,
             )));
         }
-        TraverseAction::Continue
+        replacement
     }
-    fn enter_stmt(
-        &mut self,
-        node: Stmt,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Stmt> {
-        if node.is_labeled_statement(ctx.ast)
+    fn visit_mut_stmt(&mut self, node: Stmt) -> Option<Stmt> {
+        let labeled = if node.is_labeled_statement(self.context.ast) {
+            self.fn_state
+                .as_ref()
+                .and_then(|state| state.await_for_mode)
+                .and_then(|mode| handle_await_for(self.context, node, mode))
+        } else {
+            None
+        };
+        let node = labeled.unwrap_or(node);
+        let replacement = node.visit_mut_children_with(self).or(labeled);
+        let node = replacement.unwrap_or(node);
+        if node.is_for_of_statement(self.context.ast)
             && let Some(mode) = self
                 .fn_state
                 .as_ref()
                 .and_then(|state| state.await_for_mode)
-            && let Some(replacement) = handle_await_for(ctx, node, mode)
+            && let Some(loop_stmt) = handle_await_for(self.context, node, mode)
         {
-            return TraverseAction::ReplaceContinue(replacement);
+            return Some(loop_stmt);
         }
-        TraverseAction::Continue
-    }
-    fn exit_stmt(
-        &mut self,
-        node: Stmt,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Stmt> {
-        if node.is_for_of_statement(ctx.ast)
-            && let Some(mode) = self
-                .fn_state
-                .as_ref()
-                .and_then(|state| state.await_for_mode)
-            && let Some(replacement) = handle_await_for(ctx, node, mode)
-        {
-            return TraverseAction::ReplaceSkip(replacement);
-        }
-        TraverseAction::Continue
+        replacement
     }
 }
 

@@ -21,6 +21,7 @@ pub use refresh::options::Options as ReactRefreshOptions;
 use jsx_self::JsxSelfCtx;
 use jsx_src::JsxSrc;
 use parser::jsx::decode_jsx_entity;
+use pure_annotations::PureAnnotations;
 use static_check::should_use_create_element;
 use swc_next_allocator::{
     vec::ArenaVec,
@@ -128,11 +129,10 @@ pub(crate) fn jsx(
         diagnostics,
         top_level_node: true,
         pure_positions: FxHashSet::default(),
+        pure_annotations: PureAnnotations::default(),
     };
     let program = ast.root_program();
     let _ = program.traverse_mut_with(&mut jsx, &mut TraverseMutCtx::new(ast, ()));
-    display_name::hook(ast, jsx.resolver);
-    pure_annotations::hook(ast, jsx.resolver, &mut jsx.pure_positions);
     let diagnostics = jsx.diagnostics;
     // CallExpression::pure represents SWC's synthetic annotation. Remove only
     // identical existing annotations which SWC's add_pure_comment deduplicates.
@@ -152,7 +152,7 @@ pub(crate) fn jsx(
     diagnostics
 }
 
-struct Jsx<'r> {
+struct Jsx<'r, 'ast> {
     resolver: &'r mut Resolver,
     runtime: JsxRuntime,
     import_source: String,
@@ -173,9 +173,10 @@ struct Jsx<'r> {
     diagnostics: Vec<Diagnostic>,
     top_level_node: bool,
     pure_positions: FxHashSet<u32>,
+    pure_annotations: PureAnnotations<'ast>,
 }
 
-impl Jsx<'_> {
+impl Jsx<'_, '_> {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_common/src/comments.rs#L502>.
     fn add_pure_comment(&mut self, span: Span) {
         self.pure_positions.insert(span.start);
@@ -194,7 +195,7 @@ impl Jsx<'_> {
     }
 }
 
-impl<'a> TraverseMut<'a> for Jsx<'_> {
+impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1330>.
     fn enter_program(
         &mut self,
@@ -218,6 +219,10 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
             if self.parse_directives(ctx.ast, offset) {
                 break;
             }
+        }
+        if ctx.ast.is_module() {
+            self.pure_annotations
+                .collect_imports(ctx.ast, self.resolver, program);
         }
         TraverseAction::Continue
     }
@@ -297,6 +302,7 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
         node: ObjectProperty,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<ObjectProperty> {
+        display_name::exit_property(ctx.ast, self.resolver, node);
         if node.method(ctx.ast) || node.kind(ctx.ast) != PropertyKind::Init {
             self.self_ctx.pop();
         }
@@ -345,6 +351,43 @@ impl<'a> TraverseMut<'a> for Jsx<'_> {
         _ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<StaticBlock> {
         self.self_ctx.pop();
+        TraverseAction::Continue
+    }
+
+    fn enter_assignment_expression(
+        &mut self,
+        node: AssignmentExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a>,
+    ) -> TraverseAction<AssignmentExpression> {
+        display_name::enter_assignment(ctx.ast, self.resolver, node);
+        TraverseAction::Continue
+    }
+
+    fn enter_variable_declarator(
+        &mut self,
+        node: VariableDeclarator,
+        ctx: &mut TraverseMutCtx<'_, 'a>,
+    ) -> TraverseAction<VariableDeclarator> {
+        display_name::enter_declarator(ctx.ast, self.resolver, node);
+        TraverseAction::Continue
+    }
+
+    fn exit_export_default_declaration(
+        &mut self,
+        node: ExportDefaultDeclaration,
+        ctx: &mut TraverseMutCtx<'_, 'a>,
+    ) -> TraverseAction<ExportDefaultDeclaration> {
+        display_name::exit_export_default(ctx.ast, self.resolver, node);
+        TraverseAction::Continue
+    }
+
+    fn enter_call_expression(
+        &mut self,
+        node: CallExpression,
+        ctx: &mut TraverseMutCtx<'_, 'a>,
+    ) -> TraverseAction<CallExpression> {
+        self.pure_annotations
+            .annotate(ctx.ast, self.resolver, node, &mut self.pure_positions);
         TraverseAction::Continue
     }
 
@@ -477,7 +520,7 @@ pub(crate) fn undefined(ast: &mut Ast<'_>) -> Expr {
     ast.expr_unary_expression(DUMMY_SP, zero, UnaryOperator::Void)
 }
 
-impl Jsx<'_> {
+impl Jsx<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L610>.
     pub(super) fn jsx_frag_to_expr(&mut self, fragment: JsxFragment, ast: &mut Ast<'_>) -> Expr {
         let span = fragment.span(ast);
@@ -996,7 +1039,7 @@ impl JsxDirectives {
     }
 }
 
-impl Jsx<'_> {
+impl Jsx<'_, '_> {
     /// SWC directive application: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1143>.
     pub(super) fn parse_directives(&mut self, ast: &Ast<'_>, offset: u32) -> bool {
         let Some(comments) = self.comments.get(&offset) else {
@@ -1040,7 +1083,7 @@ impl Jsx<'_> {
     }
 }
 
-impl Jsx<'_> {
+impl Jsx<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L554>.
     pub(super) fn inject_runtime(&mut self, program: Program, ast: &mut Ast<'_>) {
         if self.runtime != JsxRuntime::Automatic {

@@ -2,16 +2,52 @@ use swc_next_ecma_ast::*;
 
 use crate::common::{build as b, resolver::context::Resolver};
 
-/// SWC's displayName transform for legacy React class factories.
+/// SWC's displayName hooks for legacy React class factories.
 /// <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/display_name.rs>.
-pub(super) fn hook(ast: &mut Ast<'_>, resolver: &mut Resolver) {
-    ast.root_program()
-        .visit_mut_with(&mut DisplayName { ast, resolver });
+pub(super) fn enter_assignment(
+    ast: &mut Ast<'_>,
+    resolver: &mut Resolver,
+    assignment: AssignmentExpression,
+) {
+    if assignment.operator(ast) == AssignmentOperator::Assign
+        && let Some(name) = target_name(ast, assignment.left(ast))
+    {
+        fold(ast, resolver, assignment.right(ast), Name::Text(name));
+    }
 }
 
-struct DisplayName<'a, 'ast> {
-    ast: &'a mut Ast<'ast>,
-    resolver: &'a mut Resolver,
+pub(super) fn enter_declarator(
+    ast: &mut Ast<'_>,
+    resolver: &mut Resolver,
+    declaration: VariableDeclarator,
+) {
+    if let Some(binding) = declaration.id(ast).as_binding_identifier(ast)
+        && let Some(init) = declaration.init(ast)
+    {
+        fold(ast, resolver, init, Name::Text(binding.name(ast)));
+    }
+}
+
+pub(super) fn exit_export_default(
+    ast: &mut Ast<'_>,
+    resolver: &mut Resolver,
+    export: ExportDefaultDeclaration,
+) {
+    if let Some(expression) = export.declaration(ast).as_expr(ast) {
+        let name = ast.add_utf8("input");
+        fold(ast, resolver, expression, Name::Text(name));
+    }
+}
+
+pub(super) fn exit_property(ast: &mut Ast<'_>, resolver: &mut Resolver, property: ObjectProperty) {
+    if property.kind(ast) == PropertyKind::Init && !property.method(ast) && !property.shorthand(ast)
+    {
+        let name = match ast.property_key_data(property.key(ast)) {
+            PropertyKeyData::IdentifierName(key) => Name::Text(key.name(ast)),
+            PropertyKeyData::Expr(key) => Name::Expr(key),
+        };
+        fold(ast, resolver, property.value(ast), name);
+    }
 }
 
 enum Name {
@@ -19,88 +55,24 @@ enum Name {
     Expr(Expr),
 }
 
-impl DisplayName<'_, '_> {
-    fn fold(&mut self, expression: Expr, name: Name) {
-        expression.visit_mut_with(&mut Folder {
-            ast: self.ast,
-            resolver: self.resolver,
-            name: Some(name),
-        });
-    }
-
-    fn target_name(&self, target: AssignmentTarget) -> Option<AstUtf8> {
-        let target = target.as_simple_assignment_target(self.ast)?;
-        if let Some(ident) = target.as_identifier_reference(self.ast) {
-            return Some(ident.name(self.ast));
-        }
-        let member = target.as_member_expression(self.ast)?;
-        if member.computed(self.ast) {
-            return None;
-        }
-        Some(
-            member
-                .property(self.ast)
-                .as_identifier_name(self.ast)?
-                .name(self.ast),
-        )
-    }
+fn fold(ast: &mut Ast<'_>, resolver: &mut Resolver, expression: Expr, name: Name) {
+    expression.visit_mut_with(&mut Folder {
+        ast,
+        resolver,
+        name: Some(name),
+    });
 }
 
-impl<'ast> VisitMut<'ast> for DisplayName<'_, 'ast> {
-    fn ast(&mut self) -> &mut Ast<'ast> {
-        self.ast
+fn target_name(ast: &Ast<'_>, target: AssignmentTarget) -> Option<AstUtf8> {
+    let target = target.as_simple_assignment_target(ast)?;
+    if let Some(ident) = target.as_identifier_reference(ast) {
+        return Some(ident.name(ast));
     }
-
-    fn visit_mut_assignment_expression(
-        &mut self,
-        assignment: AssignmentExpression,
-    ) -> Option<AssignmentExpression> {
-        if assignment.operator(self.ast) == AssignmentOperator::Assign
-            && let Some(name) = self.target_name(assignment.left(self.ast))
-        {
-            self.fold(assignment.right(self.ast), Name::Text(name));
-        }
-        assignment.visit_mut_children_with(self)
+    let member = target.as_member_expression(ast)?;
+    if member.computed(ast) {
+        return None;
     }
-
-    fn visit_mut_export_default_declaration(
-        &mut self,
-        export: ExportDefaultDeclaration,
-    ) -> Option<ExportDefaultDeclaration> {
-        let result = export.visit_mut_children_with(self);
-        if let Some(expression) = export.declaration(self.ast).as_expr(self.ast) {
-            let name = self.ast.add_utf8("input");
-            self.fold(expression, Name::Text(name));
-        }
-        result
-    }
-
-    fn visit_mut_object_property(&mut self, property: ObjectProperty) -> Option<ObjectProperty> {
-        let result = property.visit_mut_children_with(self);
-        if property.kind(self.ast) == PropertyKind::Init
-            && !property.method(self.ast)
-            && !property.shorthand(self.ast)
-        {
-            let name = match self.ast.property_key_data(property.key(self.ast)) {
-                PropertyKeyData::IdentifierName(key) => Name::Text(key.name(self.ast)),
-                PropertyKeyData::Expr(key) => Name::Expr(key),
-            };
-            self.fold(property.value(self.ast), name);
-        }
-        result
-    }
-
-    fn visit_mut_variable_declarator(
-        &mut self,
-        declaration: VariableDeclarator,
-    ) -> Option<VariableDeclarator> {
-        if let Some(binding) = declaration.id(self.ast).as_binding_identifier(self.ast)
-            && let Some(init) = declaration.init(self.ast)
-        {
-            self.fold(init, Name::Text(binding.name(self.ast)));
-        }
-        declaration.visit_mut_children_with(self)
-    }
+    Some(member.property(ast).as_identifier_name(ast)?.name(ast))
 }
 
 struct Folder<'a, 'ast> {

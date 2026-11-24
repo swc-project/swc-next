@@ -1,37 +1,46 @@
-use crate::common::{TraverseCtx, build};
+use crate::common::build;
 use std::collections::HashSet;
 use swc_next_ecma_ast::*;
 
-pub(crate) struct ClassStaticBlock;
+pub(crate) fn pass(ast: &mut Ast<'_>, static_blocks: &mut HashSet<NodeId>) {
+    ast.root_program()
+        .visit_mut_with(&mut ClassStaticBlock { ast, static_blocks });
+}
 
-impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ClassStaticBlock {
+struct ClassStaticBlock<'a, 'ast> {
+    ast: &'a mut Ast<'ast>,
+    static_blocks: &'a mut HashSet<NodeId>,
+}
+
+impl<'ast> VisitMut<'ast> for ClassStaticBlock<'_, 'ast> {
+    fn ast(&mut self) -> &mut Ast<'ast> {
+        self.ast
+    }
+
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2022/class_static_block.rs#L175>.
-    fn exit_class(
-        &mut self,
-        class: Class,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Class> {
-        let body = class.body(ctx.ast);
-        let mut names = self.collect_existing_private_names(ctx.ast, body.body(ctx.ast));
+    fn visit_mut_class(&mut self, class: Class) -> Option<Class> {
+        class.visit_mut_children_with(self);
+        let body = class.body(self.ast);
+        let mut names = self.collect_existing_private_names(self.ast, body.body(self.ast));
         let mut elements = Vec::new();
-        for slot in body.body(ctx.ast).iter() {
-            let element = ctx.ast.get_node_in_sub_range(slot);
-            let Some(block) = element.as_static_block(ctx.ast) else {
+        for slot in body.body(self.ast).iter() {
+            let element = self.ast.get_node_in_sub_range(slot);
+            let Some(block) = element.as_static_block(self.ast) else {
                 elements.push(element);
                 continue;
             };
-            if block.body(ctx.ast).is_empty() {
+            if block.body(self.ast).is_empty() {
                 continue;
             }
-            elements.push(self.transform_static_block(ctx, &mut names, block));
+            elements.push(self.transform_static_block(&mut names, block));
         }
-        let elements = ctx.ast.add_sub_range(elements);
-        body.set_body(ctx.ast, elements);
-        TraverseAction::Continue
+        let elements = self.ast.add_sub_range(elements);
+        body.set_body(self.ast, elements);
+        None
     }
 }
 
-impl ClassStaticBlock {
+impl ClassStaticBlock<'_, '_> {
     fn collect_existing_private_names(
         &self,
         ast: &Ast<'_>,
@@ -69,26 +78,25 @@ impl ClassStaticBlock {
     }
 
     fn transform_static_block(
-        &self,
-        ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
+        &mut self,
         names: &mut HashSet<String>,
         block: StaticBlock,
     ) -> ClassElement {
-        let name = ctx.ast.add_utf8(&Self::generate_unique_name(names));
-        let key = ctx.ast.expr_private_identifier(DUMMY_SP, name);
-        let value = if block.body(ctx.ast).len() == 1 {
-            let statement = ctx
+        let name = self.ast.add_utf8(&Self::generate_unique_name(names));
+        let key = self.ast.expr_private_identifier(DUMMY_SP, name);
+        let value = if block.body(self.ast).len() == 1 {
+            let statement = self
                 .ast
-                .get_node_in_sub_range(block.body(ctx.ast).iter().next().unwrap());
+                .get_node_in_sub_range(block.body(self.ast).iter().next().unwrap());
             statement
-                .as_expression_statement(ctx.ast)
-                .map(|statement| statement.expression(ctx.ast))
+                .as_expression_statement(self.ast)
+                .map(|statement| statement.expression(self.ast))
         } else {
             None
         };
-        let value = value.unwrap_or_else(|| Self::wrap_in_iife(ctx.ast, block.body(ctx.ast)));
-        let property = ctx.ast.property_definition(
-            block.span(ctx.ast),
+        let value = value.unwrap_or_else(|| Self::wrap_in_iife(self.ast, block.body(self.ast)));
+        let property = self.ast.property_definition(
+            block.span(self.ast),
             SubRange::empty(),
             PropertyKey::Expr(key),
             None,
@@ -106,7 +114,7 @@ impl ClassStaticBlock {
         );
         // SWC uses PLACEHOLDER_SP on the generated key. The flat AST keeps
         // that marker out of source spans and records it by node id instead.
-        ctx.state.static_blocks.insert(property.node_id());
+        self.static_blocks.insert(property.node_id());
         ClassElement::PropertyDefinition(property)
     }
 

@@ -2,7 +2,7 @@
 
 use swc_next_ecma_ast::*;
 
-use crate::common::{TraverseCtx, build as b};
+use crate::common::{build as b, resolver::context::Resolver};
 
 /// SWC's `swc_ecma_compat_common::regexp::Config` feature switches.
 ///
@@ -32,7 +32,7 @@ pub struct RegExpOptions {
 }
 
 impl RegExpOptions {
-    pub(crate) fn is_enabled(self) -> bool {
+    fn is_enabled(self) -> bool {
         self.dot_all_regex
             || self.has_indices
             || self.lookbehind_assertion
@@ -42,50 +42,56 @@ impl RegExpOptions {
     }
 }
 
-pub(crate) struct RegexpPass(pub(crate) RegExpOptions);
+pub(crate) fn pass(ast: &mut Ast<'_>, resolver: &mut Resolver, options: RegExpOptions) {
+    if options.is_enabled() {
+        ast.root_program().visit_mut_with(&mut RegexpPass {
+            ast,
+            resolver,
+            options,
+        });
+    }
+}
 
-impl RegexpPass {
+struct RegexpPass<'a, 'ast> {
+    ast: &'a mut Ast<'ast>,
+    resolver: &'a mut Resolver,
+    options: RegExpOptions,
+}
+
+impl RegexpPass<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/regexp.rs#L188>.
     fn needs_regexp_constructor(&self, pattern: &str, flags: &str) -> bool {
-        (self.0.dot_all_regex && flags.contains('s'))
-            || (self.0.sticky_regex && flags.contains('y'))
-            || (self.0.unicode_regex && flags.contains('u'))
-            || (self.0.unicode_sets_regex && flags.contains('v'))
-            || (self.0.has_indices && flags.contains('d'))
-            || (self.0.lookbehind_assertion
+        (self.options.dot_all_regex && flags.contains('s'))
+            || (self.options.sticky_regex && flags.contains('y'))
+            || (self.options.unicode_regex && flags.contains('u'))
+            || (self.options.unicode_sets_regex && flags.contains('v'))
+            || (self.options.has_indices && flags.contains('d'))
+            || (self.options.lookbehind_assertion
                 && (pattern.contains("(?<=") || pattern.contains("(?<!")))
-    }
-
-    fn transform_expr(
-        &self,
-        node: Expr,
-        ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
-    ) -> TraverseAction<Expr> {
-        let Some(regex) = node.as_reg_exp_literal(ctx.ast) else {
-            return TraverseAction::Continue;
-        };
-        let pattern = ctx.ast.get_utf8(regex.pattern(ctx.ast));
-        let flags = ctx.ast.get_utf8(regex.flags(ctx.ast));
-        if !self.needs_regexp_constructor(pattern, flags) {
-            return TraverseAction::Continue;
-        }
-
-        let mut args = vec![b::string(ctx.ast, pattern)];
-        if !flags.is_empty() {
-            args.push(b::string(ctx.ast, flags));
-        }
-        let callee = ctx.state.resolver.marked_reference(ctx.ast, "RegExp", true);
-        TraverseAction::ReplaceSkip(b::call(ctx.ast, callee, args, false))
     }
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/regexp.rs#L227>.
-impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for RegexpPass {
-    fn exit_expr(
-        &mut self,
-        node: Expr,
-        ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'_>>,
-    ) -> TraverseAction<Expr> {
-        self.transform_expr(node, ctx)
+impl<'ast> VisitMut<'ast> for RegexpPass<'_, 'ast> {
+    fn ast(&mut self) -> &mut Ast<'ast> {
+        self.ast
+    }
+
+    fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
+        let Some(regex) = node.as_reg_exp_literal(self.ast) else {
+            return node.visit_mut_children_with(self);
+        };
+        let pattern = self.ast.get_utf8(regex.pattern(self.ast));
+        let flags = self.ast.get_utf8(regex.flags(self.ast));
+        if !self.needs_regexp_constructor(pattern, flags) {
+            return None;
+        }
+
+        let mut args = vec![b::string(self.ast, pattern)];
+        if !flags.is_empty() {
+            args.push(b::string(self.ast, flags));
+        }
+        let callee = self.resolver.marked_reference(self.ast, "RegExp", true);
+        Some(b::call(self.ast, callee, args, false))
     }
 }
