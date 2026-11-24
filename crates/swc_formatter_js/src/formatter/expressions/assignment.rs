@@ -1425,40 +1425,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         left: Span,
         rhs: &AssignmentRhs<'_>,
-        operator: Span,
-        source: InitializerSource,
-        context: ExpressionContext<'ast>,
-    ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        let value_end = rhs.expression.span(self.ast).end;
-        let source_end = match source.tail {
-            InitializerTail::Value => AssignmentSourceEnd::Expression(value_end),
-            InitializerTail::ThroughComment(end) => AssignmentSourceEnd::Expression(end),
-            InitializerTail::Bound => AssignmentSourceEnd::ValueWithBoundTail(value_end),
-        };
-        let mut boundary =
-            self.assignment_boundary_with_source(left.end, rhs, operator, source_end, context)?;
-        if source.suppressed_before_equals {
-            boundary.mode = ContentMode::Verbatim;
-            if let Some(comment) = boundary.before.last() {
-                boundary.before_operator =
-                    self.source_line_constraint(comment.span.end, operator.start);
-            }
-        } else if context.content_mode == ContentMode::Verbatim {
-            boundary.mode = ContentMode::Verbatim;
-        }
-        self.prepare_assignment_rhs(rhs, &mut boundary, &context)?;
-        Ok(boundary)
-    }
-
-    fn assignment_boundary_with_source(
-        &self,
-        left_end: u32,
-        rhs: &AssignmentRhs<'_>,
         operator_span: Span,
-        source: AssignmentSourceEnd<'ast>,
+        initializer: InitializerSource,
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        let boundary = 'prepared: {
+        let left_end = left.end;
+        let mut boundary = 'prepared: {
+            let value_end = rhs.expression.span(self.ast).end;
+            let source = match initializer.tail {
+                InitializerTail::Value => AssignmentSourceEnd::Expression(value_end),
+                InitializerTail::ThroughComment(end) => AssignmentSourceEnd::Expression(end),
+                InitializerTail::Bound => AssignmentSourceEnd::ValueWithBoundTail(value_end),
+            };
             let source_right_end = source.end();
             let value_tail_bound = matches!(source, AssignmentSourceEnd::ValueWithBoundTail(_));
             if value_tail_bound {
@@ -2078,30 +2056,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.assignment_head_gaps(&boundary, &heads, content, head_mode, *head_context);
             boundary
         };
-        Ok(boundary)
-    }
-
-    /// Prepare the value only after its parent has selected the final source mode.
-    #[inline]
-    fn prepare_assignment_rhs(
-        &self,
-        rhs: &AssignmentRhs<'_>,
-        boundary: &mut AssignmentBoundary<'ast>,
-        context: &ExpressionContext<'ast>,
-    ) -> Result<(), FormatError> {
-        let ExprData::UnaryExpression(unary) = rhs.content.data else {
-            return Ok(());
-        };
-        if context.content_mode == ContentMode::Formatted
+        if initializer.suppressed_before_equals {
+            boundary.mode = ContentMode::Verbatim;
+            if let Some(comment) = boundary.before.last() {
+                boundary.before_operator =
+                    self.source_line_constraint(comment.span.end, operator_span.start);
+            }
+        } else if context.content_mode == ContentMode::Verbatim {
+            boundary.mode = ContentMode::Verbatim;
+        }
+        // A unary operand needs the final mode chosen by its actual initializer owner.
+        if let ExprData::UnaryExpression(unary) = rhs.content.data
+            && context.content_mode == ContentMode::Formatted
             && boundary.mode == ContentMode::Formatted
             && (self.has_suppression
                 || self.has_target_annotations
                 || self.has_file_directives
                 || !self.diagnostic_lines.is_empty())
         {
-            self.prepare_assignment_unary_rhs(unary, boundary, context)?;
+            self.prepare_assignment_unary_rhs(unary, &mut boundary, &context)?;
         }
-        Ok(())
+        Ok(boundary)
     }
 
     #[inline(never)]
