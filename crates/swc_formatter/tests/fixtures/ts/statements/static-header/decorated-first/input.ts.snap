@@ -7,8 +7,8 @@ class C { static /* header */ { @decorator(/* inner */ value) class D {} } }
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
-  static {
-    /* header */ @decorator(/* inner */ value)
+  static /* header */ {
+    @decorator(/* inner */ value)
     class D {}
   }
 }

@@ -8,8 +8,8 @@ foo();}}---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
-  static {
-    // a
+  static // a
+  {
     // b
     foo();
   }

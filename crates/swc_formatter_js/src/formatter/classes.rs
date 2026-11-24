@@ -1,10 +1,10 @@
 //! Class heads and members retain real keys, signatures, and source terminators.
 
 use swc_next_ecma_ast::{
-    BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, Comment, CommentKind,
-    Expr, ExprData, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey,
-    PropertyKeyData, Span, StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction,
-    TsIndexSignature, TsMethodDefinition, TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
+    BindingIdentifier, Class, ClassBody, ClassElement, ClassElementData, CommentKind, Expr,
+    ExprData, GetSpan, MethodDefinitionKind, PropertyDefinition, PropertyKey, PropertyKeyData,
+    Span, StaticBlock, StmtData, SubRange, TsClassImplements, TsFunction, TsIndexSignature,
+    TsMethodDefinition, TsType, TsTypeAnnotation, TsTypeParameterDeclaration,
 };
 
 pub(in crate::formatter) mod member_prefix;
@@ -30,7 +30,7 @@ use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, Sour
 use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
 use super::member_separator::{MemberBody, MemberSeparator};
 use super::source::{is_source_horizontal_whitespace, is_source_whitespace};
-use super::statements::{IncomingStatement, StatementBodyLeading};
+use super::statements::IncomingStatement;
 use super::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSourceGap, DelimitedSuppression, SuppressionPosition,
     is_suppression_comment,
@@ -283,8 +283,7 @@ struct SourceStaticBlock<'ast> {
     braces: Span,
     incoming: Option<IncomingStatement>,
     whole: bool,
-    comments: &'ast [Comment],
-    leading: StatementBodyLeading<'ast>,
+    boundary: CommentBoundary<'ast>,
     gap: CommentGap,
 }
 
@@ -2526,61 +2525,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 whole = true;
             }
         }
-        let covered_opening = self.lint_line_at(opening).is_some()
-            && comments
-                .iter()
-                .any(|comment| comment.kind == CommentKind::Line);
-        let leading = if comments.is_empty() || whole || incoming.is_some() || covered_opening {
-            StatementBodyLeading::empty()
+        let boundary = self.prepare_comment_boundary(comments, span.start + 6, opening);
+        let gap = if incoming.is_some() && !matches!(boundary.gap(), CommentGap::LineComment) {
+            CommentGap::Source(self.source_line_constraint(boundary.end(), opening))
+        } else if let Some(&last) = comments.last()
+            && last.kind == CommentKind::Block
+        {
+            CommentGap::Source(self.comment_gap_after_constraint(last, opening))
         } else {
-            // The static body owns one complete prefix, including any existing
-            // body head. Resolve it before either side claims the source stream.
-            let end = first.map_or(span.end - 1, |statement| {
-                self.statement_decorators(statement)
-                    .map_or(statement.span(ast).start, |(span, _)| span.start)
-            });
-            let prefix = Span::new(span.start + 6, end);
-            let packet = self.comments.in_range(prefix);
-            if self
-                .comment_binding(packet, prefix, None)
-                .allows_relocation(None)
-                && packet
-                    .iter()
-                    .all(|&comment| !self.comment_is_jsdoc_binding(comment))
-            {
-                StatementBodyLeading::new(packet, first)
-            } else {
-                StatementBodyLeading::empty()
-            }
-        };
-        let comments = if leading.comments().is_empty() {
-            comments
-        } else {
-            &[]
-        };
-        let last = comments
-            .last()
-            .map_or(span.start + 6, |comment| comment.span.end);
-        let constraint = if incoming.is_some() {
-            self.source_line_constraint(last, opening)
-        } else {
-            self.line_constraint(last, opening)
+            boundary.gap()
         };
         Ok(SourceStaticBlock {
             node,
             braces,
             incoming,
             whole,
-            comments,
-            leading,
-            gap: if comments
-                .last()
-                .is_some_and(|comment| comment.kind == CommentKind::Line)
-            {
-                CommentGap::LineComment
-            } else {
-                CommentGap::Source(constraint)
-            },
+            boundary,
+            gap,
         })
     }
 
@@ -2594,19 +2555,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             braces,
             incoming,
             whole,
-            comments,
-            leading,
+            boundary,
             gap,
         } = block;
         if whole {
             return self.format_verbatim(node.span(self.ast), writer);
         }
         writer.text("static");
-        let end = node.span(self.ast).start + 6;
-        self.comments.claim(comments)?;
-        self.format_comment_run(comments, CommentRunLayout::SourceAfter(end), writer)?;
+        self.format_comment_boundary(&boundary, writer)?;
         gap.write(writer, FlatSeparator::Space, Writer::space);
-        self.comments.claim(leading.comments())?;
-        self.format_static_block_body(node, braces, incoming, leading, writer)
+        self.format_static_block_body(node, braces, incoming, writer)
     }
 }

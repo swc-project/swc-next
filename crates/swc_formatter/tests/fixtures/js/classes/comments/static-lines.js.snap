@@ -9,9 +9,9 @@ class C {static // first
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
-  static {
-    // first
-    // second
+  static // first
+  // second
+  {
     call();
   }
 }
@@ -20,9 +20,9 @@ class C {
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 class C {
-  static {
-    // first
-    // second
+  static // first
+  // second
+  {
     call();
   }
 }
@@ -31,9 +31,9 @@ class C {
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
-  static {
-    // first
-    // second
+  static // first
+  // second
+  {
     call()
   }
 }
@@ -42,9 +42,9 @@ class C {
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
 class C {
-  static {
-    // first
-    // second
+  static // first
+  // second
+  {
     call()
   }
 }
@@ -53,9 +53,9 @@ class C {
 {"indentStyle":"tab","indentWidth":2,"lineWidth":20}
 ---------- Output ----------
 class C {
-	static {
-		// first
-		// second
+	static // first
+	// second
+	{
 		call();
 	}
 }
@@ -64,9 +64,9 @@ class C {
 {"indentStyle":"space","lineWidth":80,"quoteProperties":"preserve","semicolons":"as-needed"}
 ---------- Output ----------
 class C {
-  static {
-    // first
-    // second
+  static // first
+  // second
+  {
     call()
   }
 }
