@@ -2024,31 +2024,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )
     }
 
-    pub(super) fn format_inline_head_with_gaps(
-        &self,
-        comments: &[Comment],
-        next_start: u32,
-        mut gaps: impl Iterator<Item = (u32, CommentGap)>,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(), FormatError> {
-        let mut projected = gaps.next();
-        self.format_leading_comments_with_gaps(
-            comments,
-            next_start,
-            |comment, next, first, writer| {
-                if let Some((end, gap)) = projected
-                    && end == comment.span.end
-                {
-                    gap.write(writer, FlatSeparator::Space, Writer::line);
-                    projected = gaps.next();
-                } else {
-                    self.leading_comment_gap(comment, next, true, first, writer);
-                }
-            },
-            writer,
-        )
-    }
-
     fn format_leading_comments_with_gaps(
         &self,
         comments: &[Comment],

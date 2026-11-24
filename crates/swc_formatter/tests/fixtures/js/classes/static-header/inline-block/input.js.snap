@@ -6,7 +6,7 @@ class C {static /* c */ {foo();}}---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
-  static {
-    /* c */ foo();
+  static /* c */ {
+    foo();
   }
 }

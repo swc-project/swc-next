@@ -6,4 +6,4 @@ for (/* note */ ; ; ) {}
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-for (;;) /* note */ {}
+for ( /* note */;;) {}

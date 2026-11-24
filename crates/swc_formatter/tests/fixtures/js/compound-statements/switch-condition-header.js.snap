@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+switch /* Header */ (/* Discriminant */ state) {
+  case 1:
+    run();
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+switch /* Header */ (/* Discriminant */ state) {
+  case 1:
+    run();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+switch /* Header */ (
+  /* Discriminant */ state
+) {
+  case 1:
+    run()
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80,"trailingCommas":"none"}
+---------- Output ----------
+switch /* Header */ (/* Discriminant */ state) {
+	case 1:
+		run();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+switch /* Header */ (
+  /* Discriminant */ state
+) {
+  case 1:
+    run()
+}

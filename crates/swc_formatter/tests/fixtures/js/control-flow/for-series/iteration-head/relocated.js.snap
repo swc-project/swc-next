@@ -8,4 +8,7 @@ for
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-for (/*a*/ x of y) x();
+for
+/*a*/
+(x of y)
+  x();

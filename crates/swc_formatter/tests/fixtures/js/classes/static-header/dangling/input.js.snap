@@ -9,8 +9,7 @@ class C { static /* header */ { /* a */
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 class C {
-  static {
-    /* header */
+  static /* header */ {
     /* a */
     /* b */
   }

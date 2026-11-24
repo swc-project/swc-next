@@ -1,6 +1,5 @@
 //! Case heads, statement sequences, and source packets between real case owners.
 
-use super::super::ConditionPrefix;
 use super::{CompoundBlock, CompoundGap, Formatter, GapLayout};
 use crate::formatter::comments::{
     CommentCursor, CommentRunLayout, NodeHead, PreparedCommentAdjacency,
@@ -118,7 +117,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ));
         };
         let body = Span::new(opening + 1, span.end - 1);
-        let mut first_gap = self.compound_gap(Span::new(
+        let first_gap = self.compound_gap(Span::new(
             body.start,
             first.map_or(body.end, |node| node.span(ast).start),
         ));
@@ -130,12 +129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             });
         }
         let keyword_end = span.start + 6;
-        let mut condition = self.prepare_condition_with_prefix(
-            discriminant,
-            keyword_end,
-            opening,
-            ConditionPrefix::RelocateBeforeOpening,
-        )?;
+        let mut condition = self.prepare_condition(discriminant, keyword_end, opening)?;
         let leading = self.compound_gap(Span::new(keyword_end, disc_span.start));
         let condition_tail = self.compound_gap(Span::new(disc_span.end, opening));
         let mut first_mode = ContentMode::Formatted;
@@ -169,35 +163,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .comment_binding(first_gap.comments, first_gap.span, None)
                 .allows_relocation(None);
         let closing = condition.closing;
-        let split = condition_tail
-            .comments
-            .partition_point(|comment| comment.span.end <= closing);
-        let mut after = CompoundGap {
+        let after = CompoundGap {
             span: Span::new(closing + 1, opening),
-            comments: &condition_tail.comments[split..],
+            comments: &condition_tail.comments[condition_tail
+                .comments
+                .partition_point(|comment| comment.span.end <= closing)..],
             layout: GapLayout::Formatted,
         };
-        if !source_header
-            && self
-                .comment_binding(after.comments, after.span, None)
-                .allows_relocation(None)
-        {
-            condition.tail_end = opening;
-            after.comments = &[];
-            if first.is_some() && first_gap_relocatable {
-                let split = first_gap.comments.partition_point(|comment| {
-                    self.line_breaks(body.start, comment.span.start) == 0
-                });
-                if let Some(last) = first_gap.comments[..split]
-                    .last()
-                    .filter(|comment| comment.kind == CommentKind::Line)
-                {
-                    condition.tail_end = last.span.end;
-                    condition.inline = false;
-                    first_gap.comments = &first_gap.comments[split..];
-                }
-            }
-        }
         let case_leading = first_gap_relocatable && !first_gap.comments.is_empty();
         writer.group(false, |writer| {
             writer.text("switch");

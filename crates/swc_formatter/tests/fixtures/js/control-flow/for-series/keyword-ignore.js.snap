@@ -6,8 +6,8 @@ for /* prettier-ignore */ (value  = 0; false;) { value  += 1; }
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"always"}
 ---------- Output ----------
-for (
-  /* prettier-ignore */ value  = 0;
+for /* prettier-ignore */ (
+  value  = 0;
   false;
 ) {
   value += 1;
@@ -16,15 +16,15 @@ for (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"always"}
 ---------- Output ----------
-for (/* prettier-ignore */ value  = 0; false;) {
+for /* prettier-ignore */ (value  = 0; false;) {
   value += 1;
 }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
 ---------- Output ----------
-for (
-  /* prettier-ignore */ value  = 0;
+for /* prettier-ignore */ (
+  value  = 0;
   false;
 ) {
   value += 1
@@ -33,6 +33,6 @@ for (
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-for (/* prettier-ignore */ value  = 0; false;) {
+for /* prettier-ignore */ (value  = 0; false;) {
   value += 1
 }

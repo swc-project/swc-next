@@ -6,12 +6,12 @@ for (/* note */ ; i < 10; ) {}
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-for (
+for ( /* note */
   ;
-  /* note */ i < 10;
+  i < 10;
 ) {}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-for (; /* note */ i < 10;) {}
+for ( /* note */; i < 10;) {}
