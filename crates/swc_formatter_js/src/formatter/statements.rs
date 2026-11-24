@@ -375,6 +375,25 @@ impl StatementItem {
         }
     }
 
+    fn is_bare_let_expression(self, ast: &Ast<'_>) -> bool {
+        let Self::Statement(statement) = self else {
+            return false;
+        };
+        let StmtData::ExpressionStatement(statement) = ast.stmt_data(statement) else {
+            return false;
+        };
+        let mut expression = statement.expression(ast);
+        loop {
+            match ast.expr_data(expression) {
+                ExprData::ParenthesizedExpression(node) => expression = node.expression(ast),
+                ExprData::IdentifierReference(node) => {
+                    return ast.get_utf8(node.name(ast)) == "let";
+                }
+                _ => return false,
+            }
+        }
+    }
+
     fn has_open_type_tail(self, ast: &Ast<'_>) -> bool {
         let Some(declaration) = self.declaration(ast) else {
             return false;
@@ -934,9 +953,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     StatementPunctuation::Source,
                 )
             } else if self.options.semicolons == Semicolons::AsNeeded
-                && (following_syntax.is_some()
-                    && source_terminator.is_none()
-                    && statement.has_open_type_tail(ast)
+                && (source_terminator.is_none()
+                    && (following_syntax.is_some() && statement.has_open_type_tail(ast)
+                        // A bare `let` can start a lexical declaration across a newline.
+                        || matches!(following_syntax, Some(FollowingSyntax::Statement))
+                            && statement.is_bare_let_expression(ast))
                     || pending.as_ref().is_some_and(|next| {
                         matches!(next.item, StatementItem::Statement(node)
                             if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))

@@ -26411,6 +26411,39 @@
         "prettierNative": "/* eslint-disable-next-line no-undef */\nfirst();\nsecond();\n"
       }
     ],
+    "js/statements/asi-boundaries/async-arrow.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "a\nasync (b) => c\n",
+        "prettierNative": "a\n;async (b) => c\n"
+      }
+    ],
+    "js/statements/asi-boundaries/bare-let-async.cjs": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let; // c\nasync (b) => c\n",
+        "prettierNative": "let // c\n;async (b) => c\n"
+      }
+    ],
+    "js/statements/asi-boundaries/bare-let-parenthesized.cjs": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let;\nasync\n",
+        "prettierNative": "let\nasync\n"
+      }
+    ],
     "js/statements/asi-boundaries/pure-head-packet.js": [
       {
         "options": {
