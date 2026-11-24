@@ -286,6 +286,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         sequence: SequenceExpression,
         inherited: &'ast [Comment],
+        context: ExpressionContext<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let ast = self.ast;
+        let items = sequence
+            .expressions(ast)
+            .iter()
+            .map(|id| Some(ast.get_node_in_sub_range(id)));
+        self.with_comparison_list(items, sequence.span(ast).end, |formatter| {
+            formatter.format_sequence_body(sequence, inherited, context, writer)
+        })
+    }
+
+    fn format_sequence_body(
+        &mut self,
+        sequence: SequenceExpression,
+        inherited: &'ast [Comment],
         mut context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {

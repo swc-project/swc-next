@@ -45000,6 +45000,226 @@
         "prettierNative": "const result = factor * callee<Type> + suffix;\n"
       }
     ],
+    "ts/type-argument-expression-boundaries/comparison-lists/array.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  i < n,\n  j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const ok = [\n  i < n,\n  j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  i < n,\n  j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "const ok = [\n\ti < n,\n\tj.k\n\t\t> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n\ti < n,\n\tj.k >\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/arrow-arguments.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "foo(\n  () => i < n,\n  () =>\n    j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n",
+        "prettierNative": "foo(\n  () => i < n,\n  () =>\n    j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "foo(\n  () => i < n,\n  () =>\n    j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n)\n",
+        "prettierNative": "foo(\n  () => i < n,\n  () =>\n    j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "foo(\n  () => i < n,\n  () =>\n    j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n",
+        "prettierNative": "foo(\n  () => i < n,\n  () =>\n    j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "foo(\n\t() => i < n,\n\t() =>\n\t\tj.k\n\t\t> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n",
+        "prettierNative": "foo(\n\t() => i < n,\n\t() =>\n\t\tj.k >\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/for-sequence.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  i < n,\n    j.k\n      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n",
+        "prettierNative": "for (\n  i < n,\n    j.k >\n      aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (\n  i < n,\n    j.k\n      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n",
+        "prettierNative": "for (\n  i < n,\n    j.k >\n      aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  i < n,\n    j.k\n      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n",
+        "prettierNative": "for (\n  i < n,\n    j.k >\n      aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "for (\n\ti < n,\n\t\tj.k\n\t\t\t> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n\trunning;\n\tstep()\n) {}\n",
+        "prettierNative": "for (\n\ti < n,\n\t\tj.k >\n\t\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n\trunning;\n\tstep()\n) {}\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/ignored-greater-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  (i < n),\n  /* prettier-ignore */ j.k >\n  value,\n];\n",
+        "prettierNative": "[i < n, /* prettier-ignore */ j.k >\n  value];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[\n  (i < n),\n  /* prettier-ignore */ j.k >\n  value,\n]\n",
+        "prettierNative": ";[i < n, /* prettier-ignore */ j.k >\n  value]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  (i < n),\n  /* prettier-ignore */ j.k >\n  value,\n];\n",
+        "prettierNative": "[\n  i < n,\n  /* prettier-ignore */ j.k >\n  value,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "[\n\t(i < n),\n\t/* prettier-ignore */ j.k >\n  value,\n];\n",
+        "prettierNative": "[i < n, /* prettier-ignore */ j.k >\n  value];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/inline-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  i < n,\n  j.k\n    > /* rhs */ value,\n];\n",
+        "prettierNative": "[\n  i < n,\n  j.k >\n    /* rhs */ value,\n];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/parenthesized-greater-head.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[(i < n), j.k > (left && right).value];\n",
+        "prettierNative": "[i < n, j.k > (left && right).value];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[(i < n), j.k > (left && right).value]\n",
+        "prettierNative": ";[i < n, j.k > (left && right).value]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  (i < n),\n  j.k >\n    (left && right)\n      .value,\n];\n",
+        "prettierNative": "[\n  i < n,\n  j.k >\n    (left && right)\n      .value,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "[(i < n), j.k > (left && right).value];\n",
+        "prettierNative": "[i < n, j.k > (left && right).value];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/source-line-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  (i < n),\n  j.k // boundary\n    >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k > // boundary\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const ok = [\n  (i < n),\n  j.k // boundary\n    >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k > // boundary\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  (i < n),\n  j.k // boundary\n    >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k > // boundary\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "const ok = [\n\t(i < n),\n\tj.k // boundary\n\t\t>\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n\ti < n,\n\tj.k > // boundary\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      }
+    ],
     "ts/type-argument-expression-boundaries/lexical-tail.ts": [
       {
         "options": {

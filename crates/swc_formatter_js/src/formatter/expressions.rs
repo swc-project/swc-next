@@ -8,6 +8,7 @@ mod binary;
 mod callbacks;
 mod calls;
 pub(super) mod chains;
+pub(super) mod comparisons;
 mod conditional;
 mod constructors;
 mod for_initializer;
@@ -1284,6 +1285,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: ExpressionPosition,
         mode: ContentMode,
     ) -> Option<bool> {
+        if self.comparison_list_parentheses(data) {
+            return Some(true);
+        }
         if let Some(scope) = self.for_initializer_span {
             if mode == ContentMode::Verbatim && self.opaque_initializer_needs_enclosure(data, scope)
             {

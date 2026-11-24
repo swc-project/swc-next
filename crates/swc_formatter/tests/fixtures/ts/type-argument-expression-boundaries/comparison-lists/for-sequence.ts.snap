@@ -1,0 +1,48 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+for (i < n, j.k > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere; running; step()) {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+for (
+  i < n,
+    j.k
+      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;
+  running;
+  step()
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+for (
+  i < n,
+    j.k
+      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;
+  running;
+  step()
+) {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+for (
+  i < n,
+    j.k
+      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;
+  running;
+  step()
+) {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+for (
+	i < n,
+		j.k
+			> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;
+	running;
+	step()
+) {}
