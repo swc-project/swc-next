@@ -2,8 +2,8 @@
 //! (MIT, see `THIRD_PARTY_NOTICES`).
 
 use core::arch::aarch64::{
-    uint8x16_t, vandq_u8, vbicq_u8, vceqzq_u8, vdupq_n_u8, vgetq_lane_u64, vld1q_u8, vpaddq_u8,
-    vqtbl1q_u8, vreinterpretq_u64_u8, vshrq_n_u8,
+    uint8x16_t, vandq_u8, vbicq_u8, vdupq_n_u8, vgetq_lane_u64, vld1q_u8, vpaddq_u8, vqtbl1q_u8,
+    vreinterpretq_u64_u8, vshrq_n_u8, vtstq_u8,
 };
 
 use super::{
@@ -13,9 +13,12 @@ use super::{
 use crate::lexer::keyword_type_of_words;
 
 const BLOCK: u32 = 64;
+/// Sentinel block offset for an empty cache: `start.wrapping_sub(UNINITIALIZED) >= BLOCK`
+/// for every valid source offset, and `UNINITIALIZED.wrapping_add(BLOCK)` is not block-aligned.
+const UNINITIALIZED: u32 = u32::MAX - BLOCK;
 
-/// Two adjacent masks indexed by absolute source offset. Rewinding the lexer
-/// does not need to restore them: a scan outside the first block reloads.
+/// Two adjacent stop-bit masks indexed by absolute source offset. Rewinding the
+/// lexer does not need to restore them: a scan outside the first block reloads.
 #[derive(Clone, Debug)]
 pub(in crate::lexer) struct IdentifierBlocks {
     start: u32,
@@ -24,11 +27,12 @@ pub(in crate::lexer) struct IdentifierBlocks {
 }
 
 impl IdentifierBlocks {
-    pub(in crate::lexer) fn new(source: &[u8]) -> Self {
+    #[inline(always)]
+    pub(in crate::lexer) fn new(_source: &[u8]) -> Self {
         Self {
-            start: 0,
-            first: block_at(source, 0),
-            second: block_at(source, BLOCK as usize),
+            start: UNINITIALIZED,
+            first: 0,
+            second: 0,
         }
     }
 
@@ -63,9 +67,9 @@ impl IdentifierBlocks {
     fn scan_in_blocks(&self, source: &[u8], start: u32, shift: u32) -> Option<(u32, TokenTag)> {
         // Most identifiers end in the first block. Consult the second one
         // only when the first block has no stop at or after the start.
-        let mut len = (!self.first >> shift).trailing_zeros();
+        let mut len = (self.first >> shift).trailing_zeros();
         if len == BLOCK {
-            len = BLOCK - shift + (!self.second).trailing_zeros();
+            len = BLOCK - shift + self.second.trailing_zeros();
             if len >= BLOCK {
                 return scan_ascii_identifier_or_keyword_slow(source, start);
             }
@@ -113,7 +117,7 @@ fn keyword_at(bytes: &[u8; 12], len: usize) -> TokenTag {
 #[inline(always)]
 fn block_at(source: &[u8], start: usize) -> u64 {
     let Some(tail) = source.get(start..) else {
-        return 0;
+        return u64::MAX;
     };
     if let Some(block) = tail.first_chunk::<{ BLOCK as usize }>() {
         return identifier_mask(block);
@@ -194,7 +198,7 @@ fn identifier_mask(block: &[u8; BLOCK as usize]) -> u64 {
         let classify = |bytes: uint8x16_t| {
             let low = vqtbl1q_u8(low, vandq_u8(bytes, vdupq_n_u8(0x0f)));
             let high = vqtbl1q_u8(high, vshrq_n_u8::<4>(bytes));
-            vbicq_u8(lane_bits, vceqzq_u8(vandq_u8(low, high)))
+            vbicq_u8(lane_bits, vtstq_u8(low, high))
         };
         let a = classify(vld1q_u8(block.as_ptr()));
         let b = classify(vld1q_u8(block.as_ptr().add(16)));
