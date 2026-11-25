@@ -264,6 +264,60 @@ fn parameter_properties() {
 }
 
 #[test]
+fn parameter_decorators() {
+    assert_strip_with_error!(
+        "class C { constructor(@dec x: T) {} }",
+        "class C { constructor(@dec x   ) {} }",
+        at: "@dec",
+    );
+
+    assert_strip_with_error!("function f(@dec a) {}", "function f(@dec a) {}", at: "@dec");
+
+    assert_strip_with_error!(
+        "const o = { m(@dec a) {} }",
+        "const o = { m(@dec a) {} }",
+        at: "@dec",
+    );
+
+    assert_strip_with_error!(
+        "class A { set x(@dec v) {} }",
+        "class A { set x(@dec v) {} }",
+        at: "@dec",
+    );
+
+    assert_strip_with_error!(
+        "class A { m(@dec a?: number) {} }",
+        "class A { m(@dec a         ) {} }",
+        at: "@dec",
+    );
+
+    assert_strip_with_error!(
+        "class A { m(@dec ...r: any[]) {} }",
+        "class A { m(@dec ...r       ) {} }",
+        at: "@dec",
+    );
+
+    assert_strip_with_error!(
+        "class A { m(@dec a, @dec2 b) {} }",
+        "class A { m(@dec a, @dec2 b) {} }",
+        at: "@dec",
+    );
+
+    assert_strip_with_error!(
+        "class A { constructor(@dec a, private b) {} }",
+        "class A { constructor(@dec a,         b) {} }",
+        at: "@dec",
+    );
+
+    assert_strip!(
+        "declare class A { m(@dec a: number): void }",
+        ";                                          ",
+    );
+
+    assert_strip!("class A { m(x: number) {} }", "class A { m(x        ) {} }");
+}
+
+#[test]
 fn member_declarations() {
     assert_strip!(
         "class C { abstract next() {} }",
