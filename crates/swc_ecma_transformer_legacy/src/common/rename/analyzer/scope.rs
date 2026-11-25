@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, ops::Range};
 
 use rustc_hash::FxHashMap;
 use swc_next_allocator::{
@@ -13,8 +13,9 @@ use crate::common::resolver::context::Resolver;
 
 pub(in crate::common::rename) struct Scope<'ast> {
     pub(in crate::common::rename) function: bool,
-    // Collected during the walk, then sorted and deduplicated for conflict checks.
-    pub(in crate::common::rename) all: ArenaVec<'ast, SymbolId>,
+    used_symbols: ArenaVec<'ast, SymbolId>,
+    // Positions of uses in this scope and its descendants.
+    uses: Range<usize>,
     pub(in crate::common::rename) queue: ArenaVec<'ast, SymbolId>,
     pub(in crate::common::rename) queued: ArenaHashSet<'ast, SymbolId>,
     pub(in crate::common::rename) reserved: ArenaHashSet<'ast, &'ast str>,
@@ -25,7 +26,8 @@ impl<'ast> Scope<'ast> {
     pub(in crate::common::rename) fn new(function: bool, allocator: &'ast Allocator) -> Self {
         Self {
             function,
-            all: allocator.vec(),
+            used_symbols: allocator.vec(),
+            uses: 0..0,
             queue: allocator.vec(),
             queued: ArenaHashSet::new_in(allocator),
             reserved: ArenaHashSet::new_in(allocator),
@@ -44,20 +46,22 @@ impl<'ast> Scope<'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L74>.
     pub(in crate::common::rename) fn add_usage(&mut self, id: SymbolId) {
-        if self.all.last().copied() != Some(id) {
-            self.all.push(id);
+        if self.used_symbols.last().copied() != Some(id) {
+            self.used_symbols.push(id);
         }
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L91>.
-    pub(in crate::common::rename) fn prepare_renaming(&mut self) {
+    pub(in crate::common::rename) fn prepare_renaming(
+        &mut self,
+        symbols: &mut ScopeSymbolsBuilder<'ast>,
+    ) {
+        let start = symbols.add_scope(&self.used_symbols);
         for child in &mut self.children {
-            child.prepare_renaming();
-            self.all.extend_from_slice_copy(&child.all);
+            child.prepare_renaming(symbols);
             self.reserved.extend(child.reserved.iter().copied());
         }
-        self.all.sort_unstable();
-        self.all.dedup();
+        self.uses = start..symbols.symbols.len();
     }
 
     /// SWC scope traversal: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L102>.
@@ -68,6 +72,7 @@ impl<'ast> Scope<'ast> {
         resolver: &Resolver,
         unresolved: &ArenaHashSet<'ast, &'ast str>,
         assignments: &mut Assignments<'ast>,
+        symbols: &ScopeSymbols<'ast>,
     ) {
         let mut latest = ArenaHashMap::<&str, usize>::new_in(ast.allocator());
         for &id in &self.queue {
@@ -86,7 +91,7 @@ impl<'ast> Scope<'ast> {
                 if unresolved.contains(name.as_ref()) || self.reserved.contains(name.as_ref()) {
                     continue;
                 }
-                if assignments.conflicts(&name, id, &self.all) {
+                if assignments.conflicts(&name, &self.uses, symbols) {
                     continue;
                 }
                 assignments.insert(id, name);
@@ -94,8 +99,86 @@ impl<'ast> Scope<'ast> {
             }
         }
         for child in &self.children {
-            child.rename_in_normal_mode(ast, resolver, unresolved, assignments);
+            child.rename_in_normal_mode(ast, resolver, unresolved, assignments, symbols);
         }
+    }
+}
+
+pub(in crate::common::rename) struct ScopeSymbolsBuilder<'ast> {
+    symbols: ArenaVec<'ast, SymbolId>,
+    // Each nonempty scope starts at a distinct offset in symbols.
+    last_scope_start: ArenaIndexVec<'ast, SymbolId, usize>,
+    counts: ArenaIndexVec<'ast, SymbolId, usize>,
+}
+
+impl<'ast> ScopeSymbolsBuilder<'ast> {
+    pub(in crate::common::rename) fn new(symbol_count: usize, allocator: &'ast Allocator) -> Self {
+        Self {
+            symbols: ArenaVec::with_capacity_in(symbol_count, allocator),
+            last_scope_start: ArenaIndexVec::from_iter_in(
+                std::iter::repeat_n(usize::MAX, symbol_count),
+                allocator,
+            ),
+            counts: ArenaIndexVec::from_iter_in(std::iter::repeat_n(0, symbol_count), allocator),
+        }
+    }
+
+    fn add_scope(&mut self, symbols: &[SymbolId]) -> usize {
+        let start = self.symbols.len();
+        for &symbol in symbols {
+            if self.last_scope_start[symbol] != start {
+                self.last_scope_start[symbol] = start;
+                self.counts[symbol] += 1;
+                self.symbols.push(symbol);
+            }
+        }
+        start
+    }
+
+    pub(in crate::common::rename) fn finish(self) -> ScopeSymbols<'ast> {
+        let Self {
+            symbols,
+            counts: mut ends,
+            ..
+        } = self;
+        // Turn counts into write offsets. Filling the index advances them to
+        // the exclusive end of each symbol's sorted positions.
+        let mut start = 0;
+        for count in &mut ends {
+            start += std::mem::replace(count, start);
+        }
+        let mut positions = ArenaVec::from_iter_in(std::iter::repeat_n(0, start), symbols.bump());
+        for (position, &symbol) in symbols.iter().enumerate() {
+            positions[ends[symbol]] = position;
+            ends[symbol] += 1;
+        }
+        ScopeSymbols {
+            symbols,
+            ends,
+            positions,
+        }
+    }
+}
+
+pub(in crate::common::rename) struct ScopeSymbols<'ast> {
+    symbols: ArenaVec<'ast, SymbolId>,
+    ends: ArenaIndexVec<'ast, SymbolId, usize>,
+    positions: ArenaVec<'ast, usize>,
+}
+
+impl ScopeSymbols<'_> {
+    fn contains(&self, scope: &Range<usize>, symbol: SymbolId) -> bool {
+        let ends = self.ends.as_raw_slice();
+        let start = if symbol.index() == 0 {
+            0
+        } else {
+            ends[symbol.index() - 1]
+        };
+        let positions = &self.positions[start..self.ends[symbol]];
+        let first = positions.partition_point(|&position| position < scope.start);
+        positions
+            .get(first)
+            .is_some_and(|&position| position < scope.end)
     }
 }
 
@@ -129,19 +212,18 @@ impl<'ast> Assignments<'ast> {
     }
 
     /// SWC conflict check: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/scope.rs#L199>.
-    fn conflicts(&self, name: &str, id: SymbolId, all: &[SymbolId]) -> bool {
+    fn conflicts(&self, name: &str, scope: &Range<usize>, symbols: &ScopeSymbols<'ast>) -> bool {
         let Some(group) = self.reverse.get(name) else {
             return false;
         };
-        // The set intersection can be checked from either index.
-        if group.len() > all.len() {
+        // The symbol being assigned is absent from all groups.
+        if group.len() > scope.len() {
             let first = Some(group[0]);
-            all.iter()
-                .any(|&other| other != id && self.assigned[other] == first)
-        } else {
-            group
+            symbols.symbols[scope.clone()]
                 .iter()
-                .any(|&other| other != id && all.binary_search(&other).is_ok())
+                .any(|&other| self.assigned[other] == first)
+        } else {
+            group.iter().any(|&other| symbols.contains(scope, other))
         }
     }
 }

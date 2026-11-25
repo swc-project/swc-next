@@ -5,7 +5,7 @@ use swc_next_allocator::{
 };
 use swc_next_ecma_ast::*;
 
-use super::analyzer::scope::{Assignments, Scope};
+use super::analyzer::scope::{Assignments, Scope, ScopeSymbolsBuilder};
 use crate::common::resolver::context::Resolver;
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L537>.
@@ -35,11 +35,17 @@ pub(super) fn analyzer_and_collect_unresolved(
             .map(|(id, _)| ast.get_utf8(resolver.symbol_name(id))),
         allocator,
     );
-    analyzer.scope.prepare_renaming();
+    let mut scope_symbols = ScopeSymbolsBuilder::new(resolver.symbol_count(), allocator);
+    analyzer.scope.prepare_renaming(&mut scope_symbols);
+    let scope_symbols = scope_symbols.finish();
     let mut assignments = Assignments::new(resolver.symbol_count(), allocator);
-    analyzer
-        .scope
-        .rename_in_normal_mode(ast, resolver, &unresolved, &mut assignments);
+    analyzer.scope.rename_in_normal_mode(
+        ast,
+        resolver,
+        &unresolved,
+        &mut assignments,
+        &scope_symbols,
+    );
     assignments.renames
 }
 
