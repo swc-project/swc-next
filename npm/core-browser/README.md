@@ -1,7 +1,8 @@
 # `@swc-next/core-browser`
 
 The browser WebAssembly API for SWC Next. The package includes its WebAssembly
-binary and browser JavaScript bindings.
+binary and browser JavaScript bindings. Running the binary requires WebAssembly
+SIMD support.
 
 ```js
 import init, { parseSync, generateSync } from "@swc-next/core-browser";
