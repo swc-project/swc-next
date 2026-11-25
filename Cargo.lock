@@ -3917,11 +3917,14 @@ name = "swc_next_ecma_transformer_legacy"
 version = "0.7.0"
 dependencies = [
  "browserslist-rs",
+ "convert_case",
  "hashbrown 0.17.2",
+ "indexmap",
  "insta",
  "jsonc-parser 0.34.0",
  "jwalk",
  "memchr",
+ "regex",
  "rustc-hash",
  "serde_json",
  "swc_core",

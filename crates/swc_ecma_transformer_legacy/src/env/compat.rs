@@ -6,6 +6,8 @@ use super::{Engine, EsVersion, target::Version};
 
 #[derive(Clone, Copy)]
 pub(super) enum Feature {
+    ArrowFunctions,
+    BlockScoping,
     Exponentiation,
     AsyncToGenerator,
     AsyncGeneratorFunctions,
@@ -31,6 +33,7 @@ pub(super) enum Feature {
 impl Feature {
     pub(super) fn edition(self) -> EsVersion {
         match self {
+            Self::ArrowFunctions | Self::BlockScoping => EsVersion::Es2015,
             Self::Exponentiation => EsVersion::Es2016,
             Self::AsyncToGenerator => EsVersion::Es2017,
             Self::AsyncGeneratorFunctions => EsVersion::Es2018,
@@ -56,6 +59,32 @@ impl Feature {
 
     pub(super) fn support(self) -> &'static [(Engine, Version)] {
         match self {
+            Self::ArrowFunctions => &[
+                (Engine::Chrome, Version(47, 0, 0)),
+                (Engine::Opera, Version(34, 0, 0)),
+                (Engine::Edge, Version(13, 0, 0)),
+                (Engine::Firefox, Version(43, 0, 0)),
+                (Engine::Safari, Version(10, 0, 0)),
+                (Engine::Node, Version(6, 0, 0)),
+                (Engine::Deno, Version(1, 0, 0)),
+                (Engine::Ios, Version(10, 0, 0)),
+                (Engine::Samsung, Version(5, 0, 0)),
+                (Engine::OperaMobile, Version(34, 0, 0)),
+                (Engine::Electron, Version(0, 36, 0)),
+            ],
+            Self::BlockScoping => &[
+                (Engine::Chrome, Version(50, 0, 0)),
+                (Engine::Opera, Version(37, 0, 0)),
+                (Engine::Edge, Version(14, 0, 0)),
+                (Engine::Firefox, Version(53, 0, 0)),
+                (Engine::Safari, Version(11, 0, 0)),
+                (Engine::Node, Version(6, 0, 0)),
+                (Engine::Deno, Version(1, 0, 0)),
+                (Engine::Ios, Version(11, 0, 0)),
+                (Engine::Samsung, Version(5, 0, 0)),
+                (Engine::OperaMobile, Version(37, 0, 0)),
+                (Engine::Electron, Version(1, 1, 0)),
+            ],
             Self::Exponentiation => &[
                 (Engine::Chrome, Version(52, 0, 0)),
                 (Engine::Opera, Version(39, 0, 0)),

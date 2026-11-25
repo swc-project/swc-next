@@ -23,6 +23,7 @@ use swc_next_ecma_transformer_legacy::{
     es2021::ES2021Options,
     es2022::{ClassFieldsUseSetOptions, ClassPropertiesOptions, ES2022Options},
     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
+    module::{ModuleType, ModulesOptions},
     regexp::RegExpOptions,
     typescript::{JsxImportOptions, TsImportExportAssignConfig, TypeScriptOptions},
 };
@@ -115,7 +116,20 @@ fn convert(config: Config) -> Options {
         ignore_function_length: assumptions.ignore_function_length,
     };
     let mut options = TransformerOptions {
+        modules: ModulesOptions {
+            r#type: match &config.module {
+                Some(ModuleConfig::CommonJs(_)) => ModuleType::CommonJs,
+                Some(ModuleConfig::Amd(_)) => ModuleType::Amd,
+                Some(ModuleConfig::Umd(_)) => ModuleType::Umd,
+                Some(ModuleConfig::SystemJs(_)) => ModuleType::SystemJs,
+                _ => ModuleType::Preserve,
+            },
+        },
         env: EnvOptions {
+            module_features: swc_next_ecma_transformer_legacy::env::ModuleFeatures {
+                block_scoping: !enabled(Feature::BlockScoping),
+                arrow: !enabled(Feature::ArrowFunctions),
+            },
             es2016: ES2016Options {
                 exponentiation: enabled(Feature::ExponentiationOperator),
             },

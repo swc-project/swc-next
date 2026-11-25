@@ -162,6 +162,10 @@ impl EnvConfig {
         let target = self.target.as_ref().map(Target::resolve).transpose()?;
         let needs = |feature| target.as_ref().is_some_and(|target| target.needs(feature));
         let mut options = EnvOptions::default();
+        if let Some(target) = &target {
+            options.module_features.arrow = !target.needs(Feature::ArrowFunctions);
+            options.module_features.block_scoping = !target.needs(Feature::BlockScoping);
+        }
         options.es2016.exponentiation = needs(Feature::Exponentiation);
         options.es2017.async_to_generator =
             needs(Feature::AsyncToGenerator).then_some(Default::default());
@@ -265,6 +269,16 @@ mod tests {
         Target::Engines(BTreeMap::from([(engine, version.into())]))
     }
 
+    fn modern_env_options() -> EnvOptions {
+        EnvOptions {
+            module_features: super::super::ModuleFeatures {
+                block_scoping: true,
+                arrow: true,
+            },
+            ..Default::default()
+        }
+    }
+
     #[test]
     fn selection() {
         let options = EnvConfig::default().to_env_options().unwrap();
@@ -288,7 +302,7 @@ mod tests {
         assert!(options.es2017.async_generator_functions.is_some());
 
         let options = resolve(Target::EsVersion(EsVersion::EsNext));
-        assert_eq!(options, EnvOptions::default());
+        assert_eq!(options, modern_env_options());
 
         let options = resolve(engine(Engine::Node, "12"));
         assert!(!options.es2019.optional_catch_binding);
@@ -328,7 +342,7 @@ mod tests {
         assert!(options.es2022.static_blocks);
 
         let options = resolve(Target::Browserslist(vec!["chrome > 9999".into()]));
-        assert_eq!(options, EnvOptions::default());
+        assert_eq!(options, modern_env_options());
 
         let options = resolve(Target::Browserslist(Vec::new()));
         assert_eq!(

@@ -3,7 +3,7 @@
 pub(crate) mod build;
 pub(crate) mod constructor;
 pub(crate) mod function;
-mod helpers;
+pub(crate) mod helpers;
 mod hygiene;
 mod rename;
 pub(crate) mod resolver;

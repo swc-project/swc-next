@@ -15,6 +15,15 @@ pub(crate) struct Helpers {
 }
 
 impl Helpers {
+    pub(crate) fn enable(&mut self, resolver: &mut Resolver, name: &'static str) -> ScopeId {
+        self.used.insert(name);
+        *self.scope.get_or_insert_with(|| resolver.fresh_scope())
+    }
+
+    pub(crate) fn scope(&self) -> Option<ScopeId> {
+        self.scope
+    }
+
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/helpers/mod.rs#L15>.
     pub(crate) fn helper_expr(
         &mut self,
@@ -22,8 +31,7 @@ impl Helpers {
         resolver: &mut Resolver,
         name: &'static str,
     ) -> Expr {
-        self.used.insert(name);
-        let scope = *self.scope.get_or_insert_with(|| resolver.fresh_scope());
+        let scope = self.enable(resolver, name);
         let symbol = resolver.scoped_symbol(ast, scope, &format!("_{name}"));
         resolver.symbol_reference(ast, symbol)
     }

@@ -236,9 +236,8 @@ behavior.
 
 ## Existing SWC Next coverage
 
-These are existing source counterparts in this workspace, not verified parity
-or implementations in the new crate. Everything in the new legacy crate is
-still unported.
+These are existing source counterparts in this workspace. The module row
+records implementations in the legacy transformer crate.
 
 | Legacy feature | Existing SWC Next source | Status for this inventory |
 | --- | --- | --- |
@@ -249,7 +248,8 @@ still unported.
 | Identifier/scope management | `swc_ecma_semantic`, transformer `context/` and `uid.rs` | Different AST/semantic model; adapt legacy context-dependent algorithms |
 | Runtime helpers | `packages/helpers` and transformer helper injection | Existing helper system; audit helpers needed by each port |
 | Simplification / DCE / mangling | `swc_ecma_minifier` | Related optimizer exists; no parity claim for legacy optimization passes |
-| Other compatibility/proposal/module transforms | No corresponding transform exposed in current `TransformerOptions` | Pending migration assessment |
+| CommonJS, AMD, UMD, and SystemJS | `swc_ecma_transformer_legacy/src/module/` | Default module passes selected through `TransformerOptions::modules` |
+| Other compatibility and proposal transforms | No corresponding transform exposed in current `TransformerOptions` | Pending migration assessment |
 
 The new crate currently has no dependency on legacy SWC, no AST conversion
 bridge, and no placeholder transform methods. Implementations can be added after

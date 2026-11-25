@@ -8,6 +8,7 @@ mod compat;
 mod config;
 mod target;
 
+pub use crate::module::ModuleFeatures;
 pub use config::{
     AsyncToGeneratorConfig, ClassFieldsUseSetConfig, ClassPropertiesConfig, ES2016Config,
     ES2017Config, ES2018Config, ES2019Config, ES2020Config, ES2021Config, ES2022Config, EnvConfig,
@@ -32,4 +33,5 @@ pub struct EnvOptions {
     pub es2021: es2021::ES2021Options,
     pub es2022: es2022::ES2022Options,
     pub regexp: regexp::RegExpOptions,
+    pub module_features: ModuleFeatures,
 }

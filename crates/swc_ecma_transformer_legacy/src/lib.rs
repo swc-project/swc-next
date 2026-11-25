@@ -3,7 +3,7 @@
 //! Options follow SWC Next's per-edition and language grouping, with the fields
 //! and defaults of legacy SWC's transform configurations. [`Transformer::transform`]
 //! accepts a mutable AST without a semantic model. JSX, TypeScript, ES2016–ES2022,
-//! and RegExp lowering are available. The source inventory is in
+//! RegExp, and module lowering are available. The source inventory is in
 //! `docs/transform-inventory.md`.
 //!
 //! Configuring one edition does not enable another edition or RegExp lowering.
@@ -23,6 +23,7 @@
 //!     es2021::ES2021Options,
 //!     es2022::{ClassPropertiesOptions, ES2022Options},
 //!     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
+//!     module::{ModuleType, ModulesOptions},
 //!     regexp::RegExpOptions,
 //!     typescript::{TsImportExportAssignConfig, TypeScriptOptions},
 //! };
@@ -52,6 +53,7 @@
 //!             private_in_object: true,
 //!         },
 //!         regexp: RegExpOptions { dot_all_regex: true, ..Default::default() },
+//!         ..Default::default()
 //!     },
 //!     jsx: Some(JsxOptions {
 //!         runtime: Some(JsxRuntime::Automatic),
@@ -59,6 +61,7 @@
 //!         refresh: Some(ReactRefreshOptions::default()),
 //!         ..Default::default()
 //!     }),
+//!     modules: ModulesOptions { r#type: ModuleType::CommonJs },
 //!     typescript: Some(TypeScriptOptions {
 //!         import_export_assign_config: TsImportExportAssignConfig::EsNext,
 //!         ..Default::default()
@@ -84,6 +87,7 @@ pub mod es2020;
 pub mod es2021;
 pub mod es2022;
 pub mod jsx;
+pub mod module;
 pub mod regexp;
 pub mod typescript;
 
@@ -99,8 +103,7 @@ pub enum BoolOr<T> {
 /// Selects legacy SWC transforms using SWC Next's option grouping.
 ///
 /// All transforms are disabled by default. Edition groups select individual
-/// passes rather than target presets. JSX and TypeScript are implemented; other transforms
-/// produce diagnostics until their legacy implementation has been ported.
+/// passes. Use [`env::EnvConfig`] to select transforms for a target.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TransformerOptions {
     /// Source filename for transforms such as JSX development metadata.
@@ -111,6 +114,8 @@ pub struct TransformerOptions {
     pub jsx: Option<jsx::JsxOptions>,
     /// TypeScript stripping/lowering and JSX import-retention options.
     pub typescript: Option<typescript::TypeScriptOptions>,
+    /// Module output format. Defaults to preserving ECMAScript modules.
+    pub modules: module::ModulesOptions,
 }
 
 /// Diagnostics produced while transforming an AST in place.
@@ -146,7 +151,7 @@ impl Transformer {
     /// assert!(result.diagnostics.is_empty());
     /// ```
     ///
-    /// Supports the selected JSX, TypeScript, ES2016–ES2022 and RegExp passes.
+    /// Supports the selected JSX, TypeScript, ES2016–ES2022, RegExp, and module passes.
     /// Runtime helpers are loaded from `@swc/helpers`.
     /// React Refresh reports a diagnostic because it is not implemented.
     ///
@@ -161,10 +166,14 @@ impl Transformer {
         let ast = unsafe { ast.ast_mut() };
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
-        if let Some(typescript) = &options.typescript {
+        if let Some(mut typescript) = options.typescript {
+            if options.modules.r#type != module::ModuleType::Preserve && ast.is_module() {
+                typescript.import_export_assign_config =
+                    typescript::TsImportExportAssignConfig::Preserve;
+            }
             diagnostics.extend(typescript::typescript(
                 ast,
-                typescript,
+                &typescript,
                 options.jsx.is_some(),
                 &mut resolver,
             ));
@@ -267,10 +276,13 @@ impl Transformer {
             );
         }
         crate::regexp::pass(context.ast, context.state.resolver, options.env.regexp);
-        context
-            .state
-            .helpers
-            .inject_helpers(context.ast, context.state.resolver);
+        module::finish(
+            context.ast,
+            &mut context.state,
+            options.modules.r#type,
+            options.filename.as_deref(),
+            options.env.module_features,
+        );
         // SWC runs hygiene once, after all transform passes, before its fixer.
         resolver.hygiene(ast);
         TransformerReturn { diagnostics }
