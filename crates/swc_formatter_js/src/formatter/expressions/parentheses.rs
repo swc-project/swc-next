@@ -1476,6 +1476,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
+        if self.has_target_annotations
+            && (!head.is_empty() || !tail.is_empty())
+            && self.parentheses_separate_annotation_heads(boundary, head)
+        {
+            return None;
+        }
         *diagnostic_frontier = if let Some(frontier) = prepared_head.diagnostic_frontier {
             DiagnosticHeadState::Proven(frontier)
         } else if !head.is_empty()
@@ -1578,6 +1584,52 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .source_comments_in_range(Span::new(boundary.outer.start, boundary.inner.start)),
             tail: self.source_comments_in_range(Span::new(boundary.inner.end, boundary.outer.end)),
         }
+    }
+
+    /// A source opener separates the packets even when its own trivia is ordinary.
+    fn parentheses_separate_annotation_heads(
+        &self,
+        boundary: SourceParentheses,
+        head: &[Comment],
+    ) -> bool {
+        let head_annotated = head
+            .iter()
+            .any(|&comment| self.comment_has_target_annotation(comment));
+        if !head_annotated && !self.ast.source()[boundary.inner.start as usize..].starts_with('(') {
+            return false;
+        }
+        let opening_trivia = |character| character == '(' || is_source_whitespace(character);
+        let start = boundary.outer.start;
+        let (before, after) = self.partition_source_comments(|comment| comment.span.end <= start);
+        let mut next = start;
+        let preceding_optimizer = before
+            .iter()
+            .rev()
+            .take_while(|comment| {
+                let gap = self.source(Span::new(comment.span.end, next));
+                next = comment.span.start;
+                gap.chars().rev().all(opening_trivia)
+            })
+            .any(|&comment| self.comment_is_optimizer_annotation(comment));
+        if !preceding_optimizer || head_annotated {
+            return preceding_optimizer;
+        }
+        let mut previous = start;
+        for &comment in after {
+            if comment.span.end > boundary.inner.end
+                || !self
+                    .source(Span::new(previous, comment.span.start))
+                    .chars()
+                    .all(opening_trivia)
+            {
+                break;
+            }
+            if self.comment_has_target_annotation(comment) {
+                return true;
+            }
+            previous = comment.span.end;
+        }
+        false
     }
 
     /// The wrapper loop carries this proof to its prospective emitted head.
