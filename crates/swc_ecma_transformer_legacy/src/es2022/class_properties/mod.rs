@@ -475,73 +475,78 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
         self.private.pop();
         extra
     }
+
+    fn take_initializer(&mut self, declarator: VariableDeclarator) -> Option<Expr> {
+        let init = declarator.init(self.ast)?;
+        let pattern = declarator.id(self.ast);
+        let binding = pattern.as_binding_identifier(self.ast).unwrap();
+        let reference = self.ctx.resolver.reference(self.ast, binding);
+        let assignment = b::assign(self.ast, reference, init);
+        declarator.set_init(self.ast, None);
+        Some(assignment)
+    }
+
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/mod.rs#L338>.
     fn visit_mut_stmt_like(&mut self, body: SubRange<Stmt>) -> SubRange<Stmt> {
         let old = std::mem::take(&mut self.extra);
         let mut output = Vec::new();
         for slot in body.iter() {
             let statement = self.ast.get_node_in_sub_range(slot);
-            let class = statement
-                .as_declaration(self.ast)
-                .and_then(|decl| decl.as_class(self.ast))
-                .map(|class| (class, 0));
-            let class = class.or_else(|| {
-                statement
-                    .as_export_named_declaration(self.ast)
-                    .and_then(|export| export.declaration(self.ast))
-                    .and_then(|decl| decl.as_class(self.ast))
-                    .map(|class| (class, 1))
-            });
-            let class = class.or_else(|| {
-                statement
-                    .as_export_default_declaration(self.ast)
-                    .and_then(|export| export.declaration(self.ast).as_class(self.ast))
-                    .map(|class| (class, 2))
-            });
-            if let Some((class, kind)) = class {
-                if class.declare(self.ast) {
-                    output.push(statement);
-                    continue;
+            let (class, default_export) = match self.ast.stmt_data(statement) {
+                StmtData::Declaration(decl) => (decl.as_class(self.ast), false),
+                StmtData::ExportNamedDeclaration(export) => {
+                    let class = export
+                        .declaration(self.ast)
+                        .and_then(|decl| decl.as_class(self.ast));
+                    (class, false)
                 }
-                let id = class
-                    .id(self.ast)
-                    .unwrap_or_else(|| self.ctx.resolver.private_binding(self.ast, "_class"));
-                let extra = self.visit_mut_class_as_decl(class, id);
-                let declaration = if kind == 2 {
-                    class.set_id(self.ast, Some(id));
-                    class.set_class_type(self.ast, ClassType::ClassDeclaration);
-                    Stmt::Declaration(Decl::Class(class))
-                } else {
-                    statement
-                };
-                extra.merge_with(self.ast, &mut output, declaration);
-                if kind == 2 {
-                    let local = self.ast.identifier_name(DUMMY_SP, id.name(self.ast));
-                    self.ctx
-                        .resolver
-                        .copy_context(id.node_id(), local.node_id());
-                    let default = self.ast.add_utf8("default");
-                    let default = self.ast.identifier_name(DUMMY_SP, default);
-                    let specifier = self.ast.export_specifier(
-                        DUMMY_SP,
-                        ModuleExportName::IdentifierName(local),
-                        ModuleExportName::IdentifierName(default),
-                        ImportOrExportKind::Value,
-                    );
-                    let specifiers = self.ast.add_sub_range([specifier]);
-                    output.push(Stmt::ExportNamedDeclaration(
-                        self.ast.export_named_declaration(
-                            DUMMY_SP,
-                            None,
-                            specifiers,
-                            None,
-                            SubRange::empty(),
-                            ImportOrExportKind::Value,
-                        ),
-                    ));
+                StmtData::ExportDefaultDeclaration(export) => {
+                    (export.declaration(self.ast).as_class(self.ast), true)
                 }
-            } else {
+                _ => (None, false),
+            };
+            let Some(class) = class else {
                 output.push(statement.visit_mut_with(self).unwrap_or(statement));
+                continue;
+            };
+            if class.declare(self.ast) {
+                output.push(statement);
+                continue;
+            }
+            let id = class
+                .id(self.ast)
+                .unwrap_or_else(|| self.ctx.resolver.private_binding(self.ast, "_class"));
+            let extra = self.visit_mut_class_as_decl(class, id);
+            if default_export {
+                class.set_id(self.ast, Some(id));
+                class.set_class_type(self.ast, ClassType::ClassDeclaration);
+                extra.merge_with(self.ast, &mut output, Stmt::Declaration(Decl::Class(class)));
+
+                let local = self.ast.identifier_name(DUMMY_SP, id.name(self.ast));
+                self.ctx
+                    .resolver
+                    .copy_context(id.node_id(), local.node_id());
+                let default = self.ast.add_utf8("default");
+                let default = self.ast.identifier_name(DUMMY_SP, default);
+                let specifier = self.ast.export_specifier(
+                    DUMMY_SP,
+                    ModuleExportName::IdentifierName(local),
+                    ModuleExportName::IdentifierName(default),
+                    ImportOrExportKind::Value,
+                );
+                let specifiers = self.ast.add_sub_range([specifier]);
+                output.push(Stmt::ExportNamedDeclaration(
+                    self.ast.export_named_declaration(
+                        DUMMY_SP,
+                        None,
+                        specifiers,
+                        None,
+                        SubRange::empty(),
+                        ImportOrExportKind::Value,
+                    ),
+                ));
+            } else {
+                extra.merge_with(self.ast, &mut output, statement);
             }
         }
         let extra = std::mem::replace(&mut self.extra, old);
@@ -643,15 +648,7 @@ impl<'ast> VisitMut<'ast> for ClassProperties<'_, 'ast, '_> {
             (VariableKind::Let, extra.lets),
         ] {
             for declaration in declarations {
-                let binding = declaration
-                    .id(self.ast)
-                    .as_binding_identifier(self.ast)
-                    .unwrap();
-                if let Some(init) = declaration.init(self.ast) {
-                    let reference = self.ctx.resolver.reference(self.ast, binding);
-                    expressions.push(b::assign(self.ast, reference, init));
-                }
-                declaration.set_init(self.ast, None);
+                expressions.extend(self.take_initializer(declaration));
                 if kind == VariableKind::Var {
                     self.extra.vars.push(declaration);
                 } else {
@@ -677,15 +674,7 @@ impl<'ast> VisitMut<'ast> for ClassProperties<'_, 'ast, '_> {
                 {
                     for slot in declaration.declarators(self.ast).iter() {
                         let declarator = self.ast.get_node_in_sub_range(slot);
-                        let binding = declarator
-                            .id(self.ast)
-                            .as_binding_identifier(self.ast)
-                            .unwrap();
-                        if let Some(init) = declarator.init(self.ast) {
-                            let reference = self.ctx.resolver.reference(self.ast, binding);
-                            expressions.push(b::assign(self.ast, reference, init));
-                        }
-                        declarator.set_init(self.ast, None);
+                        expressions.extend(self.take_initializer(declarator));
                         self.extra.vars.push(declarator);
                     }
                 } else {

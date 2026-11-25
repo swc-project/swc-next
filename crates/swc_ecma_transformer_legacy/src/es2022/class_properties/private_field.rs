@@ -199,10 +199,8 @@ impl PrivateAccessVisitor<'_, '_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/private_field.rs#L282>.
     fn assignment(&mut self, assign: AssignmentExpression, member: MemberExpression) -> Expr {
         member.visit_mut_children_with(self);
-        let right = assign
-            .right(self.ast)
-            .visit_mut_with(self)
-            .unwrap_or(assign.right(self.ast));
+        let right = assign.right(self.ast);
+        let right = right.visit_mut_with(self).unwrap_or(right);
         let Some(name) = b::private_name(self.ast, member.property(self.ast)) else {
             assign.set_right(self.ast, right);
             return Expr::AssignmentExpression(assign);
@@ -243,6 +241,55 @@ impl PrivateAccessVisitor<'_, '_, '_> {
             let name = self.ctx.resolver.reference(self.ast, binding);
             self.helper("class_private_field_set", [receiver, name, value])
         }
+    }
+
+    fn lower_private_chain(&mut self, chain: ChainExpression) -> Expr {
+        let base = self.ast.expr_data(chain.expression(self.ast));
+        let (prefix, terminal_member) = match base {
+            ExprData::MemberExpression(member) => (member.object(self.ast), Some(member)),
+            ExprData::CallExpression(call) => {
+                let callee = call.callee(self.ast);
+                let member = if optional_spine(self.ast, callee) {
+                    None
+                } else {
+                    callee.as_member_expression(self.ast)
+                };
+                (callee, member)
+            }
+            _ => return Expr::ChainExpression(chain),
+        };
+        let private = terminal_member
+            .is_some_and(|member| b::private_name(self.ast, member.property(self.ast)).is_some());
+        if private {
+            let options = crate::es2020::OptionalChainingOptions {
+                no_document_all: self.options.no_document_all,
+                pure_getter: self.options.pure_getter,
+            };
+            let (expression, vars) = crate::es2022::optional_chaining_impl::expression(
+                self.ast,
+                self.ctx.resolver,
+                options,
+                Expr::ChainExpression(chain),
+            );
+            self.vars.extend(vars);
+            return expression;
+        }
+
+        // SWC visits each chain link separately. Wrap the prefix for that
+        // visit, then fold any remaining chain back into the original spine.
+        if optional_spine(self.ast, prefix) && private_spine(self.ast, prefix) {
+            let prefix = self.ast.expr_chain_expression(DUMMY_SP, prefix);
+            let prefix = prefix.visit_mut_with(self).unwrap_or(prefix);
+            let prefix = prefix
+                .as_chain_expression(self.ast)
+                .map_or(prefix, |chain| chain.expression(self.ast));
+            match base {
+                ExprData::MemberExpression(member) => member.set_object(self.ast, prefix),
+                ExprData::CallExpression(call) => call.set_callee(self.ast, prefix),
+                _ => unreachable!(),
+            }
+        }
+        Expr::ChainExpression(chain)
     }
 }
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/private_field.rs#L195>.
@@ -296,61 +343,12 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
         node.visit_mut_children_with(self);
         None
     }
-    fn visit_mut_expr(&mut self, mut node: Expr) -> Option<Expr> {
-        if let Some(chain) = node.as_chain_expression(self.ast) {
-            let base = chain.expression(self.ast);
-            let private = base
-                .as_member_expression(self.ast)
-                .or_else(|| {
-                    base.as_call_expression(self.ast)
-                        .filter(|call| !optional_spine(self.ast, call.callee(self.ast)))
-                        .and_then(|call| call.callee(self.ast).as_member_expression(self.ast))
-                })
-                .is_some_and(|member| {
-                    b::private_name(self.ast, member.property(self.ast)).is_some()
-                });
-            if private {
-                let options = crate::es2020::OptionalChainingOptions {
-                    no_document_all: self.options.no_document_all,
-                    pure_getter: self.options.pure_getter,
-                };
-                let (expression, vars) = crate::es2022::optional_chaining_impl::expression(
-                    self.ast,
-                    self.ctx.resolver,
-                    options,
-                    node,
-                );
-                node = expression;
-                self.vars.extend(vars);
-            } else {
-                // SWC visits each chain link separately. Give the prefix a
-                // temporary wrapper for that visit, then flatten any surviving
-                // chain back into the same spine.
-                let child = base
-                    .as_member_expression(self.ast)
-                    .map(|member| member.object(self.ast))
-                    .or_else(|| {
-                        base.as_call_expression(self.ast)
-                            .map(|call| call.callee(self.ast))
-                    });
-                if let Some(child) = child.filter(|child| {
-                    optional_spine(self.ast, *child) && private_spine(self.ast, *child)
-                }) {
-                    let prefix = self.ast.expr_chain_expression(DUMMY_SP, child);
-                    let prefix = prefix.visit_mut_with(self).unwrap_or(prefix);
-                    let prefix = prefix
-                        .as_chain_expression(self.ast)
-                        .map_or(prefix, |chain| chain.expression(self.ast));
-                    if let Some(member) = base.as_member_expression(self.ast) {
-                        member.set_object(self.ast, prefix);
-                    } else {
-                        base.as_call_expression(self.ast)
-                            .unwrap()
-                            .set_callee(self.ast, prefix);
-                    }
-                }
-            }
-        }
+    fn visit_mut_expr(&mut self, node: Expr) -> Option<Expr> {
+        let node = if let Some(chain) = node.as_chain_expression(self.ast) {
+            self.lower_private_chain(chain)
+        } else {
+            node
+        };
         if self.options.private_as_properties {
             if let Some(member) = node.as_member_expression(self.ast)
                 && let Some(result) = self.loose(member)
@@ -361,19 +359,15 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
             return Some(node);
         }
         if let Some(assign) = node.as_assignment_expression(self.ast) {
-            if let Some(member) = assign
-                .left(self.ast)
-                .as_simple_assignment_target(self.ast)
-                .and_then(|target| target.as_member_expression(self.ast))
+            if let Some(target) = assign.left(self.ast).as_simple_assignment_target(self.ast)
+                && let Some(member) = target.as_member_expression(self.ast)
             {
                 return Some(self.assignment(assign, member));
             }
             // SWC visits a destructuring RHS before its assignment pattern.
-            let right = assign
-                .right(self.ast)
-                .visit_mut_with(self)
-                .unwrap_or(assign.right(self.ast));
-            assign.set_right(self.ast, right);
+            if let Some(right) = assign.right(self.ast).visit_mut_with(self) {
+                assign.set_right(self.ast, right);
+            }
             if let Some(left) = assign.left(self.ast).visit_mut_with(self) {
                 assign.set_left(self.ast, left);
             }
@@ -383,24 +377,21 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
             && let Some(member) = call.callee(self.ast).as_member_expression(self.ast)
         {
             member.visit_mut_children_with(self);
-            let args = call
-                .arguments(self.ast)
-                .visit_mut_with(self)
-                .unwrap_or(call.arguments(self.ast));
+            let args = call.arguments(self.ast);
+            let args = args.visit_mut_with(self).unwrap_or(args);
             let (callee, receiver) =
                 self.convert_private_member(member, PrivateAccessType::Get, None);
-            if let Some(receiver) = receiver {
+            let (callee, args) = if let Some(receiver) = receiver {
                 let callee = b::member(self.ast, callee, "call");
-                let args: Vec<_> = std::iter::once(Argument::Expr(receiver))
-                    .chain(args.iter().map(|slot| self.ast.get_node_in_sub_range(slot)))
-                    .collect();
-                let args = self.ast.add_sub_range(args);
-                call.set_callee(self.ast, callee);
-                call.set_arguments(self.ast, args);
+                let mut arguments = Vec::with_capacity(args.len() + 1);
+                arguments.push(Argument::Expr(receiver));
+                arguments.extend(args.iter().map(|slot| self.ast.get_node_in_sub_range(slot)));
+                (callee, self.ast.add_sub_range(arguments))
             } else {
-                call.set_callee(self.ast, callee);
-                call.set_arguments(self.ast, args);
-            }
+                (callee, args)
+            };
+            call.set_callee(self.ast, callee);
+            call.set_arguments(self.ast, args);
             return Some(node);
         }
         if let Some(tagged) = node.as_tagged_template_expression(self.ast)

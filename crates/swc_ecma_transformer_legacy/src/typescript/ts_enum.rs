@@ -348,16 +348,15 @@ impl EnumValueComputer<'_, '_> {
         name: &Wtf8,
         context: EvalCtx,
     ) -> Option<&TsEnumRecordValue> {
-        self.record
-            .get(&id)
-            .and_then(|members| members.get(name))
-            .or_else(|| {
-                if context.allow_const_var && self.ambient_is_resolvable(&id) {
-                    self.ambient_record.get(&id)?.get(name)
-                } else {
-                    None
-                }
-            })
+        if let Some(members) = self.record.get(&id)
+            && let Some(value) = members.get(name)
+        {
+            return Some(value);
+        }
+        if context.allow_const_var && self.ambient_is_resolvable(&id) {
+            return self.ambient_record.get(&id)?.get(name);
+        }
+        None
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/ts_enum.rs#L409>.

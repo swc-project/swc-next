@@ -202,21 +202,19 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         program: Program,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<Program> {
-        self.parse_directives(ctx.ast, program.span(ctx.ast).start);
+        let ast = &*ctx.ast;
+        self.parse_directives(ast, program.span(ast).start);
         // Directives are statements in SWC and a separate list in Next.
-        let offsets = program
-            .directives(ctx.ast)
+        let directives = program
+            .directives(ast)
             .iter()
-            .map(|id| ctx.ast.get_node_in_sub_range(id).span(ctx.ast).start)
-            .chain(
-                program
-                    .body(ctx.ast)
-                    .iter()
-                    .map(|id| ctx.ast.get_node_in_sub_range(id).span(ctx.ast).start),
-            )
-            .collect::<Vec<_>>();
-        for offset in offsets {
-            if self.parse_directives(ctx.ast, offset) {
+            .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
+        let statements = program
+            .body(ast)
+            .iter()
+            .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
+        for offset in directives.chain(statements) {
+            if self.parse_directives(ast, offset) {
                 break;
             }
         }
@@ -431,22 +429,16 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<Expr> {
         let top_level_node = self.top_level_node;
+        let expression = if let Some(paren) = expression.as_parenthesized_expression(ctx.ast) {
+            paren.expression(ctx.ast)
+        } else {
+            expression
+        };
         let replacement = match ctx.ast.expr_data(expression) {
             ExprData::JsxElement(element) => Some(self.jsx_elem_to_expr(element, ctx.ast)),
             ExprData::JsxFragment(fragment) => Some(self.jsx_frag_to_expr(fragment, ctx.ast)),
-            ExprData::ParenthesizedExpression(paren) => match ctx
-                .ast
-                .expr_data(paren.expression(ctx.ast))
-            {
-                ExprData::JsxElement(element) => Some(self.jsx_elem_to_expr(element, ctx.ast)),
-                ExprData::JsxFragment(fragment) => Some(self.jsx_frag_to_expr(fragment, ctx.ast)),
-                _ => None,
-            },
             _ => None,
         };
-        if replacement.is_some() {
-            self.top_level_node = false;
-        }
         self.top_level_node = top_level_node;
         if let Some(replacement) = replacement {
             TraverseAction::ReplaceSkip(replacement)
@@ -460,6 +452,12 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
 pub(crate) fn string(ast: &mut Ast<'_>, span: Span, value: &str) -> Expr {
     let value = ast.add_utf8(value);
     ast.expr_string_literal(span, value.into(), AstUtf8::EMPTY)
+}
+
+fn namespaced_name(ast: &Ast<'_>, name: JsxNamespacedName) -> String {
+    let namespace = ast.get_utf8(name.namespace(ast).name(ast));
+    let local = ast.get_utf8(name.name(ast).name(ast));
+    format!("{namespace}:{local}")
 }
 
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1506>.
@@ -597,74 +595,62 @@ impl Jsx<'_, '_> {
                 let mut key = None;
                 let mut source = None;
                 let mut this = None;
+                let development = self.development && !use_create_element;
                 for slot in attributes.iter() {
                     let attribute = ast.get_node_in_sub_range(slot);
-                    match ast.jsx_attribute_item_data(attribute) {
-                        JsxAttributeItemData::JsxAttribute(attribute) => {
-                            match ast.jsx_attribute_name_data(attribute.name(ast)) {
-                                JsxAttributeNameData::JsxIdentifier(identifier) => {
-                                    let attr_name = ast.get_utf8(identifier.name(ast));
-                                    if !use_create_element && attr_name == "key" {
-                                        key = attribute.value(ast).and_then(|value| {
-                                            self.jsx_attr_value_to_expr(value, ast)
-                                        });
-                                        if key.is_none() {
-                                            self.diagnostics.push(Diagnostic::error(
-                                                "The value of property 'key' should not be empty",
-                                                identifier.span(ast),
-                                            ));
-                                        }
-                                        continue;
-                                    }
-                                    if !use_create_element
-                                        && attr_name == "__source"
-                                        && self.development
-                                    {
-                                        assert!(source.is_none(), "Duplicate __source is found");
-                                        source = attribute.value(ast).and_then(|value| {
-                                            self.jsx_attr_value_to_expr(value, ast)
-                                        });
-                                        assert!(
-                                            source.is_some(),
-                                            "value of property '__source' should not be empty"
-                                        );
-                                        continue;
-                                    }
-                                    if !use_create_element
-                                        && attr_name == "__self"
-                                        && self.development
-                                    {
-                                        assert!(this.is_none(), "Duplicate __self is found");
-                                        this = attribute.value(ast).and_then(|value| {
-                                            self.jsx_attr_value_to_expr(value, ast)
-                                        });
-                                        assert!(
-                                            this.is_some(),
-                                            "value of property '__self' should not be empty"
-                                        );
-                                        continue;
-                                    }
-                                    let value = self.process_attr_value(attribute.value(ast), ast);
-                                    let key = self.to_prop_name(attribute.name(ast), ast);
-                                    properties.push(key_value(ast, key, value));
-                                }
-                                JsxAttributeNameData::JsxNamespacedName(name) => {
-                                    self.namespace_diagnostic(span);
-                                    let value = self.process_attr_value(attribute.value(ast), ast);
-                                    let name = format!(
-                                        "{}:{}",
-                                        ast.get_utf8(name.namespace(ast).name(ast)),
-                                        ast.get_utf8(name.name(ast).name(ast))
-                                    );
-                                    let key = PropertyKey::Expr(string(ast, span, &name));
-                                    properties.push(key_value(ast, key, value));
-                                }
-                            }
-                        }
+                    let attribute = match ast.jsx_attribute_item_data(attribute) {
+                        JsxAttributeItemData::JsxAttribute(attribute) => attribute,
                         JsxAttributeItemData::JsxSpreadAttribute(spread) => {
-                            self.spread_properties(spread, &mut properties, ast)
+                            self.spread_properties(spread, &mut properties, ast);
+                            continue;
                         }
-                    }
+                    };
+                    let name = attribute.name(ast);
+                    let value = attribute.value(ast);
+                    let (property, value) = match ast.jsx_attribute_name_data(name) {
+                        JsxAttributeNameData::JsxIdentifier(identifier) => {
+                            match ast.get_utf8(identifier.name(ast)) {
+                                "key" if !use_create_element => {
+                                    key = Self::jsx_attr_value_to_expr(value, ast);
+                                    if key.is_none() {
+                                        self.diagnostics.push(Diagnostic::error(
+                                            "The value of property 'key' should not be empty",
+                                            identifier.span(ast),
+                                        ));
+                                    }
+                                    continue;
+                                }
+                                "__source" if development => {
+                                    assert!(source.is_none(), "Duplicate __source is found");
+                                    source = Self::jsx_attr_value_to_expr(value, ast);
+                                    assert!(
+                                        source.is_some(),
+                                        "value of property '__source' should not be empty"
+                                    );
+                                    continue;
+                                }
+                                "__self" if development => {
+                                    assert!(this.is_none(), "Duplicate __self is found");
+                                    this = Self::jsx_attr_value_to_expr(value, ast);
+                                    assert!(
+                                        this.is_some(),
+                                        "value of property '__self' should not be empty"
+                                    );
+                                    continue;
+                                }
+                                _ => {}
+                            }
+                            let value = self.process_attr_value(value, ast);
+                            (Self::attribute_key(name, ast), value)
+                        }
+                        JsxAttributeNameData::JsxNamespacedName(name) => {
+                            self.namespace_diagnostic(span);
+                            let value = self.process_attr_value(value, ast);
+                            let name = namespaced_name(ast, name);
+                            (PropertyKey::Expr(string(ast, span, &name)), value)
+                        }
+                    };
+                    properties.push(key_value(ast, property, value));
                 }
                 let mut children = self.children(element.children(ast), ast);
                 let use_jsxs = match children.len() {
@@ -689,7 +675,7 @@ impl Jsx<'_, '_> {
                 let mut args = vec![Argument::Expr(name), Argument::Expr(props)];
                 if use_create_element {
                     args.extend(children);
-                } else if self.development {
+                } else if development {
                     args.push(Argument::Expr(key.unwrap_or_else(|| undefined(ast))));
                     args.push(Argument::Expr(ast.expr_boolean_literal(DUMMY_SP, use_jsxs)));
                     args.push(Argument::Expr(source.unwrap_or_else(|| undefined(ast))));
@@ -783,7 +769,7 @@ impl Jsx<'_, '_> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1099>.
     fn attr_to_prop(&mut self, attribute: JsxAttribute, ast: &mut Ast<'_>) -> ObjectPropertyKind {
-        let key = self.to_prop_name(attribute.name(ast), ast);
+        let key = Self::attribute_key(attribute.name(ast), ast);
         let value = if let Some(value) = attribute.value(ast) {
             self.process_attr_value(Some(value), ast)
         } else {
@@ -816,25 +802,21 @@ impl Jsx<'_, '_> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L539>.
     fn process_attr_value(&mut self, value: Option<JsxAttributeValue>, ast: &mut Ast<'_>) -> Expr {
-        match value.map(|value| ast.jsx_attribute_value_data(value)) {
-            Some(JsxAttributeValueData::JsxElement(element)) => self.jsx_elem_to_expr(element, ast),
-            Some(JsxAttributeValueData::JsxFragment(fragment)) => {
-                self.jsx_frag_to_expr(fragment, ast)
+        let Some(value) = value else {
+            return ast.expr_boolean_literal(DUMMY_SP, true);
+        };
+        match ast.jsx_attribute_value_data(value) {
+            JsxAttributeValueData::JsxElement(element) => self.jsx_elem_to_expr(element, ast),
+            JsxAttributeValueData::JsxFragment(fragment) => self.jsx_frag_to_expr(fragment, ast),
+            _ => {
+                Self::jsx_attr_value_to_expr(Some(value), ast).expect("empty expression container")
             }
-            Some(_) => self
-                .jsx_attr_value_to_expr(value.unwrap(), ast)
-                .expect("empty expression container"),
-            None => ast.expr_boolean_literal(DUMMY_SP, true),
         }
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1967>.
-    fn jsx_attr_value_to_expr(
-        &mut self,
-        value: JsxAttributeValue,
-        ast: &mut Ast<'_>,
-    ) -> Option<Expr> {
-        match ast.jsx_attribute_value_data(value) {
+    fn jsx_attr_value_to_expr(value: Option<JsxAttributeValue>, ast: &mut Ast<'_>) -> Option<Expr> {
+        match ast.jsx_attribute_value_data(value?) {
             JsxAttributeValueData::StringLiteral(literal) => {
                 // Next stores quoted JSX text without decoding its entities.
                 let raw = ast.get_wtf8(literal.value(ast)).as_str().unwrap();
@@ -856,7 +838,7 @@ impl Jsx<'_, '_> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1541>.
-    fn to_prop_name(&mut self, name: JsxAttributeName, ast: &mut Ast<'_>) -> PropertyKey {
+    fn attribute_key(name: JsxAttributeName, ast: &mut Ast<'_>) -> PropertyKey {
         match ast.jsx_attribute_name_data(name) {
             JsxAttributeNameData::JsxIdentifier(identifier) => {
                 let name = identifier.name(ast);
@@ -871,11 +853,7 @@ impl Jsx<'_, '_> {
                 }
             }
             JsxAttributeNameData::JsxNamespacedName(name) => {
-                let value = format!(
-                    "{}:{}",
-                    ast.get_utf8(name.namespace(ast).name(ast)),
-                    ast.get_utf8(name.name(ast).name(ast))
-                );
+                let value = namespaced_name(ast, name);
                 PropertyKey::Expr(string(ast, name.span(ast), &value))
             }
         }
@@ -896,11 +874,7 @@ impl Jsx<'_, '_> {
             }
             JsxElementNameData::JsxNamespacedName(name) => {
                 self.namespace_diagnostic(name.span(ast));
-                let value = format!(
-                    "{}:{}",
-                    ast.get_utf8(name.namespace(ast).name(ast)),
-                    ast.get_utf8(name.name(ast).name(ast))
-                );
+                let value = namespaced_name(ast, name);
                 string(ast, name.span(ast), &value)
             }
             JsxElementNameData::JsxMemberExpression(member) => {

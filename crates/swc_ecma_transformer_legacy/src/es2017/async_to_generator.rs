@@ -40,18 +40,16 @@ pub(crate) fn pass(
     transform_async_to_generator: bool,
     options: AsyncToGeneratorOptions,
 ) {
-    context
-        .ast
-        .root_program()
-        .visit_mut_with(&mut AsyncToGeneratorPass {
-            context,
-            transform_async_to_generator,
-            options,
-            fn_state: None,
-            fn_state_stack: Vec::new(),
-            constructors: HashMap::new(),
-            this_var: None,
-        });
+    let program = context.ast.root_program();
+    program.visit_mut_with(&mut AsyncToGeneratorPass {
+        context,
+        transform_async_to_generator,
+        options,
+        fn_state: None,
+        fn_state_stack: Vec::new(),
+        constructors: HashMap::new(),
+        this_var: None,
+    });
 }
 
 struct AsyncToGeneratorPass<'a, 'ctx, 'ast, 'r> {
@@ -339,11 +337,15 @@ impl<'ast> VisitMut<'ast> for AsyncToGeneratorPass<'_, '_, 'ast, '_> {
         replacement
     }
     fn visit_mut_stmt(&mut self, node: Stmt) -> Option<Stmt> {
+        let Some(FnState {
+            await_for_mode: Some(mode),
+            ..
+        }) = self.fn_state
+        else {
+            return node.visit_mut_children_with(self);
+        };
         let labeled = if node.is_labeled_statement(self.context.ast) {
-            self.fn_state
-                .as_ref()
-                .and_then(|state| state.await_for_mode)
-                .and_then(|mode| handle_await_for(self.context, node, mode))
+            handle_await_for(self.context, node, mode)
         } else {
             None
         };
@@ -351,10 +353,6 @@ impl<'ast> VisitMut<'ast> for AsyncToGeneratorPass<'_, '_, 'ast, '_> {
         let replacement = node.visit_mut_children_with(self).or(labeled);
         let node = replacement.unwrap_or(node);
         if node.is_for_of_statement(self.context.ast)
-            && let Some(mode) = self
-                .fn_state
-                .as_ref()
-                .and_then(|state| state.await_for_mode)
             && let Some(loop_stmt) = handle_await_for(self.context, node, mode)
         {
             return Some(loop_stmt);
@@ -409,16 +407,10 @@ fn make_fn_ref(
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2017/async_to_generator.rs#L497>.
-fn could_potentially_throw(
-    ast: &Ast<'_>,
-    resolver: &crate::common::resolver::context::Resolver,
-    params: FormalParameters,
-) -> bool {
+fn could_potentially_throw(ast: &Ast<'_>, resolver: &Resolver, params: FormalParameters) -> bool {
     for slot in params.items(ast).iter() {
-        let parameter = ast
-            .get_node_in_sub_range(slot)
-            .as_formal_parameter(ast)
-            .unwrap();
+        let item = ast.get_node_in_sub_range(slot);
+        let parameter = item.as_formal_parameter(ast).unwrap();
         if let Some(init) = parameter.initializer(ast) {
             match ast.expr_data(init) {
                 ExprData::IdentifierReference(id)

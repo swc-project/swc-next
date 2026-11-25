@@ -110,10 +110,8 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                 continue;
             }
             let statement = statement.visit_mut_with(self).unwrap_or(statement);
-            if (!statement.is_empty_statement(self.ast) || original_empty)
-                && (module
-                    || !statement.is_empty_statement(self.ast)
-                    || statement.span(self.ast) != DUMMY_SP)
+            if !statement.is_empty_statement(self.ast)
+                || original_empty && (module || statement.span(self.ast) != DUMMY_SP)
             {
                 self.statement_buffer.push(statement);
             }
@@ -173,29 +171,28 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                 if import.import_kind(self.ast) == ImportOrExportKind::Value
                     && !import.specifiers(self.ast).is_empty() =>
             {
-                let specifiers: Vec<_> = import
-                    .specifiers(self.ast)
-                    .iter()
-                    .filter_map(|slot| {
-                        let specifier = self.ast.get_node_in_sub_range(slot);
-                        let (id, type_only) =
-                            match self.ast.import_declaration_specifier_data(specifier) {
-                                ImportDeclarationSpecifierData::ImportSpecifier(specifier) => (
-                                    specifier.local(self.ast),
-                                    specifier.import_kind(self.ast) == ImportOrExportKind::Type,
-                                ),
-                                ImportDeclarationSpecifierData::ImportDefaultSpecifier(
-                                    specifier,
-                                ) => (specifier.local(self.ast), false),
-                                ImportDeclarationSpecifierData::ImportNamespaceSpecifier(
-                                    specifier,
-                                ) => (specifier.local(self.ast), false),
-                            };
-                        let id = self.resolver.symbol_of(id.node_id());
-                        let facts = &self.semantic.symbols[id];
-                        (!type_only && !facts.is_value && facts.used).then_some(specifier)
-                    })
-                    .collect();
+                let mut specifiers = Vec::new();
+                for slot in import.specifiers(self.ast).iter() {
+                    let specifier = self.ast.get_node_in_sub_range(slot);
+                    let binding = match self.ast.import_declaration_specifier_data(specifier) {
+                        ImportDeclarationSpecifierData::ImportSpecifier(specifier) => {
+                            if specifier.import_kind(self.ast) == ImportOrExportKind::Type {
+                                continue;
+                            }
+                            specifier.local(self.ast)
+                        }
+                        ImportDeclarationSpecifierData::ImportDefaultSpecifier(specifier) => {
+                            specifier.local(self.ast)
+                        }
+                        ImportDeclarationSpecifierData::ImportNamespaceSpecifier(specifier) => {
+                            specifier.local(self.ast)
+                        }
+                    };
+                    let facts = &self.semantic.symbols[self.binding_id(binding)];
+                    if facts.used && !facts.is_value {
+                        specifiers.push(specifier);
+                    }
+                }
                 let retain = !specifiers.is_empty()
                     || self.options.import_not_used_as_values == ImportsNotUsedAsValues::Preserve;
                 let specifiers = self.ast.add_sub_range(specifiers);
@@ -206,38 +203,38 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                 if export.export_kind(self.ast) == ImportOrExportKind::Type {
                     return false;
                 }
-                let specifiers: Vec<_> = export
-                    .specifiers(self.ast)
-                    .iter()
-                    .filter_map(|slot| {
-                        let specifier = self.ast.get_node_in_sub_range(slot);
-                        if specifier.export_kind(self.ast) == ImportOrExportKind::Type {
-                            return None;
-                        }
-                        if export.source(self.ast).is_none()
-                            && let Some(id) = specifier.local(self.ast).as_identifier_name(self.ast)
-                            && self
-                                .semantic
-                                .has_pure_type(self.resolver.symbol_of(id.node_id()))
-                        {
-                            return None;
-                        }
-                        Some(specifier)
-                    })
-                    .collect();
+                let local_export = export.source(self.ast).is_none();
+                let semantic = &self.semantic;
+                let resolver = &self.resolver;
+                let mut specifiers = Vec::new();
+                for slot in export.specifiers(self.ast).iter() {
+                    let specifier = self.ast.get_node_in_sub_range(slot);
+                    if specifier.export_kind(self.ast) == ImportOrExportKind::Type {
+                        continue;
+                    }
+                    if local_export
+                        && let Some(id) = specifier.local(self.ast).as_identifier_name(self.ast)
+                        && semantic.has_pure_type(resolver.symbol_of(id.node_id()))
+                    {
+                        continue;
+                    }
+                    specifiers.push(specifier);
+                }
                 let retain = !specifiers.is_empty();
                 let specifiers = self.ast.add_sub_range(specifiers);
                 export.set_specifiers(self.ast, specifiers);
                 retain
             }
-            StmtData::ExportDefaultDeclaration(export) => !export
-                .declaration(self.ast)
-                .as_expr(self.ast)
-                .and_then(|expression| expression.as_identifier_reference(self.ast))
-                .is_some_and(|id| {
-                    self.semantic
-                        .has_pure_type(self.resolver.symbol_of(id.node_id()))
-                }),
+            StmtData::ExportDefaultDeclaration(export) => {
+                let declaration = export.declaration(self.ast);
+                if let Some(expression) = declaration.as_expr(self.ast)
+                    && let Some(id) = expression.as_identifier_reference(self.ast)
+                {
+                    let symbol = self.resolver.symbol_of(id.node_id());
+                    return !self.semantic.has_pure_type(symbol);
+                }
+                true
+            }
             StmtData::Declaration(declaration) => match self.ast.decl_data(declaration) {
                 DeclData::TsImportEqualsDeclaration(import) => {
                     import.import_kind(self.ast) != ImportOrExportKind::Type
@@ -255,46 +252,38 @@ impl<'a, 'ast> Transform<'a, 'ast> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L835>.
     fn strip_namespace_body_with_semantic(&mut self, module: TsModuleDeclaration) {
-        match module
-            .body(self.ast)
-            .map(|body| self.ast.ts_module_body_data(body))
-        {
-            Some(TsModuleBodyData::TsModuleDeclaration(module)) => {
+        let Some(body) = module.body(self.ast) else {
+            return;
+        };
+        match self.ast.ts_module_body_data(body) {
+            TsModuleBodyData::TsModuleDeclaration(module) => {
                 self.strip_namespace_body_with_semantic(module)
             }
-            Some(TsModuleBodyData::TsModuleBlock(block)) => {
-                let statements: Vec<_> = block
-                    .body(self.ast)
-                    .iter()
-                    .filter_map(|slot| {
-                        let statement = self.ast.get_node_in_sub_range(slot);
-                        if let Some(import) =
-                            statement.as_declaration(self.ast).and_then(|declaration| {
-                                declaration.as_ts_import_equals_declaration(self.ast)
-                            })
-                            && (import.import_kind(self.ast) == ImportOrExportKind::Type
-                                || !self
-                                    .semantic
-                                    .namespace_import_equals_usage
-                                    .contains(&import.node_id()))
-                        {
-                            return None;
+            TsModuleBodyData::TsModuleBlock(block) => {
+                let mut statements = Vec::new();
+                for slot in block.body(self.ast).iter() {
+                    let statement = self.ast.get_node_in_sub_range(slot);
+                    if let Some(declaration) = statement.as_declaration(self.ast) {
+                        match self.ast.decl_data(declaration) {
+                            DeclData::TsImportEqualsDeclaration(import) => {
+                                let used_imports = &self.semantic.namespace_import_equals_usage;
+                                let type_only =
+                                    import.import_kind(self.ast) == ImportOrExportKind::Type;
+                                if type_only || !used_imports.contains(&import.node_id()) {
+                                    continue;
+                                }
+                            }
+                            DeclData::TsModuleDeclaration(module) => {
+                                self.strip_namespace_body_with_semantic(module);
+                            }
+                            _ => {}
                         }
-                        Some(statement)
-                    })
-                    .collect();
-                for &statement in &statements {
-                    if let Some(module) = statement
-                        .as_declaration(self.ast)
-                        .and_then(|declaration| declaration.as_ts_module_declaration(self.ast))
-                    {
-                        self.strip_namespace_body_with_semantic(module);
                     }
+                    statements.push(statement);
                 }
                 let statements = self.ast.add_sub_range(statements);
                 block.set_body(self.ast, statements);
             }
-            None => {}
         }
     }
 

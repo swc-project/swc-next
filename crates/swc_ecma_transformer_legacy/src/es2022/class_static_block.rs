@@ -21,9 +21,10 @@ impl<'ast> VisitMut<'ast> for ClassStaticBlock<'_, 'ast> {
     fn visit_mut_class(&mut self, class: Class) -> Option<Class> {
         class.visit_mut_children_with(self);
         let body = class.body(self.ast);
-        let mut names = self.collect_existing_private_names(self.ast, body.body(self.ast));
+        let members = body.body(self.ast);
+        let mut names = Self::collect_existing_private_names(self.ast, members);
         let mut elements = Vec::new();
-        for slot in body.body(self.ast).iter() {
+        for slot in members.iter() {
             let element = self.ast.get_node_in_sub_range(slot);
             let Some(block) = element.as_static_block(self.ast) else {
                 elements.push(element);
@@ -42,7 +43,6 @@ impl<'ast> VisitMut<'ast> for ClassStaticBlock<'_, 'ast> {
 
 impl ClassStaticBlock<'_, '_> {
     fn collect_existing_private_names(
-        &self,
         ast: &Ast<'_>,
         body: SubRange<ClassElement>,
     ) -> HashSet<String> {
@@ -56,11 +56,10 @@ impl ClassStaticBlock<'_, '_> {
                 ClassElementData::MethodDefinition(method) => Some(method.key(ast)),
                 _ => None,
             };
-            if let Some(id) = key
-                .and_then(|key| key.as_expr(ast))
-                .and_then(|expression| expression.as_private_identifier(ast))
+            if let Some(key) = key
+                && let Some(name) = build::private_name(ast, key)
             {
-                names.insert(ast.get_utf8(id.name(ast)).to_owned());
+                names.insert(name);
             }
         }
         names
@@ -84,17 +83,16 @@ impl ClassStaticBlock<'_, '_> {
     ) -> ClassElement {
         let name = self.ast.add_utf8(&Self::generate_unique_name(names));
         let key = self.ast.expr_private_identifier(DUMMY_SP, name);
-        let value = if block.body(self.ast).len() == 1 {
-            let statement = self
-                .ast
-                .get_node_in_sub_range(block.body(self.ast).iter().next().unwrap());
+        let statements = block.body(self.ast);
+        let value = if statements.len() == 1 {
+            let statement = statements.get_node(self.ast, 0).unwrap();
             statement
                 .as_expression_statement(self.ast)
                 .map(|statement| statement.expression(self.ast))
         } else {
             None
         };
-        let value = value.unwrap_or_else(|| Self::wrap_in_iife(self.ast, block.body(self.ast)));
+        let value = value.unwrap_or_else(|| Self::wrap_in_iife(self.ast, statements));
         let property = self.ast.property_definition(
             block.span(self.ast),
             SubRange::empty(),

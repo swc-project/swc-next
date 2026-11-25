@@ -6,6 +6,14 @@ struct SuperField {
     name: Option<String>,
     binding: BindingIdentifier,
 }
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum AccessKind {
+    Get,
+    Set,
+    Update,
+}
+
 pub(crate) struct FnEnvHoister<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
     resolver: &'a mut Resolver,
@@ -19,55 +27,41 @@ pub(crate) struct FnEnvHoister<'a, 'ast> {
 }
 impl FnEnvHoister<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_utils/src/function/fn_env_hoister.rs#L202>.
-    fn field(&mut self, name: Option<String>, kind: usize) -> BindingIdentifier {
-        if kind == 2 {
-            self.field(name.clone(), 0);
-            self.field(name.clone(), 1);
+    fn field(&mut self, name: Option<String>, kind: AccessKind) -> BindingIdentifier {
+        if kind == AccessKind::Update {
+            self.field(name.clone(), AccessKind::Get);
+            self.field(name.clone(), AccessKind::Set);
         }
-        let fields = match kind {
-            0 => &mut self.get,
-            1 => &mut self.set,
-            _ => &mut self.update,
+        let (fields, prefix) = match kind {
+            AccessKind::Get => (&mut self.get, "_superprop_get"),
+            AccessKind::Set => (&mut self.set, "_superprop_set"),
+            AccessKind::Update => (&mut self.update, "_superprop_update"),
         };
         if let Some(field) = fields.iter().find(|field| field.name == name) {
             return field.binding;
         }
-        let prefix = match kind {
-            0 => "_superprop_get",
-            1 => "_superprop_set",
-            _ => "_superprop_update",
+        let binding = if let Some(name) = &name {
+            self.resolver
+                .private_binding(self.ast, &format!("{prefix}_{name}"))
+        } else {
+            self.resolver.private_binding(self.ast, prefix)
         };
-        let binding = self.resolver.private_binding(
-            self.ast,
-            &name
-                .as_ref()
-                .map_or_else(|| prefix.to_owned(), |name| format!("{prefix}_{name}")),
-        );
         fields.push(SuperField { name, binding });
         binding
     }
     fn name(&self, member: MemberExpression) -> Option<String> {
         if member.computed(self.ast) {
-            None
-        } else {
-            Some(
-                self.ast
-                    .get_utf8(
-                        member
-                            .property(self.ast)
-                            .as_identifier_name(self.ast)
-                            .unwrap()
-                            .name(self.ast),
-                    )
-                    .to_owned(),
-            )
+            return None;
         }
+        let key = member.property(self.ast);
+        let id = key.as_identifier_name(self.ast).unwrap();
+        Some(self.ast.get_utf8(id.name(self.ast)).to_owned())
     }
-    fn access(&mut self, member: MemberExpression, kind: usize) -> Expr {
+    fn access(&mut self, member: MemberExpression, kind: AccessKind) -> Expr {
         let name = self.name(member);
         let binding = self.field(name.clone(), kind);
         let reference = self.resolver.reference(self.ast, binding);
-        let expression = if kind == 2 && name.is_some() {
+        let expression = if kind == AccessKind::Update && name.is_some() {
             reference
         } else {
             let args: Vec<_> = if name.is_none() {
@@ -77,7 +71,7 @@ impl FnEnvHoister<'_, '_> {
             };
             b::call(self.ast, reference, args, false)
         };
-        if kind == 2 {
+        if kind == AccessKind::Update {
             b::member(self.ast, expression, "_")
         } else {
             expression
@@ -92,7 +86,7 @@ impl FnEnvHoister<'_, '_> {
         b::prepend_stmts(self.ast, [variables], body)
     }
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_utils/src/function/fn_env_hoister.rs#L635>.
-    fn to_stmt(&mut self) -> Vec<Stmt> {
+    fn emit_declarations(&mut self) -> Vec<Stmt> {
         let mut variables = Vec::new();
         if let Some(binding) = self.this {
             let value = self.ast.expr_this_expression(DUMMY_SP);
@@ -128,19 +122,14 @@ impl FnEnvHoister<'_, '_> {
                 .unwrap()
                 .binding;
             let callee = self.resolver.reference(self.ast, getter);
-            let args: Vec<_> = prop
-                .map(|prop| self.resolver.reference(self.ast, prop))
-                .into_iter()
-                .collect();
-            let get = b::call(self.ast, callee, args, false);
+            let arg = prop.map(|prop| self.resolver.reference(self.ast, prop));
+            let get = b::call(self.ast, callee, arg, false);
             let ret = self.ast.stmt_return_statement(DUMMY_SP, Some(get));
             let get = b::function_with(self.ast, [], [ret]);
             let callee = self.resolver.reference(self.ast, setter);
-            let mut args: Vec<_> = prop
-                .map(|prop| self.resolver.reference(self.ast, prop))
-                .into_iter()
-                .collect();
-            args.push(self.resolver.reference(self.ast, value));
+            let prop_arg = prop.map(|prop| self.resolver.reference(self.ast, prop));
+            let value_arg = self.resolver.reference(self.ast, value);
+            let args = prop_arg.into_iter().chain([value_arg]);
             let set = b::call(self.ast, callee, args, false);
             let set = if prop.is_some() {
                 self.ast.stmt_return_statement(DUMMY_SP, Some(set))
@@ -178,8 +167,8 @@ impl FnEnvHoister<'_, '_> {
             variables.push(b::declarator(self.ast, field.binding, Some(init)));
         }
         for (kind, mut fields) in [
-            (0, std::mem::take(&mut self.get)),
-            (1, std::mem::take(&mut self.set)),
+            (AccessKind::Get, std::mem::take(&mut self.get)),
+            (AccessKind::Set, std::mem::take(&mut self.set)),
         ] {
             fields.sort_by_key(|field| field.name.is_none());
             for field in fields {
@@ -193,7 +182,7 @@ impl FnEnvHoister<'_, '_> {
                     let key = self.resolver.reference(self.ast, prop);
                     b::computed(self.ast, super_, key)
                 };
-                let init = if kind == 0 {
+                let init = if kind == AccessKind::Get {
                     member
                 } else {
                     let value = self.resolver.private_binding(self.ast, "_value");
@@ -280,7 +269,7 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
     ) -> Option<SimpleAssignmentTarget> {
         let member = node.as_member_expression(self.ast)?;
         if member.object(self.ast).is_super(self.ast) {
-            let expr = self.access(member, 2);
+            let expr = self.access(member, AccessKind::Update);
             return Some(b::target(self.ast, expr));
         }
         node.visit_mut_children_with(self);
@@ -296,14 +285,12 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
             return Some(self.resolver.reference(self.ast, binding));
         }
         if let Some(assign) = node.as_assignment_expression(self.ast)
-            && let Some(member) = assign
-                .left(self.ast)
-                .as_simple_assignment_target(self.ast)
-                .and_then(|target| target.as_member_expression(self.ast))
-                .filter(|member| member.object(self.ast).is_super(self.ast))
+            && let Some(target) = assign.left(self.ast).as_simple_assignment_target(self.ast)
+            && let Some(member) = target.as_member_expression(self.ast)
+            && member.object(self.ast).is_super(self.ast)
         {
             let name = self.name(member);
-            let setter = self.field(name.clone(), 1);
+            let setter = self.field(name.clone(), AccessKind::Set);
             let mut args = Vec::new();
             let right = if assign.operator(self.ast) == AssignmentOperator::Assign {
                 if name.is_none() {
@@ -311,7 +298,7 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
                 }
                 assign.right(self.ast)
             } else {
-                let getter = self.field(name.clone(), 0);
+                let getter = self.field(name.clone(), AccessKind::Get);
                 let mut get_args = Vec::new();
                 if name.is_none() {
                     let tmp = self.resolver.private_binding(self.ast, "tmp");
@@ -345,7 +332,7 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
                 .as_member_expression(self.ast)
                 .filter(|member| member.object(self.ast).is_super(self.ast))
         {
-            let get = self.access(member, 0);
+            let get = self.access(member, AccessKind::Get);
             let callee = b::member(self.ast, get, "call");
             let binding = *self
                 .this
@@ -382,7 +369,12 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
                     .unwrap()
                     .visit_mut_children_with(self);
             }
-            return Some(self.access(member, if self.in_pattern { 2 } else { 0 }));
+            let kind = if self.in_pattern {
+                AccessKind::Update
+            } else {
+                AccessKind::Get
+            };
+            return Some(self.access(member, kind));
         }
         node.visit_mut_children_with(self);
         None
@@ -407,7 +399,7 @@ impl<'a, 'ast> FnEnvHoister<'a, 'ast> {
             in_pattern: false,
         };
         let node = node.visit_mut_with(&mut hoister).unwrap_or(node);
-        (node, hoister.to_stmt())
+        (node, hoister.emit_declarations())
     }
 }
 

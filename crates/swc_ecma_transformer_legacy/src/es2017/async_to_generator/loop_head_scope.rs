@@ -20,7 +20,7 @@ impl LoopHeadScope {
         if declaration.kind(ast) == VariableKind::Var {
             return None;
         }
-        let first = ast.get_node_in_sub_range(declaration.declarators(ast).iter().next()?);
+        let first = declaration.declarators(ast).get_node(ast, 0)?;
         let bindings = b::find_pat_ids(ast, first.id(ast));
         let mut usages = LoopHeadUsages {
             ast,

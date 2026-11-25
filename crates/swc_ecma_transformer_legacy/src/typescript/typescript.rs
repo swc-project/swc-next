@@ -49,18 +49,17 @@ impl TypeScript<'_> {
 
     fn get_last_module_span(&self, ast: &Ast<'_>) -> Option<Span> {
         let options = self.config;
-        let program = ast.root_program();
-        (!options.flow_syntax && !options.no_empty_export && ast.is_module())
-            .then(|| {
-                program
-                    .body(ast)
-                    .iter()
-                    .rev()
-                    .map(|slot| ast.get_node_in_sub_range(slot))
-                    .find(|&statement| is_es_module_decl(ast, statement))
-                    .map(|statement| statement.span(ast))
-            })
-            .flatten()
+        if options.flow_syntax || options.no_empty_export || !ast.is_module() {
+            return None;
+        }
+        let body = ast.root_program().body(ast);
+        for slot in body.iter().rev() {
+            let statement = ast.get_node_in_sub_range(slot);
+            if is_es_module_decl(ast, statement) {
+                return Some(statement.span(ast));
+            }
+        }
+        None
     }
 
     fn restore_esm_ctx(ast: &mut Ast<'_>, last_module: Option<Span>) {
@@ -123,45 +122,25 @@ fn is_es_module_decl(ast: &Ast<'_>, statement: Stmt) -> bool {
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L186>.
 fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<SymbolId> {
     let mut id_usage = HashSet::new();
-    if let Some(id) = id_for_jsx(
-        ast,
-        resolver,
-        options
-            .jsx
-            .pragma
-            .as_deref()
-            .unwrap_or("React.createElement"),
-    ) {
-        id_usage.insert(id);
-    }
-    if let Some(id) = id_for_jsx(
-        ast,
-        resolver,
-        options
-            .jsx
-            .pragma_frag
-            .as_deref()
-            .unwrap_or("React.Fragment"),
-    ) {
-        id_usage.insert(id);
+    let jsx = &options.jsx;
+    let pragma = jsx.pragma.as_deref().unwrap_or("React.createElement");
+    let pragma_frag = jsx.pragma_frag.as_deref().unwrap_or("React.Fragment");
+    for factory in [pragma, pragma_frag] {
+        id_usage.extend(id_for_jsx(ast, resolver, factory));
     }
     let program = ast.root_program();
     // SWC's module span starts at its first token; Next's program span starts
     // at byte zero, so include the first directive/body attachment explicitly.
-    let start = program
-        .directives(ast)
-        .iter()
-        .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start)
-        .chain(
-            program
-                .body(ast)
-                .iter()
-                .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start),
-        )
-        .next()
-        .unwrap_or(program.span(ast).start);
+    let program_start = program.span(ast).start;
+    let start = if let Some(directive) = program.directives(ast).get_node(ast, 0) {
+        directive.span(ast).start
+    } else if let Some(statement) = program.body(ast).get_node(ast, 0) {
+        statement.span(ast).start
+    } else {
+        program_start
+    };
     for comment in ast.comments() {
-        if (comment.attached_to != start && comment.attached_to != program.span(ast).start)
+        if (comment.attached_to != start && comment.attached_to != program_start)
             || comment.position != CommentPosition::Leading
             || comment.kind != CommentKind::Block
         {

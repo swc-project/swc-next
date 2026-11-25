@@ -31,28 +31,32 @@ impl ObjectRestSpreadPass {
         program: Program,
         ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>,
     ) {
-        for slot in program.body(ctx.ast).iter() {
-            let statement = ctx.ast.get_node_in_sub_range(slot);
-            if let Some(variable) = statement
-                .as_export_named_declaration(ctx.ast)
-                .and_then(|export| export.declaration(ctx.ast))
-                .and_then(|declaration| declaration.as_variable_declaration(ctx.ast))
-                && variable.declarators(ctx.ast).iter().any(|slot| {
-                    has_object_rest_in_pat(ctx.ast, ctx.ast.get_node_in_sub_range(slot).id(ctx.ast))
-                })
-            {
-                let ids = variable
-                    .declarators(ctx.ast)
-                    .iter()
-                    .flat_map(|slot| {
-                        build::find_pat_ids(
-                            ctx.ast,
-                            ctx.ast.get_node_in_sub_range(slot).id(ctx.ast),
-                        )
-                    })
-                    .collect();
-                self.export_idents.insert(variable.node_id(), ids);
+        let ast = &*ctx.ast;
+        for slot in program.body(ast).iter() {
+            let statement = ast.get_node_in_sub_range(slot);
+            let Some(export) = statement.as_export_named_declaration(ast) else {
+                continue;
+            };
+            let Some(declaration) = export.declaration(ast) else {
+                continue;
+            };
+            let Some(variable) = declaration.as_variable_declaration(ast) else {
+                continue;
+            };
+            let declarators = variable.declarators(ast);
+            let has_rest = declarators.iter().any(|slot| {
+                let declarator = ast.get_node_in_sub_range(slot);
+                has_object_rest_in_pat(ast, declarator.id(ast))
+            });
+            if !has_rest {
+                continue;
             }
+            let mut ids = Vec::new();
+            for slot in declarators.iter() {
+                let declarator = ast.get_node_in_sub_range(slot);
+                build::for_each_binding_ident(ast, declarator.id(ast), |binding| ids.push(binding));
+            }
+            self.export_idents.insert(variable.node_id(), ids);
         }
     }
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2018/object_rest_spread.rs#L427>.
@@ -144,9 +148,7 @@ impl ObjectRestSpreadPass {
     ) -> Option<(ForStatementLeft, Stmt)> {
         let (pattern, declaration) = match ctx.ast.for_statement_left_data(left) {
             ForStatementLeftData::VariableDeclaration(variable) => {
-                let declaration = ctx
-                    .ast
-                    .get_node_in_sub_range(variable.declarators(ctx.ast).iter().next().unwrap());
+                let declaration = variable.declarators(ctx.ast).get_node(ctx.ast, 0).unwrap();
                 (declaration.id(ctx.ast), Some((variable, declaration)))
             }
             ForStatementLeftData::AssignmentTarget(target) => {

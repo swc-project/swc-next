@@ -70,7 +70,10 @@ use swc_next_ecma_ast::{
     AstCtx, Diagnostic, Program, Span, TraverseMut, TraverseMutCtx, TraverseMutWith,
 };
 
-use self::common::{TraverseCtx, resolver::context::Resolver, var_declarations::VarDeclarations};
+use self::{
+    common::{TraverseCtx, resolver::context::Resolver, var_declarations::VarDeclarations},
+    es2022::private_property_in_object::PrivatePropertyInObjectPass,
+};
 
 pub mod env;
 pub mod es2016;
@@ -205,9 +208,7 @@ impl Transformer {
         if options.env.es2022.private_in_object {
             let _ = program.traverse_mut_with(
                 &mut VarDeclarations {
-                    hook:
-                        crate::es2022::private_property_in_object::PrivatePropertyInObjectPass::new(
-                        ),
+                    hook: PrivatePropertyInObjectPass::new(),
                     scope_arrow_exprs: false,
                 },
                 &mut context,
