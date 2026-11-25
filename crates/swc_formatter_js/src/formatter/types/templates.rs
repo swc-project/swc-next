@@ -93,7 +93,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     formatter.format_prepared_type_body(node, TypeContext::Root, layout, writer)?
                 };
                 formatter.format_expression_tail(output.pending, writer)?;
-                formatter.format_comment_boundary(&after, writer)
+                formatter.format_comment_boundary(&after, writer)?;
+                Ok(after.gap())
             },
         )
     }

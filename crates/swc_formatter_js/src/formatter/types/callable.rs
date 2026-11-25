@@ -1275,10 +1275,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             self.type_layout_at_continuation(span, TypeLayout::Root, continuation);
                         if after.is_empty()
                             || layout == TypeLayout::ContinuationRoot
-                                && matches!(
-                                    self.comment_boundary_binding(&after, span),
-                                    crate::formatter::comments::CommentBinding::Unbound
-                                )
+                                && (self.diagnostic_line_is_sensitive(span.start)
+                                    || matches!(
+                                        self.comment_boundary_binding(&after, span),
+                                        CommentBinding::Unbound
+                                    ))
                         {
                             self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
                             return self.format_type_body_at_continuation(

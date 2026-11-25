@@ -10,14 +10,16 @@ if (x) {
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 if (x) {
-  a;
-  // @ts-ignore
-}
+  (
+    a
+    // @ts-ignore
+  ); }
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
 if (x) {
-  a
-  // @ts-ignore
-}
+  ;(
+    a
+    // @ts-ignore
+  ) }

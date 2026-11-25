@@ -8,41 +8,55 @@ next;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-first; // @ts-ignore
+(
+  first // @ts-ignore
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-first // @ts-ignore
+;(
+  first // @ts-ignore
+)
 next
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
-first; // @ts-ignore
+(
+  first // @ts-ignore
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
-first; // @ts-ignore
+(
+  first // @ts-ignore
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"tab","indentWidth":4,"lineWidth":20}
 ---------- Output ----------
-first; // @ts-ignore
+(
+	first // @ts-ignore
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
 ---------- Output ----------
-first; // @ts-ignore
+(
+  first // @ts-ignore
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
 ---------- Output ----------
-first; // @ts-ignore
+(
+  first // @ts-ignore
+);
 next;

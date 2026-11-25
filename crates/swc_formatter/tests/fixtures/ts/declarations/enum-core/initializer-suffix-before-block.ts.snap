@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+enum E { A = // first
+"text" /* second
+ third */ }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+enum E {
+  A = // first
+    "text" /* second
+ third */,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+enum E {
+  A = // first
+    "text" /* second
+ third */,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+enum E {
+  A = // first
+    "text" /* second
+ third */,
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+enum E {
+  A = // first
+    "text" /* second
+ third */,
+}

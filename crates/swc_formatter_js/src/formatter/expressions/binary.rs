@@ -439,14 +439,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Ok(None);
         }
-        let Some((right, parentheses)) = self.binary_content(entry.binary.right) else {
+        self.prepare_logical_right_step(entry, &self.expression_content(entry.binary.right))
+    }
+
+    fn prepare_logical_right_step(
+        &self,
+        entry: ChainParent,
+        content: &ExpressionContent,
+    ) -> Result<Option<PreparedRightStep>, FormatError> {
+        let Some((right, parentheses)) = self.logical_right_content(entry.binary.operator, content)
+        else {
             return Ok(None);
         };
-        if entry.binary.operator != right.operator {
-            return Ok(None);
-        }
         let next = self.prepare_binary_entry(right, right.left.span(self.ast).end)?;
         Ok(Some(PreparedRightStep { parentheses, next }))
+    }
+
+    fn logical_right_content(
+        &self,
+        operator: BinaryOperatorKind,
+        content: &ExpressionContent,
+    ) -> Option<(BinaryLike, Option<SourceParentheses>)> {
+        let (right, parentheses) = self.binary_content_from_prepared(content)?;
+        // A diagnostic head can be emitted before its pair. The right
+        // operand must keep the same group and layout at that source boundary.
+        (right.operator == operator
+            && !parentheses.is_some_and(|source| {
+                self.diagnostic_directive_immediately_before(source.outer.start)
+            }))
+        .then_some((right, parentheses))
     }
 
     fn prepare_binary_logical_tail(
@@ -474,14 +495,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         LogicalOperandLayout::Inline
                     }
                     _ => {
-                        if let Some((right, parentheses)) =
-                            self.binary_content_from_prepared(content)
-                            && right.operator == entry.binary.operator
-                        {
-                            let next =
-                                self.prepare_binary_entry(right, right.left.span(self.ast).end)?;
-                            steps.push(PreparedRightStep { parentheses, next });
-                            entry = next;
+                        if let Some(step) = self.prepare_logical_right_step(entry, content)? {
+                            entry = step.next;
+                            steps.push(step);
                             continue;
                         }
                         LogicalOperandLayout::Break
@@ -1041,12 +1057,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) {
                 return true;
             }
-            let Some((binary, _)) = self.binary_content_from_prepared(&content) else {
+            let Some((binary, _)) = self.logical_right_content(operator, &content) else {
                 return false;
             };
-            if binary.operator != operator {
-                return false;
-            }
             if self.has_suppression {
                 let Ok(entry) = self.prepare_binary_entry(binary, binary.left.span(self.ast).end)
                 else {

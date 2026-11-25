@@ -8,13 +8,15 @@ b;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a;
-/* before */ /* @ts-ignore */ /* after */
-/* ordinary */ /** @type {x} */
+(
+  a /* before */ /* @ts-ignore */ /* after */
+); /* ordinary */ /** @type {x} */
 b;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-a /* before */ /* @ts-ignore */ /* after */; /* ordinary */ /** @type {x} */
+;(
+  a /* before */ /* @ts-ignore */ /* after */
+); /* ordinary */ /** @type {x} */
 b

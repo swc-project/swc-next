@@ -8,13 +8,15 @@ call();
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a;
-/* @ts-expect-error */
-/* ordinary */ /* @__PURE__ */
+(
+  a /* @ts-expect-error */
+); /* ordinary */ /* @__PURE__ */
 call();
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-a /* @ts-expect-error */; /* ordinary */ /* @__PURE__ */
+;(
+  a /* @ts-expect-error */
+); /* ordinary */ /* @__PURE__ */
 call()

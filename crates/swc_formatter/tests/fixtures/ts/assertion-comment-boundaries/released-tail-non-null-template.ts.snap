@@ -1,0 +1,30 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = `before${((left | (right
+// operand
+))!.member()
+// slot
+)}after${1}`;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x = `before${
+  (
+    left | right
+    // operand
+  )!.member()
+  // slot
+}after${1}`;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+x = `before${
+  (
+    left | right
+    // operand
+  )!.member()
+  // slot
+}after${1}`;

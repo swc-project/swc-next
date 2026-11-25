@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+value = // first
+read() /*
+ * second
+ */;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+value = // first
+  read(); /*
+ * second
+ */
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+value = // first
+  read(); /*
+ * second
+ */
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+value = // first
+  read() /*
+ * second
+ */

@@ -8,13 +8,15 @@ call();
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-a;
-/* @ts-ignore */
-/* @__PURE__ */
+(
+  a /* @ts-ignore */
+); /* @__PURE__ */
 call();
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-a /* @ts-ignore */; /* @__PURE__ */
+;(
+  a /* @ts-ignore */
+); /* @__PURE__ */
 call()

@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(a, (b
+// tail
+)) satisfies T;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(
+  a, b
+  // tail
+) satisfies T;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(
+  a, b
+  // tail
+) satisfies T;

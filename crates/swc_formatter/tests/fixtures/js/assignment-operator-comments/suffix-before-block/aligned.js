@@ -1,0 +1,4 @@
+value = // first
+read() /*
+ * second
+ */;

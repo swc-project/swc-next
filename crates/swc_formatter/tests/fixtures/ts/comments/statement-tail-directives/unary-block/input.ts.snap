@@ -7,11 +7,15 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 next;---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-!first; /* @ts-ignore */
+(
+  !first /* @ts-ignore */
+);
 next;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10,"semicolons":"as-needed"}
 ---------- Output ----------
-!first /* @ts-ignore */
+;(
+  !first /* @ts-ignore */
+)
 next

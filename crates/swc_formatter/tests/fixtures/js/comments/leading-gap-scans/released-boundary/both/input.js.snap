@@ -11,26 +11,32 @@ next();
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-item;
+(
+  item
 
-// @ts-ignore
+  // @ts-ignore
+);
 
 next();
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
-item;
+(
+  item
 
-// @ts-ignore
+  // @ts-ignore
+);
 
 next();
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-item
+;(
+  item
 
-// @ts-ignore
+  // @ts-ignore
+)
 
 next()

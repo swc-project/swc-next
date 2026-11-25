@@ -1380,6 +1380,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_tail_comments: false,
             });
         }
+        // Removing this closer would send the directive to a different line,
+        // even when its head or tail packet can otherwise leave the pair.
+        if self.diagnostic_covers_closing_line(boundary.outer, boundary.inner.end) {
+            return None;
+        }
         let SourceParenthesesComments { head, tail } = self.source_parentheses_comments(boundary);
         let mut prepared_head =
             self.source_parentheses_head(head, boundary, optimizer_binding, emitted_inner, || {
@@ -6206,28 +6211,80 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if context.content_mode != ContentMode::Formatted
             || !matches!(
                 context.position,
-                ExpressionPosition::TypeBinaryOperand | ExpressionPosition::Superclass { .. }
+                ExpressionPosition::TypeBinaryOperand
+                    | ExpressionPosition::NonNullOperand
+                    | ExpressionPosition::Superclass { .. }
             )
         {
             return None;
         }
         let removed = content.parentheses?;
-        let tail = removed.tail?;
-        // A required pair keeps its own trailing comments. An optional pair
-        // can also be needed to keep the next type operator off a comment line.
-        if self.expression_is_parenthesized(content.data, context) {
+        let line_restricted = matches!(
+            context.position,
+            ExpressionPosition::TypeBinaryOperand | ExpressionPosition::NonNullOperand
+        );
+        if self.expression_is_parenthesized(content.data, context)
+            && (removed.tail.is_some()
+                || line_restricted
+                    && self.right_operand_releases_line_tail(content.expression, context.position))
+        {
             return Some(removed.source);
         }
-        if !matches!(context.position, ExpressionPosition::TypeBinaryOperand) {
+        if !line_restricted {
             return None;
         }
-        let last = self
-            .source_parentheses_comments(removed.source)
-            .tail
-            .last()?;
+        let tail = removed.tail?;
+        let last = self.source_comments_in_range(tail.span).last()?;
         (last.kind == CommentKind::Line
             || self.source_line_breaks(tail.span.start, last.span.end) != 0)
             .then_some(removed.source)
+    }
+
+    /// A required pair must enclose a line tail released by its final operand.
+    /// The postfix token has to stay on the same source line as the closer.
+    fn right_operand_releases_line_tail(
+        &self,
+        mut expression: Expr,
+        position: ExpressionPosition,
+    ) -> bool {
+        let Some(last) = self
+            .source_comments_in_range(expression.span(self.ast))
+            .last()
+        else {
+            return false;
+        };
+        loop {
+            expression = match self.ast.expr_data(expression) {
+                ExprData::AssignmentExpression(node) => node.right(self.ast),
+                ExprData::SequenceExpression(node) => {
+                    let Some(last) = node.expressions(self.ast).last() else {
+                        return false;
+                    };
+                    self.ast.get_node_in_sub_range(last)
+                }
+                data => {
+                    let Some(binary) = super::binary::BinaryLike::from_data(data, self.ast) else {
+                        return false;
+                    };
+                    binary.right
+                }
+            };
+            let span = expression.span(self.ast);
+            if last.span.start < span.start || span.end < last.span.end {
+                return false;
+            }
+            if expression.is_parenthesized_expression(self.ast) {
+                let content = self.expression_content(expression);
+                if let Some(tail) = content.parentheses.and_then(|source| source.tail)
+                    && tail.span.start <= last.span.start
+                {
+                    return self.source_line_breaks(tail.span.start, last.span.end) != 0
+                        || matches!(position, ExpressionPosition::NonNullOperand)
+                            && last.kind == CommentKind::Line;
+                }
+                expression = content.expression;
+            }
+        }
     }
 
     fn ignored_operand_owns_operation_head(

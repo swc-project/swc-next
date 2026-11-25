@@ -1,8 +1,8 @@
 //! Enum declarations retain real member names, initializer expressions and comma owners.
 
 use swc_next_ecma_ast::{
-    BindingIdentifier, Expr, GetSpan, PropertyKey, Span, SubRange, TsEnumBody, TsEnumDeclaration,
-    TsEnumMember, TsEnumMemberName, TsEnumMemberNameData,
+    BindingIdentifier, CommentKind, Expr, GetSpan, PropertyKey, Span, SubRange, TsEnumBody,
+    TsEnumDeclaration, TsEnumMember, TsEnumMemberName, TsEnumMemberNameData,
 };
 
 use super::Formatter;
@@ -299,7 +299,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if let Some(boundary) = previous {
                         item.set_leading_mode(boundary.following_mode);
                     }
-                    let tail = self.format_enum_member(member, item.mode, quoting, writer)?;
+                    let suffix_end = next.as_ref().map_or(content.end, |next| next.span.start);
+                    let tail =
+                        self.format_enum_member(member, suffix_end, item.mode, quoting, writer)?;
                     previous = Some(self.finish_delimited_item(item, tail, writer)?);
                     let Some(next) = next else {
                         break;
@@ -358,6 +360,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_enum_member(
         &mut self,
         member: EnumMember,
+        suffix_end: u32,
         mode: ContentMode,
         quoting: PropertyKeyQuoting,
         writer: &mut Writer<'ast>,
@@ -394,7 +397,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             source,
             initializer_context,
         )?;
-        let rhs_layout = if boundary.own_line || !boundary.operator_line.is_empty() {
+        let value_end = content.expression.span(ast).end;
+        let rhs_layout = if !boundary.trailing.is_empty()
+            && self.enum_value_has_multiline_tail(Span::new(value_end, suffix_end))
+        {
+            // Moving the line comment to the value would split the member's
+            // trailing block from its comma and change attachment on reparse.
+            RhsLayout::Fluid
+        } else if boundary.own_line || !boundary.operator_line.is_empty() {
             RhsLayout::BreakAfterOperator
         } else {
             RhsLayout::NeverBreakAfterOperator
@@ -416,6 +426,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             },
             writer,
         )
+    }
+
+    /// Inspect the value's inline block packet up to its actual comma.
+    fn enum_value_has_multiline_tail(&self, span: Span) -> bool {
+        let mut end = span.start;
+        for comment in self.source_comments_in_range(span) {
+            let gap = self.source(Span::new(end, comment.span.start));
+            if comment.kind != CommentKind::Block || gap.contains([',', '\r', '\n']) {
+                return false;
+            }
+            if self.line_breaks(comment.span.start, comment.span.end) != 0 {
+                return true;
+            }
+            end = comment.span.end;
+        }
+        false
     }
 
     pub(in crate::formatter) fn format_enum_member_key(
