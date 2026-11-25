@@ -11,18 +11,18 @@ use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionExpression, Ast, BinaryExpression, CallExpression, ChainExpression,
     Class, ClassElement, Decl, DeclData, Decorator, Directive, DoWhileStatement,
     ExportAllDeclaration, ExportDefaultDeclaration, ExportNamedDeclaration, Expr, ExprData,
-    ForInStatement, ForOfStatement, ForStatement, FormalParameter, FunctionBody, GetSpan,
-    IfStatement, ImportDeclaration, ImportOrExportKind, JsxAttribute, JsxChild, JsxClosingElement,
-    JsxOpeningElement, LabeledStatement, LogicalExpression, MemberExpression, MethodDefinition,
-    NodeId, Program, PropertyDefinition, PropertyKey, PropertyKeyData, ReturnStatement, Stmt,
-    SubRange, TaggedTemplateExpression, ThrowStatement, TsAsExpression, TsClassImplements,
-    TsEnumDeclaration, TsExportAssignment, TsFunction, TsGlobalDeclaration,
-    TsImportEqualsDeclaration, TsIndexSignature, TsInstantiationExpression, TsInterfaceDeclaration,
-    TsMethodDefinition, TsModuleDeclaration, TsNamespaceExportDeclaration, TsNonNullExpression,
-    TsParameterProperty, TsSatisfiesExpression, TsThisParameter, TsTypeAliasDeclaration,
-    TsTypeAnnotation, TsTypeAssertion, TsTypeParameterDeclaration, TsTypeParameterInstantiation,
-    VariableDeclaration, VariableDeclarator, Visit, VisitWith, WhileStatement, WithStatement,
-    YieldExpression,
+    ForInStatement, ForOfStatement, ForStatement, FormalParameter, FormalParameterRest,
+    FunctionBody, GetSpan, IfStatement, ImportDeclaration, ImportOrExportKind, JsxAttribute,
+    JsxChild, JsxClosingElement, JsxOpeningElement, LabeledStatement, LogicalExpression,
+    MemberExpression, MethodDefinition, NodeId, Program, PropertyDefinition, PropertyKey,
+    PropertyKeyData, ReturnStatement, Stmt, SubRange, TaggedTemplateExpression, ThrowStatement,
+    TsAsExpression, TsClassImplements, TsEnumDeclaration, TsExportAssignment, TsFunction,
+    TsGlobalDeclaration, TsImportEqualsDeclaration, TsIndexSignature, TsInstantiationExpression,
+    TsInterfaceDeclaration, TsMethodDefinition, TsModuleDeclaration, TsNamespaceExportDeclaration,
+    TsNonNullExpression, TsParameterProperty, TsSatisfiesExpression, TsThisParameter,
+    TsTypeAliasDeclaration, TsTypeAnnotation, TsTypeAssertion, TsTypeParameterDeclaration,
+    TsTypeParameterInstantiation, VariableDeclaration, VariableDeclarator, Visit, VisitWith,
+    WhileStatement, WithStatement, YieldExpression,
 };
 pub use swc_next_ecma_ast::{Diagnostic, Label, Lang, Severity, SourceType, Span};
 use swc_next_ecma_parser::{
@@ -390,6 +390,15 @@ impl TypeEraser<'_, '_> {
 
     fn report_erasable_syntax_only(&mut self, span: Span) {
         self.report_strip_error(ERASABLE_SYNTAX_ONLY_MESSAGE, span);
+    }
+
+    /// Legacy parameter decorators need a runtime transform, and JavaScript does
+    /// not allow them, so a retained parameter keeps invalid syntax.
+    fn report_parameter_decorators(&mut self, decorators: SubRange<Decorator>) {
+        if let Some(decorator) = decorators.first() {
+            let span = self.ast.get_node_in_sub_range(decorator).span(self.ast);
+            self.report_erasable_syntax_only(span);
+        }
     }
 
     fn report_strip_error(&mut self, message: &'static str, span: Span) {
@@ -1364,13 +1373,20 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
             self.erase_optional_parameter(node);
         }
         // Visits the children in field order; a binding identifier has none.
-        node.decorators(self.ast).visit_with(self);
+        let decorators = node.decorators(self.ast);
+        self.report_parameter_decorators(decorators);
+        decorators.visit_with(self);
         let pattern = node.pattern(self.ast);
         if !pattern.is_binding_identifier(self.ast) {
             pattern.visit_with(self);
         }
         node.type_annotation(self.ast).visit_with(self);
         node.initializer(self.ast).visit_with(self);
+    }
+
+    fn visit_formal_parameter_rest(&mut self, node: FormalParameterRest) {
+        self.report_parameter_decorators(node.decorators(self.ast));
+        node.visit_children_with(self);
     }
 }
 
