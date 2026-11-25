@@ -12,7 +12,7 @@ pub mod cmp;
 pub mod memchr;
 
 use cmp::{SimdOrd, SimdPartialEq, SimdPartialOrd};
-use std::ops::{BitAnd, BitOr, Not, Sub};
+use std::ops::{BitAnd, BitOr, Not, Shr, Sub};
 
 /// Reinterprets mask lanes as bytes. Unlike `array::map`, this compiles to no code.
 #[inline(always)]
@@ -59,6 +59,20 @@ impl<T: Copy, const N: usize> Simd<T, N> {
     #[inline(always)]
     pub const fn to_array(self) -> [T; N] {
         self.0
+    }
+}
+
+impl Simd<u8, 16> {
+    /// Looks up each index in this vector and returns zero for out-of-range indices.
+    #[inline(always)]
+    pub fn swizzle_dyn(self, indices: Self) -> Self {
+        Self(cfg_select! {
+            any(
+                all(target_arch = "aarch64", target_endian = "little", target_feature = "neon"),
+                all(target_arch = "wasm32", target_feature = "simd128"),
+            ) => backend::swizzle(self.0, indices.0),
+            _ => indices.0.map(|index| self.0.get(usize::from(index)).copied().unwrap_or(0)),
+        })
     }
 }
 
@@ -145,8 +159,28 @@ impl Mask<i8, 16> {
 
     /// The lanes as one bit each, in lane order, from each lane's high bit.
     #[inline(always)]
-    pub fn to_bitmask(self) -> u16 {
-        backend::bitmask(as_unsigned(self.to_simd().to_array()))
+    pub fn to_bitmask(self) -> u64 {
+        u64::from(backend::bitmask(as_unsigned(self.to_simd().to_array())))
+    }
+}
+
+impl Mask<i8, 64> {
+    /// Packs all 64 lanes, with lane zero in the least significant bit.
+    #[inline(always)]
+    pub fn to_bitmask(self) -> u64 {
+        let lanes = self.to_simd().to_array();
+        cfg_select! {
+            all(target_arch = "aarch64", target_endian = "little", target_feature = "neon") => {
+                backend::bitmask64(lanes)
+            }
+            _ => {
+                let mut bits = 0;
+                for (i, chunk) in lanes.as_chunks::<16>().0.iter().enumerate() {
+                    bits |= u64::from(backend::bitmask(as_unsigned(*chunk))) << (16 * i);
+                }
+                bits
+            }
+        }
     }
 }
 
@@ -168,6 +202,30 @@ impl BitOr for Simd<u8, 16> {
     #[inline(always)]
     fn bitor(self, other: Self) -> Self {
         Self(backend::or(self.0, other.0))
+    }
+}
+
+impl BitAnd for Simd<u8, 16> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn bitand(self, other: Self) -> Self {
+        Self(backend::and(self.0, other.0))
+    }
+}
+
+impl Shr<u8> for Simd<u8, 16> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn shr(self, shift: u8) -> Self {
+        Self(cfg_select! {
+            any(
+                all(target_arch = "aarch64", target_feature = "neon"),
+                all(target_arch = "wasm32", target_feature = "simd128"),
+            ) => backend::shr(self.0, shift),
+            _ => self.0.map(|byte| byte.wrapping_shr(u32::from(shift))),
+        })
     }
 }
 
@@ -225,6 +283,40 @@ impl SimdPartialEq for Simd<u8, 16> {
     }
 }
 
+impl Simd<u8, 64> {
+    #[inline(always)]
+    fn compare(self, other: Self, compare: impl Fn(u8x16, u8x16) -> mask8x16) -> Mask<i8, 64> {
+        let (left, _) = self.0.as_chunks::<16>();
+        let (right, _) = other.0.as_chunks::<16>();
+        let part = |a, b| {
+            compare(u8x16::from_array(a), u8x16::from_array(b))
+                .to_simd()
+                .to_array()
+        };
+        let lanes = [
+            part(left[0], right[0]),
+            part(left[1], right[1]),
+            part(left[2], right[2]),
+            part(left[3], right[3]),
+        ];
+        Mask(Simd::from_slice(lanes.as_flattened()))
+    }
+}
+
+impl SimdPartialEq for Simd<u8, 64> {
+    type Mask = Mask<i8, 64>;
+
+    #[inline(always)]
+    fn simd_eq(self, other: Self) -> Self::Mask {
+        self.compare(other, u8x16::simd_eq)
+    }
+
+    #[inline(always)]
+    fn simd_ne(self, other: Self) -> Self::Mask {
+        self.compare(other, u8x16::simd_ne)
+    }
+}
+
 impl SimdPartialOrd for Simd<u8, 16> {
     #[inline(always)]
     fn simd_lt(self, other: Self) -> Self::Mask {
@@ -266,7 +358,13 @@ impl SimdOrd for Simd<u8, 16> {
 pub type u8x16 = Simd<u8, 16>;
 
 #[allow(non_camel_case_types)]
+pub type u8x64 = Simd<u8, 64>;
+
+#[allow(non_camel_case_types)]
 pub type mask8x16 = Mask<i8, 16>;
+
+#[allow(non_camel_case_types)]
+pub type mask8x64 = Mask<i8, 64>;
 
 /// Four 64-bit lanes.
 #[allow(non_camel_case_types)]
@@ -274,7 +372,7 @@ pub type u64x4 = Simd<u64, 4>;
 
 pub mod prelude {
     pub use super::cmp::{SimdOrd, SimdPartialEq, SimdPartialOrd};
-    pub use super::{Mask, Select, Simd, mask8x16, u8x16, u64x4};
+    pub use super::{Mask, Select, Simd, mask8x16, mask8x64, u8x16, u8x64, u64x4};
 }
 
 #[cfg(any(
@@ -438,7 +536,7 @@ mod backend {
     }
 }
 
-#[cfg(target_arch = "aarch64")]
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
 mod backend {
     use std::arch::aarch64::{
         uint8x16_t, vandq_u8, vbslq_u8, vceqq_u8, vcgeq_u8, vcgtq_u8, vcleq_u8, vcltq_u8,
@@ -457,13 +555,47 @@ mod backend {
         unsafe { std::mem::transmute(value) }
     }
 
+    #[cfg(target_endian = "little")]
+    #[inline(always)]
+    pub(super) fn swizzle(bytes: [u8; 16], indices: [u8; 16]) -> [u8; 16] {
+        // SAFETY: NEON is enabled. TBL returns zero for indices outside the table.
+        array(unsafe { std::arch::aarch64::vqtbl1q_u8(vector(bytes), vector(indices)) })
+    }
+
+    #[inline(always)]
+    pub(super) fn shr(bytes: [u8; 16], shift: u8) -> [u8; 16] {
+        use std::arch::aarch64::{vdupq_n_s8, vshlq_u8};
+
+        let count = (shift & 7) as i8;
+        // SAFETY: NEON is enabled. Negative counts shift lanes to the right.
+        array(unsafe { vshlq_u8(vector(bytes), vdupq_n_s8(-count)) })
+    }
+
+    // The four-vector mask reduction follows Yuku's lexer (MIT, see THIRD_PARTY_NOTICES).
+    #[cfg(target_endian = "little")]
+    #[inline(always)]
+    pub(super) fn bitmask64(lanes: [i8; 64]) -> u64 {
+        use std::arch::aarch64::{vgetq_lane_u64, vpaddq_u8, vreinterpretq_u64_u8};
+
+        let weights = vector([1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128]);
+        let chunks = lanes.as_chunks::<16>().0;
+        // SAFETY: NEON is enabled. Each group of eight weighted mask lanes sums to one byte.
+        unsafe {
+            let weighted = |i: usize| vandq_u8(vector(super::as_unsigned(chunks[i])), weights);
+            let ab = vpaddq_u8(weighted(0), weighted(1));
+            let cd = vpaddq_u8(weighted(2), weighted(3));
+            let halves = vpaddq_u8(ab, cd);
+            vgetq_lane_u64::<0>(vreinterpretq_u64_u8(vpaddq_u8(halves, halves)))
+        }
+    }
+
     /// The high bit of each lane, in lane order.
     #[inline(always)]
     pub(super) fn bitmask(lanes: [u8; 16]) -> u16 {
         use crate::bits::lane_bits;
 
         // No byte movemask on AArch64, so each half is compressed on its own.
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         let high_bits = unsafe { vandq_u8(vector(lanes), vector([0x80; 16])) };
         let bytes: [u8; 16] = array(high_bits);
         let low = u64::from_le_bytes(bytes[..8].try_into().unwrap());
@@ -475,7 +607,7 @@ mod backend {
     pub(super) fn first_set(mask: [u8; 16]) -> usize {
         use std::arch::aarch64::{vreinterpretq_u16_u8, vshrn_n_u16};
         // Pack four bits per lane with SHRN: AArch64 has no byte movemask.
-        // SAFETY: NEON is mandatory on AArch64; the shift is in range.
+        // SAFETY: This backend requires NEON and the shift is in range.
         let nibbles = unsafe { vshrn_n_u16::<4>(vreinterpretq_u16_u8(vector(mask))) };
         // SAFETY: both representations are eight bytes. Reading in native
         // byte order below preserves lane order on big-endian targets too.
@@ -490,67 +622,67 @@ mod backend {
 
     #[inline(always)]
     pub(super) fn sub(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { std::arch::aarch64::vsubq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn min(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { std::arch::aarch64::vminq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn eq(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vceqq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn ne(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vmvnq_u8(vceqq_u8(vector(left), vector(right))) })
     }
 
     #[inline(always)]
     pub(super) fn lt(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vcltq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn le(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vcleq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn gt(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vcgtq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn ge(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vcgeq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn any(mask: [u8; 16]) -> bool {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         unsafe { vmaxvq_u8(vector(mask)) != 0 }
     }
 
     #[inline(always)]
     pub(super) fn and(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vandq_u8(vector(left), vector(right)) })
     }
 
     #[inline(always)]
     pub(super) fn or(left: [u8; 16], right: [u8; 16]) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vorrq_u8(vector(left), vector(right)) })
     }
 
@@ -560,7 +692,7 @@ mod backend {
         true_values: [u8; 16],
         false_values: [u8; 16],
     ) -> [u8; 16] {
-        // SAFETY: NEON is mandatory on AArch64.
+        // SAFETY: This backend requires NEON.
         array(unsafe { vbslq_u8(vector(mask), vector(true_values), vector(false_values)) })
     }
 }
@@ -568,8 +700,8 @@ mod backend {
 #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
 mod backend {
     use std::arch::wasm32::{
-        u8x16_eq, u8x16_ge, u8x16_gt, u8x16_le, u8x16_lt, v128, v128_and, v128_any_true,
-        v128_bitselect, v128_not, v128_or,
+        i8x16_swizzle, u8x16_eq, u8x16_ge, u8x16_gt, u8x16_le, u8x16_lt, u8x16_shr, v128, v128_and,
+        v128_any_true, v128_bitselect, v128_not, v128_or,
     };
 
     #[inline(always)]
@@ -582,6 +714,16 @@ mod backend {
     fn array(value: v128) -> [u8; 16] {
         // SAFETY: `v128` and `[u8; 16]` have identical sizes.
         unsafe { std::mem::transmute(value) }
+    }
+
+    #[inline(always)]
+    pub(super) fn swizzle(bytes: [u8; 16], indices: [u8; 16]) -> [u8; 16] {
+        array(i8x16_swizzle(vector(bytes), vector(indices)))
+    }
+
+    #[inline(always)]
+    pub(super) fn shr(bytes: [u8; 16], shift: u8) -> [u8; 16] {
+        array(u8x16_shr(vector(bytes), u32::from(shift)))
     }
 
     /// The high bit of each lane, in lane order.
@@ -667,7 +809,7 @@ mod backend {
 
 #[cfg(not(any(
     target_arch = "x86_64",
-    target_arch = "aarch64",
+    all(target_arch = "aarch64", target_feature = "neon"),
     all(target_arch = "wasm32", target_feature = "simd128")
 )))]
 use scalar as backend;
@@ -681,7 +823,7 @@ use scalar as backend;
     test,
     not(any(
         target_arch = "x86_64",
-        target_arch = "aarch64",
+        all(target_arch = "aarch64", target_feature = "neon"),
         all(target_arch = "wasm32", target_feature = "simd128")
     ))
 ))]

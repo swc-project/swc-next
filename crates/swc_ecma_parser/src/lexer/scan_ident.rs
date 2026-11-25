@@ -1,6 +1,5 @@
-//! ASCII identifier scanning. The lexer uses `IdentifierScanner` for an
-//! ordinary identifier or keyword, and the stateless continuation scan for
-//! JSX names. Only the NEON scanner needs per-lexer state.
+//! ASCII identifiers and keywords use cached block masks on little-endian
+//! AArch64 NEON and Wasm SIMD128. JSX names use a stateless continuation scan.
 
 use super::{TokenTag, get_keyword_type};
 
@@ -10,55 +9,17 @@ mod imp;
 
 pub(super) use imp::scan_ascii_identifier_continue;
 
-#[cfg(all(
-    target_arch = "aarch64",
-    target_endian = "little",
-    target_feature = "neon"
-))]
-mod neon;
-#[cfg(all(
-    target_arch = "aarch64",
-    target_endian = "little",
-    target_feature = "neon"
-))]
-pub(super) use neon::IdentifierBlocks as IdentifierScanner;
-
-#[cfg(not(all(
-    target_arch = "aarch64",
-    target_endian = "little",
-    target_feature = "neon"
-)))]
-pub(super) use stateless::IdentifierScanner;
-
-#[cfg(not(all(
-    target_arch = "aarch64",
-    target_endian = "little",
-    target_feature = "neon"
-)))]
-mod stateless {
-    use super::TokenTag;
-    #[cfg(target_arch = "x86_64")]
-    use super::imp::scan_ascii_identifier_or_keyword as scan;
-    #[cfg(not(target_arch = "x86_64"))]
-    use super::scan_ascii_identifier_or_keyword_slow as scan;
-
-    #[derive(Clone, Debug)]
-    pub(in crate::lexer) struct IdentifierScanner;
-
-    impl IdentifierScanner {
-        #[inline(always)]
-        pub(in crate::lexer) fn new(_source: &[u8]) -> Self {
-            Self
-        }
-
-        #[inline(always)]
-        pub(in crate::lexer) fn scan(
-            &mut self,
-            source: &[u8],
-            start: u32,
-        ) -> Option<(u32, TokenTag)> {
-            scan(source, start)
-        }
+cfg_select! {
+    any(
+        all(target_arch = "aarch64", target_endian = "little", target_feature = "neon"),
+        all(target_arch = "wasm32", target_feature = "simd128"),
+    ) => {
+        mod blocks;
+        pub(super) use blocks::IdentifierBlocks as IdentifierScanner;
+    }
+    _ => {
+        mod stateless;
+        pub(super) use stateless::IdentifierScanner;
     }
 }
 
@@ -69,7 +30,8 @@ mod stateless {
         target_arch = "aarch64",
         target_endian = "little",
         target_feature = "neon"
-    )
+    ),
+    all(target_arch = "wasm32", target_feature = "simd128")
 ))]
 const fn lexeme_mask(len: usize) -> u128 {
     (1 << (len * 8)) - 1
@@ -168,13 +130,8 @@ mod tests {
         assert_eq!(end::<true>(r"a\", 1), None);
     }
 
-    #[cfg(all(
-        target_arch = "aarch64",
-        target_endian = "little",
-        target_feature = "neon"
-    ))]
     #[test]
-    fn neon_identifier_blocks() {
+    fn scan_identifier_boundaries_and_keywords() {
         use super::{IdentifierScanner, TokenTag, is_ascii_identifier_continue};
 
         // Move each byte through the 64 lanes, including adjacent blocks.
@@ -184,7 +141,7 @@ mod tests {
                     let mut source = [b';'; 192];
                     source[start..start + offset].fill(b'x');
                     source[start + offset] = byte;
-                    let mut blocks = IdentifierScanner::new(&source);
+                    let mut scanner = IdentifierScanner::new(&source);
                     let expected = if is_ascii_identifier_continue(byte) {
                         Some((start + offset + 1, TokenTag::Identifier))
                     } else if is_identifier_byte(byte) {
@@ -192,7 +149,7 @@ mod tests {
                     } else {
                         Some((start + offset, TokenTag::Identifier))
                     };
-                    let scanned = blocks.scan(&source, start as u32);
+                    let scanned = scanner.scan(&source, start as u32);
                     assert_eq!(scanned.map(|(end, tag)| (end as usize, tag)), expected);
                 }
             }
@@ -200,17 +157,17 @@ mod tests {
 
         // Lookahead, recovery, or a token-reader jump can move outside the cache.
         let source = format!("{:63}const{:61}let", "", "");
-        let mut blocks = IdentifierScanner::new(source.as_bytes());
+        let mut scanner = IdentifierScanner::new(source.as_bytes());
         assert_eq!(
-            blocks.scan(source.as_bytes(), 63),
+            scanner.scan(source.as_bytes(), 63),
             Some((68, TokenTag::Const))
         );
         assert_eq!(
-            blocks.scan(source.as_bytes(), 129),
+            scanner.scan(source.as_bytes(), 129),
             Some((132, TokenTag::Let))
         );
         assert_eq!(
-            blocks.scan(source.as_bytes(), 63),
+            scanner.scan(source.as_bytes(), 63),
             Some((68, TokenTag::Const))
         );
     }
