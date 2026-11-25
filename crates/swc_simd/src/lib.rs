@@ -67,9 +67,10 @@ impl Simd<u8, 16> {
     #[inline(always)]
     pub fn swizzle_dyn(self, indices: Self) -> Self {
         Self(cfg_select! {
-            all(target_arch = "aarch64", target_endian = "little", target_feature = "neon") => {
-                backend::swizzle(self.0, indices.0)
-            }
+            any(
+                all(target_arch = "aarch64", target_endian = "little", target_feature = "neon"),
+                all(target_arch = "wasm32", target_feature = "simd128"),
+            ) => backend::swizzle(self.0, indices.0),
             _ => indices.0.map(|index| self.0.get(usize::from(index)).copied().unwrap_or(0)),
         })
     }
@@ -219,7 +220,10 @@ impl Shr<u8> for Simd<u8, 16> {
     #[inline(always)]
     fn shr(self, shift: u8) -> Self {
         Self(cfg_select! {
-            all(target_arch = "aarch64", target_feature = "neon") => backend::shr(self.0, shift),
+            any(
+                all(target_arch = "aarch64", target_feature = "neon"),
+                all(target_arch = "wasm32", target_feature = "simd128"),
+            ) => backend::shr(self.0, shift),
             _ => self.0.map(|byte| byte.wrapping_shr(u32::from(shift))),
         })
     }
@@ -696,8 +700,8 @@ mod backend {
 #[cfg(all(target_arch = "wasm32", target_feature = "simd128"))]
 mod backend {
     use std::arch::wasm32::{
-        u8x16_eq, u8x16_ge, u8x16_gt, u8x16_le, u8x16_lt, v128, v128_and, v128_any_true,
-        v128_bitselect, v128_not, v128_or,
+        i8x16_swizzle, u8x16_eq, u8x16_ge, u8x16_gt, u8x16_le, u8x16_lt, u8x16_shr, v128, v128_and,
+        v128_any_true, v128_bitselect, v128_not, v128_or,
     };
 
     #[inline(always)]
@@ -710,6 +714,16 @@ mod backend {
     fn array(value: v128) -> [u8; 16] {
         // SAFETY: `v128` and `[u8; 16]` have identical sizes.
         unsafe { std::mem::transmute(value) }
+    }
+
+    #[inline(always)]
+    pub(super) fn swizzle(bytes: [u8; 16], indices: [u8; 16]) -> [u8; 16] {
+        array(i8x16_swizzle(vector(bytes), vector(indices)))
+    }
+
+    #[inline(always)]
+    pub(super) fn shr(bytes: [u8; 16], shift: u8) -> [u8; 16] {
+        array(u8x16_shr(vector(bytes), u32::from(shift)))
     }
 
     /// The high bit of each lane, in lane order.

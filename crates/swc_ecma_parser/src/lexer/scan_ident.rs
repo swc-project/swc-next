@@ -1,5 +1,5 @@
 //! ASCII identifiers and keywords use cached block masks on little-endian
-//! AArch64 NEON. JSX names use a stateless continuation scan.
+//! AArch64 NEON and Wasm SIMD128. JSX names use a stateless continuation scan.
 
 use super::{TokenTag, get_keyword_type};
 
@@ -10,7 +10,10 @@ mod imp;
 pub(super) use imp::scan_ascii_identifier_continue;
 
 cfg_select! {
-    all(target_arch = "aarch64", target_endian = "little", target_feature = "neon") => {
+    any(
+        all(target_arch = "aarch64", target_endian = "little", target_feature = "neon"),
+        all(target_arch = "wasm32", target_feature = "simd128"),
+    ) => {
         mod blocks;
         pub(super) use blocks::IdentifierBlocks as IdentifierScanner;
     }
@@ -27,7 +30,8 @@ cfg_select! {
         target_arch = "aarch64",
         target_endian = "little",
         target_feature = "neon"
-    )
+    ),
+    all(target_arch = "wasm32", target_feature = "simd128")
 ))]
 const fn lexeme_mask(len: usize) -> u128 {
     (1 << (len * 8)) - 1
