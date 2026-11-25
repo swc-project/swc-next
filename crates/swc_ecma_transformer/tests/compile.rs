@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use swc_next::js::{JsTransformApiOptions, transformer::transform_js};
+use swc_next::js::{JsTransformApiOptions, transformer::transform_js_v2};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{
     Ast, GetSpan, Lang, SetSpan, SourceType, Span, TsEnumMember, VariableDeclarator, VisitMut,
@@ -46,7 +46,7 @@ fn compile() {
                 source_type: source_type.unwrap_or_default(),
                 ..parser.into()
             };
-            let output = transform_js::<true>(&input, options);
+            let output = transform_js_v2::<true>(&input, options);
             let allocator = Allocator::new();
             let reparsed =
                 Parser::init(&allocator, &output.code, parser, NoTokenParserConfig).parse();

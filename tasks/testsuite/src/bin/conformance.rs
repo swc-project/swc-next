@@ -13,8 +13,12 @@ use testsuite::{
         typescript::{parser::TypeScriptParserCase, transform::TypeScriptTransformCase},
     },
     runner::{
-        Runner, codegen::CodegenRunner, minifier::MinifierRunner, parser::ParserRunner,
-        semantic::SemanticRunner, transform::TransformerRunner,
+        Runner,
+        codegen::CodegenRunner,
+        minifier::MinifierRunner,
+        parser::ParserRunner,
+        semantic::SemanticRunner,
+        transform::{TransformerV1Runner, TransformerV2Runner},
     },
     suite::TestResult,
     util::crate_root,
@@ -25,16 +29,20 @@ pub fn main() -> ExitCode {
         .stack_size(32 * 1024 * 1024)
         .build_global()
         .unwrap();
+    let babel_transform_cases = BabelTransformCase::read();
+    let swc_transform_cases = SwcTransformCase::read();
+    let ts_transform_cases = TypeScriptTransformCase::read();
     let panicked = [
         update_snapshots::<Test262Case>(),
         update_snapshots::<TypeScriptParserCase>(),
         update_snapshots::<BabelParserCase>(),
         update_snapshot::<SemanticRunner, SwcResolverCase>(&SwcResolverCase::read()),
-        update_snapshot::<TransformerRunner, BabelTransformCase>(&BabelTransformCase::read()),
-        update_snapshot::<TransformerRunner, SwcTransformCase>(&SwcTransformCase::read()),
-        update_snapshot::<TransformerRunner, TypeScriptTransformCase>(
-            &TypeScriptTransformCase::read(),
-        ),
+        update_snapshot::<TransformerV1Runner, BabelTransformCase>(&babel_transform_cases),
+        update_snapshot::<TransformerV2Runner, BabelTransformCase>(&babel_transform_cases),
+        update_snapshot::<TransformerV1Runner, SwcTransformCase>(&swc_transform_cases),
+        update_snapshot::<TransformerV2Runner, SwcTransformCase>(&swc_transform_cases),
+        update_snapshot::<TransformerV1Runner, TypeScriptTransformCase>(&ts_transform_cases),
+        update_snapshot::<TransformerV2Runner, TypeScriptTransformCase>(&ts_transform_cases),
         update_snapshot::<MinifierRunner, TerserMinifierCase>(&TerserMinifierCase::read()),
         update_snapshot::<MinifierRunner, SwcMinifierCase>(&SwcMinifierCase::read()),
     ]

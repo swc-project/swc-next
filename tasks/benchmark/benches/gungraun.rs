@@ -21,8 +21,19 @@ use swc_next_ecma_transformer::{
     es2022::ES2022Options,
     jsx::{JsxOptions, ReactRefreshOptions},
     normalize::Normalizer,
-    proposal::ProposalOptions,
     typescript::TypeScriptOptions,
+};
+use swc_next_ecma_transformer_v1::{
+    Transformer as TransformerV1, TransformerOptions as TransformerV1Options,
+    TransformerReturn as TransformerV1Return,
+    decorators::DecoratorOptions as V1DecoratorOptions,
+    env::{EnvConfig as V1EnvConfig, EsVersion as V1EsVersion, Target as V1Target},
+    jsx::{
+        JsxOptions as V1JsxOptions, JsxRuntime as V1JsxRuntime,
+        ReactRefreshOptions as V1ReactRefreshOptions,
+    },
+    modules::{ModuleType as V1ModuleType, ModulesOptions as V1ModulesOptions},
+    typescript::TypeScriptOptions as V1TypeScriptOptions,
 };
 use swc_next_formatter::js::{FormatOptions, format_ast};
 use swc_next_type_strip::{Options as StripOptions, strip_types};
@@ -221,9 +232,6 @@ fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
         es2022: ES2022Options {
             static_blocks: true,
         },
-        proposal: ProposalOptions {
-            prevent_extensions: true,
-        },
         ..TransformerOptions::default()
     };
     // Setup owns the leaked context so the binding can borrow it outside timing.
@@ -248,6 +256,48 @@ fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
 fn bench_transform(input: TransformInput) -> TransformerReturn<'static> {
     let (semantic, options) = black_box(input);
     let result = Transformer::transform(semantic, options);
+    // Keep result destruction outside the measured function.
+    black_box(result)
+}
+
+type TransformV1Input = (&'static mut AstCtx<'static>, TransformerV1Options);
+
+fn setup_transform_v1(source: &'static str, filename: &str) -> TransformV1Input {
+    let lang = Lang::from_path(filename);
+    let ast = Box::leak(Box::new(setup_program(source, lang)));
+    let env = V1EnvConfig {
+        target: Some(V1Target::EsVersion(V1EsVersion::Es2015)),
+        ..V1EnvConfig::default()
+    }
+    .to_env_options()
+    .unwrap();
+    let options = TransformerV1Options {
+        filename: Some(filename.to_owned()),
+        decorators: Some(V1DecoratorOptions::default()),
+        env,
+        typescript: Some(V1TypeScriptOptions::default()),
+        jsx: Some(V1JsxOptions {
+            runtime: Some(V1JsxRuntime::Automatic),
+            development: Some(true),
+            refresh: Some(V1ReactRefreshOptions::default()),
+            ..V1JsxOptions::default()
+        }),
+        modules: V1ModulesOptions {
+            r#type: V1ModuleType::CommonJs,
+        },
+    };
+    (ast, options)
+}
+
+#[library_benchmark]
+#[bench::three(setup_transform_v1(THREE, "three-0.138.3.js"))]
+#[bench::excalidraw_app(setup_transform_v1(EXCALIDRAW_APP, "App.tsx"))]
+#[bench::radix_ui_adoption(setup_transform_v1(RADIX_UI_ADOPTION, "RadixUIAdoptionSection.jsx"))]
+#[bench::hono_types(setup_transform_v1(HONO_TYPES, "hono-types.ts"))]
+#[bench::kitchen_sink(setup_transform_v1(KITCHEN_SINK, "kitchen-sink.tsx"))]
+fn bench_transform_v1(input: TransformV1Input) -> TransformerV1Return {
+    let (ast, options) = black_box(input);
+    let result = TransformerV1::transform(ast, options);
     // Keep result destruction outside the measured function.
     black_box(result)
 }
@@ -452,7 +502,10 @@ library_benchmark_group!(
 
 library_benchmark_group!(name = minifier, benchmarks = bench_minifier);
 
-library_benchmark_group!(name = transform, benchmarks = bench_transform);
+library_benchmark_group!(
+    name = transform,
+    benchmarks = [bench_transform, bench_transform_v1]
+);
 
 library_benchmark_group!(name = type_strip, benchmarks = bench_type_strip);
 

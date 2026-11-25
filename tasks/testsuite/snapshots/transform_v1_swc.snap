@@ -1,0 +1,41 @@
+transform_v1 * swc
+========================
+Positive Passed: 463/2089 (22.16%)
+Negative Passed: 0/0 (0.00%)
+Panicked: 0/2089 (0.00%)
+Skipped: 1591/2089 (76.16%)
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/compat/class_fields_use_set/basic/1/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/env/regressions/issues-2xxx/2154/case1/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/env/regressions/issues-6xxx/6371/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/env/regressions/issues-7xxx/7956/input/1/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/integration/jest/issue-6540/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/integration/jest/top-level-mocking/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/integration/jest/within-a-block/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/integration/shopify/003-env/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/integration/shopify/004-jest/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/integration/shopify/005-no-module/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/minify/regressions/issues-8xxx/8539/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/react/refresh/javascript/register-identifiers-used-in-create-element/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regexp/dotall/with-unicode-property-escape/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regexp/inline-regressions/regex-ascii/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regexp/inline-regressions/regex-letter/input/input.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regexp/unicode-property-escape/simple/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-11xxx/11539/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-12xxx/12641/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-8xxx/8020/input/1.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-8xxx/8300/1/input/1.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-9xxx/9198/1/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/regressions/issues-9xxx/9198/2/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/export-import-assign/input/input.ts - transform: Import assignment cannot be used when targeting ECMAScript modules. at 12..40
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/inline-regressions/issue-1052/input/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/inline-regressions/issue-879/input/input.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-11xxx/11761/input/a.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-11xxx/11761/input/c.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-1xxx/1362/case1/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-1xxx/1515/case1/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-2xxx/2139/input/index.tsx - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-2xxx/2964/case-3/input/index.ts - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-2xxx/2964/case-4/input/index.tsx - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-7xxx/7174/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-8xxx/8366/input/index.js - transformed output differs from expected output
+Failed: tasks/testsuite/fixtures/swc/crates/swc/tests/compile/typescript/regressions/issues-8xxx/8397/input/index.js - transformed output differs from expected output

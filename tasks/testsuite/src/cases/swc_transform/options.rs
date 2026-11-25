@@ -1,15 +1,16 @@
-use std::{io, path::Path};
+use std::{collections::BTreeMap, io, path::Path};
 
 use jsonc_parser::{ParseOptions, parse_to_serde_value};
 use serde_json::Value;
 use swc_core::{
     base::config::{
-        Config, FileMatcher, InputSourceMap, IsModule, OutputCharset, Rc, SourceMapsConfig,
-        TransformConfig,
+        Config, FileMatcher, InputSourceMap, IsModule, ModuleConfig, OutputCharset, Rc,
+        SourceMapsConfig, TransformConfig,
     },
     ecma::{
+        ast::EsVersion as SwcEsVersion,
         parser::Syntax,
-        preset_env::{Caniuse, Feature, FeatureOrModule, Targets, Version, Versions},
+        preset_env::{Feature, FeatureOrModule},
         transforms::react::Runtime,
     },
 };
@@ -20,7 +21,8 @@ use swc_next::{
         generator::JsGeneratorConfig,
         parser::JsParserConfig,
         transformer::{
-            JsFeature, JsReactRefreshConfig, JsTransformerConfig, JsTypeScriptConfig, JsxConfig,
+            JsDecoratorConfig, JsDecoratorVersion, JsFeature, JsModuleConfig, JsModuleType,
+            JsReactRefreshConfig, JsTarget, JsTransformerConfig, JsTypeScriptConfig, JsxConfig,
             JsxRuntime,
         },
     },
@@ -29,8 +31,14 @@ use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::{cases::assumptions, util::read_optional};
 
+#[derive(Debug)]
+pub struct SwcCaseConfig {
+    pub config: Config,
+    pub env_target: Option<JsTarget>,
+}
+
 /// Select the nearest .swcrc; parent configurations are not merged.
-pub fn from_test_path(path: &Path, root: &Path) -> io::Result<Option<Config>> {
+pub fn from_test_path(path: &Path, root: &Path) -> io::Result<Option<SwcCaseConfig>> {
     for dir in path.parent().unwrap().ancestors() {
         if let Some(source) = read_optional(&dir.join(".swcrc"))? {
             return Ok(from_source(&source, path));
@@ -39,10 +47,31 @@ pub fn from_test_path(path: &Path, root: &Path) -> io::Result<Option<Config>> {
             break;
         }
     }
-    Ok(Rc::default().into_config(Some(path)).ok().flatten())
+    Ok(Rc::default()
+        .into_config(Some(path))
+        .ok()
+        .flatten()
+        .map(|config| SwcCaseConfig {
+            config,
+            env_target: None,
+        }))
 }
 
-fn from_source(source: &str, path: &Path) -> Option<Config> {
+fn parse_env_target(value: &Value) -> Option<JsTarget> {
+    let raw = value.get("env")?.get("targets")?;
+    if raw.is_null() {
+        return None;
+    }
+    if let Some(map) = raw.as_object()
+        && map.get("esmodules").and_then(Value::as_bool) == Some(true)
+        && map.len() == 1
+    {
+        return Some(JsTarget::Query("supports es6-module".into()));
+    }
+    serde_json::from_value(raw.clone()).ok()
+}
+
+fn from_source(source: &str, path: &Path) -> Option<SwcCaseConfig> {
     let source = source.trim_start_matches('\u{feff}');
     let options = ParseOptions {
         allow_comments: true,
@@ -76,9 +105,10 @@ fn from_source(source: &str, path: &Path) -> Option<Config> {
                 continue;
             }
         }
+        let env_target = parse_env_target(&value);
         let mut config: Config = serde_json::from_value(value).ok()?;
         config.adjust(path);
-        return Some(config);
+        return Some(SwcCaseConfig { config, env_target });
     }
     None
 }
@@ -102,27 +132,78 @@ pub fn lang(config: &Config) -> Lang {
     }
 }
 
-pub fn supports_options(config: &Config) -> bool {
+fn map_es_version(version: SwcEsVersion) -> Option<&'static str> {
+    match version {
+        // SwcEsVersion::Es3 => Some("es3"),
+        // SwcEsVersion::Es5 => Some("es5"),
+        SwcEsVersion::Es3 | SwcEsVersion::Es5 => None,
+        SwcEsVersion::Es2015 => Some("es2015"),
+        SwcEsVersion::Es2016 => Some("es2016"),
+        SwcEsVersion::Es2017 => Some("es2017"),
+        SwcEsVersion::Es2018 => Some("es2018"),
+        SwcEsVersion::Es2019 => Some("es2019"),
+        SwcEsVersion::Es2020 => Some("es2020"),
+        SwcEsVersion::Es2021 => Some("es2021"),
+        SwcEsVersion::Es2022 => Some("es2022"),
+        SwcEsVersion::Es2023 => Some("es2023"),
+        SwcEsVersion::Es2024 => Some("es2024"),
+        SwcEsVersion::EsNext => Some("esnext"),
+    }
+}
+
+fn map_decorators(config: &Config) -> Option<Option<JsDecoratorConfig>> {
+    let syntax = config.jsc.syntax.unwrap_or_default();
+    if !syntax.decorators() {
+        return Some(None);
+    }
+    let default_transform = TransformConfig::default();
+    let transform = config.jsc.transform.as_ref().unwrap_or(&default_transform);
+    let version = transform
+        .decorator_version
+        .map(|version| format!("{version:?}"));
+    match version.as_deref() {
+        None | Some("V202112") if transform.legacy_decorator.into_bool() => {
+            Some(Some(JsDecoratorConfig {
+                version: Some(JsDecoratorVersion::Legacy),
+                metadata: Some(transform.decorator_metadata.into_bool()),
+            }))
+        }
+        Some("V202311") => Some(Some(JsDecoratorConfig {
+            version: Some(JsDecoratorVersion::V2023_11),
+            metadata: Some(false),
+        })),
+        _ => None,
+    }
+}
+
+fn map_module(config: &Config) -> Option<Option<JsModuleConfig>> {
+    let Some(module) = config.module.as_ref() else {
+        return Some(None);
+    };
+    let value = serde_json::to_value(module).ok()?;
+    let map = value.as_object()?;
+    if map.len() != 1 {
+        return None;
+    }
+    let kind = match module {
+        ModuleConfig::Es6(_) => JsModuleType::Preserve,
+        ModuleConfig::CommonJs(_) => JsModuleType::CommonJs,
+        ModuleConfig::Amd(_) => JsModuleType::Amd,
+        ModuleConfig::Umd(_) => JsModuleType::Umd,
+        ModuleConfig::SystemJs(_) => JsModuleType::SystemJs,
+        _ => return None,
+    };
+    Some(Some(JsModuleConfig { r#type: Some(kind) }))
+}
+
+pub fn supports_options(case: &SwcCaseConfig) -> bool {
+    let config = &case.config;
     let jsc = &config.jsc;
-    if jsc
-        .assumptions
-        .is_some_and(|options| options.set_public_class_fields)
-        || jsc.loose.into_bool()
-        || config.env.as_ref().is_some_and(|env| env.loose)
-    {
+    if jsc.loose.into_bool() || config.env.as_ref().is_some_and(|env| env.loose) {
         return false;
     }
     if let Some(env) = &config.env {
-        let modern = Versions {
-            chrome: Some(Version {
-                major: 120,
-                minor: 0,
-                patch: 0,
-            }),
-            ..Default::default()
-        };
         if jsc.target.is_some()
-            || !matches!(&env.targets, Some(Targets::Versions(versions)) if *versions == modern)
             || !env
                 .include
                 .iter()
@@ -135,50 +216,41 @@ pub fn supports_options(config: &Config) -> bool {
         {
             return false;
         }
+        if env.targets.is_some() && case.env_target.is_none() {
+            return false;
+        }
+    } else if map_es_version(jsc.target.unwrap_or_default()).is_none() {
+        return false;
     }
     let syntax_supported = match jsc.syntax.unwrap_or_default() {
         Syntax::Es(parser) => {
-            !parser.decorators
-                && !parser.export_default_from
-                && !parser.fn_bind
-                && !parser.explicit_resource_management
-                && !parser.auto_accessors
+            !parser.export_default_from && !parser.fn_bind && !parser.explicit_resource_management
         }
         Syntax::Typescript(parser) => {
-            !parser.decorators && !parser.disallow_ambiguous_jsx_like && !parser.no_early_errors
+            !parser.disallow_ambiguous_jsx_like && !parser.no_early_errors
         }
     };
-    if !syntax_supported {
+    if !syntax_supported || map_decorators(config).is_none() || map_module(config).is_none() {
         return false;
     }
     if let Some(transform) = jsc.transform.as_ref()
         && (transform.ts_enum_is_mutable.into_bool()
-            || !transform.use_define_for_class_fields.into_bool()
-            || transform.legacy_decorator.into_bool()
-            || transform.decorator_metadata.into_bool()
             || transform.const_modules.is_some()
             || transform.optimizer.is_some()
-            || transform.decorator_version.is_some()
             || transform.regenerator.import_path.is_some()
             || transform.react_compiler.is_true()
             || transform.react_compiler.is_obj())
     {
         return false;
     }
-    let module_supported = config.module.as_ref().is_none_or(|module| {
-        serde_json::to_value(module).ok() == Some(serde_json::json!({"type": "es6"}))
-    });
     let experimental = &jsc.experimental;
-    module_supported
-        && matches!(
-            config.source_maps,
-            None | Some(SourceMapsConfig::Bool(false))
-        )
-        && matches!(
-            config.input_source_map,
-            None | Some(InputSourceMap::Bool(false))
-        )
-        && config.source_map_ignore_list.is_none()
+    matches!(
+        config.source_maps,
+        None | Some(SourceMapsConfig::Bool(false))
+    ) && matches!(
+        config.input_source_map,
+        None | Some(InputSourceMap::Bool(false))
+    ) && config.source_map_ignore_list.is_none()
         && !jsc.keep_class_names.into_bool()
         && jsc.base_url.as_os_str().is_empty()
         && jsc.paths.is_empty()
@@ -206,21 +278,39 @@ fn is_supported_feature(feature: &FeatureOrModule) -> bool {
     )
 }
 
-fn feature_enabled(config: &Config, feature: Feature) -> bool {
-    match &config.env {
-        None => !config.jsc.target.unwrap_or_default().caniuse(feature),
-        Some(env) => {
-            let contains = |features: &[FeatureOrModule]| {
-                features.iter().any(
-                    |value| matches!(value, FeatureOrModule::Feature(value) if *value == feature),
-                )
-            };
-            contains(&env.include) && !contains(&env.exclude)
+fn feature_overrides(config: &Config) -> Option<BTreeMap<JsFeature, bool>> {
+    let env = config.env.as_ref()?;
+    if env.include.is_empty() && env.exclude.is_empty() {
+        return None;
+    }
+    let mut overrides = BTreeMap::new();
+    for item in &env.include {
+        match item {
+            FeatureOrModule::Feature(Feature::ClassStaticBlock) => {
+                overrides.insert(JsFeature::ClassStaticBlock, true);
+            }
+            FeatureOrModule::Feature(Feature::OptionalCatchBinding) => {
+                overrides.insert(JsFeature::OptionalCatchBinding, true);
+            }
+            _ => {}
         }
     }
+    for item in &env.exclude {
+        match item {
+            FeatureOrModule::Feature(Feature::ClassStaticBlock) => {
+                overrides.insert(JsFeature::ClassStaticBlock, false);
+            }
+            FeatureOrModule::Feature(Feature::OptionalCatchBinding) => {
+                overrides.insert(JsFeature::OptionalCatchBinding, false);
+            }
+            _ => {}
+        }
+    }
+    (!overrides.is_empty()).then_some(overrides)
 }
 
-pub fn options(config: &Config, path: &Path) -> JsTransformApiOptions {
+pub fn options(case: &SwcCaseConfig, path: &Path) -> JsTransformApiOptions {
+    let config = &case.config;
     let default_transform = TransformConfig::default();
     let transform = config.jsc.transform.as_ref().unwrap_or(&default_transform);
     let react = &transform.react;
@@ -258,8 +348,23 @@ pub fn options(config: &Config, path: &Path) -> JsTransformApiOptions {
     } else {
         BoolOr::Bool(false)
     };
-    let static_blocks = feature_enabled(config, Feature::ClassStaticBlock);
-    let optional_catch_binding = feature_enabled(config, Feature::OptionalCatchBinding);
+    let target = if config.env.is_some() {
+        case.env_target
+            .clone()
+            .or_else(|| Some(JsTarget::Queries(Vec::new())))
+    } else {
+        let es_version = config.jsc.target.unwrap_or_default();
+        map_es_version(es_version).map(|v| JsTarget::Query(v.into()))
+    };
+    let decorators = map_decorators(config).flatten().map(BoolOr::Options);
+    let module = map_module(config).flatten();
+    let mut js_assumptions = config.jsc.assumptions.map(assumptions);
+    if !transform.use_define_for_class_fields.into_bool() {
+        js_assumptions
+            .get_or_insert_with(Default::default)
+            .set_public_class_fields = Some(true);
+    }
+
     JsTransformApiOptions {
         // SWC's snapshots normalize the source file to its basename.
         filename: Some(path.file_name().unwrap().to_string_lossy().into_owned()),
@@ -269,16 +374,13 @@ pub fn options(config: &Config, path: &Path) -> JsTransformApiOptions {
             ..Default::default()
         }),
         transformer: Some(JsTransformerConfig {
+            target,
             jsx: Some(jsx),
             typescript: Some(typescript),
-            assumptions: config.jsc.assumptions.map(assumptions),
-            features: Some(
-                [
-                    (JsFeature::ClassStaticBlock, static_blocks),
-                    (JsFeature::OptionalCatchBinding, optional_catch_binding),
-                ]
-                .into(),
-            ),
+            decorators,
+            module,
+            assumptions: js_assumptions,
+            features: feature_overrides(config),
             ..Default::default()
         }),
         generator: Some(JsGeneratorConfig {

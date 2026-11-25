@@ -22,7 +22,9 @@ repository  = "https://github.com/swc-project/swc-next"
 [workspace.dependencies]
 allocator-api2   = "=0.2.21"
 arrayvec         = "0.7.8"
+base64           = "0.22.1"
 bitflags         = "2.13.2"
+browserslist      = { package = "browserslist-rs", version = "0.22.0", default-features = false, features = ["deflate"] }
 bumpalo          = "3.20.4"
 chumsky          = { version = "0.14.2", default-features = false }
 cow-utils        = "0.1.3"
@@ -37,6 +39,7 @@ regex            = "1.13.2"
 rustc-hash       = "2.1.3"
 serde            = "1.0.229"
 serde_json       = "1.0.154"
+sha1             = "0.10.6"
 sourcemap        = "9.3.2"
 unicode-id-start = "1.5.0"
 unicode-width    = { version = "0.2.3", default-features = false }
@@ -82,6 +85,7 @@ swc_next_ecma_minifier         = { version = "0.8.0", path = "crates/swc_ecma_mi
 swc_next_ecma_parser           = { version = "0.8.0", path = "crates/swc_ecma_parser" }
 swc_next_ecma_semantic         = { version = "0.8.0", path = "crates/swc_ecma_semantic" }
 swc_next_ecma_transformer      = { version = "0.8.0", path = "crates/swc_ecma_transformer" }
+swc_next_ecma_transformer_v1   = { version = "0.7.0", path = "crates/swc_ecma_transformer_v1" }
 swc_next_formatter             = { version = "0.8.0", path = "crates/swc_formatter" }
 swc_next_formatter_core        = { version = "0.8.0", path = "crates/swc_formatter_core" }
 swc_next_formatter_host        = { version = "0.8.0", path = "crates/swc_formatter_host" }

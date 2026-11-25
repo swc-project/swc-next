@@ -197,6 +197,7 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
+ "swc_next_ecma_transformer_v1",
  "swc_next_formatter",
  "swc_next_type_strip",
  "tracy-client",
@@ -3756,6 +3757,7 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
+ "swc_next_ecma_transformer_v1",
 ]
 
 [[package]]
@@ -3910,6 +3912,24 @@ dependencies = [
  "swc_next_ecma_semantic",
  "swc_next_helpers",
  "zmij_ecma",
+]
+
+[[package]]
+name = "swc_next_ecma_transformer_v1"
+version = "0.7.0"
+dependencies = [
+ "base64 0.22.1",
+ "browserslist-rs",
+ "convert_case",
+ "hashbrown 0.17.2",
+ "indexmap",
+ "memchr",
+ "regex",
+ "rustc-hash",
+ "sha1",
+ "swc_next_allocator",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_parser",
 ]
 
 [[package]]

@@ -7,7 +7,7 @@ use swc_next::{
     js::{
         JsTransformApiOptions,
         generator::JsGeneratorConfig,
-        transformer::{JsAssumptions, JsFeature, JsProposalConfig, JsTransformerConfig},
+        transformer::{JsAssumptions, JsFeature, JsTransformerConfig},
     },
 };
 
@@ -113,9 +113,6 @@ impl From<BabelOptions> for JsTransformApiOptions {
         Self {
             transformer: Some(JsTransformerConfig {
                 assumptions: Some(options.assumptions.options),
-                proposal: Some(JsProposalConfig {
-                    prevent_extensions: Some(plugins.static_blocks),
-                }),
                 typescript: Some(match plugins.typescript {
                     Some(options) => BoolOr::Options(options),
                     None => BoolOr::Bool(false),

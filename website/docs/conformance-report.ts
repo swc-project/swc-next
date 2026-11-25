@@ -1,6 +1,6 @@
 import { closeSync, openSync, readSync, readdirSync } from "node:fs";
 
-export type ConformanceKind = "parser" | "codegen" | "semantic" | "transform" | "minifier" | "estree" | "codec" | "formatter";
+export type ConformanceKind = "parser" | "codegen" | "semantic" | "transform_v1" | "transform_v2" | "minifier" | "estree" | "codec" | "formatter";
 export interface Count {
   passed: number;
   total: number;
@@ -19,10 +19,10 @@ export interface ConformanceResult {
   panicked?: number;
 }
 
-const kinds = new Set<ConformanceKind>(["parser", "codegen", "semantic", "transform", "minifier", "estree", "codec", "formatter"]);
+const kinds = new Set<ConformanceKind>(["parser", "codegen", "semantic", "transform_v1", "transform_v2", "minifier", "estree", "codec", "formatter"]);
 
 export function parseConformanceHeader(snapshot: string, header: string): ConformanceResult {
-  const name = snapshot.match(/^([a-z]+)_(.+)\.snap$/);
+  const name = snapshot.match(/^(transform_v[12]|[a-z]+)_(.+)\.snap$/);
   const kind = (name?.[1] === "prettier" ? "formatter" : name?.[1]) as ConformanceKind;
   if (!name || !kinds.has(kind)) throw new Error(`Unknown conformance snapshot: ${snapshot}`);
   const suite = kind === "formatter" ? name[2].replace(/^prettier_/, "") : name[2];

@@ -12,7 +12,7 @@ version               = "0.8.1"
 crate-type = ["cdylib"]
 
 [dependencies]
-swc_next              = { workspace = true, features = ["bridge", "js_transformer"] }
+swc_next              = { workspace = true, features = ["bridge", "js_transformer_v2"] }
 swc_next_bridge       = { workspace = true }
 swc_next_ecma_ast     = { workspace = true }
 

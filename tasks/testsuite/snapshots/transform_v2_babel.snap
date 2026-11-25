@@ -1,4 +1,4 @@
-transform * babel
+transform_v2 * babel
 ========================
 Positive Passed: 606/4082 (14.85%)
 Negative Passed: 0/0 (0.00%)
