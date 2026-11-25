@@ -21,6 +21,9 @@ label, including when the label is added. CodSpeed must be enabled for the
 repository, and the organization's runner group must allow this public
 repository to use Macro Runners.
 
+The CodSpeed benchmark IDs end with the target architecture, such as
+`jquery/parser/new/x86_64`, so the two runners report separate benchmarks.
+
 ## Instructions and profiles
 
 On Linux with Valgrind and the `gungraun-runner` version matching the workspace's
