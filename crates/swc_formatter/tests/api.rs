@@ -403,6 +403,74 @@ fn comment_layout_stability() {
 }
 
 #[test]
+fn comment_token_boundaries() {
+    fn format_checked(input: &str, parser: ParserOptions, options: FormatOptions) -> String {
+        let allocator = Allocator::new();
+        let parsed = Parser::init(&allocator, input, parser, NoTokenParserConfig).parse();
+        assert!(parsed.diagnostics.is_empty());
+        let output = format(input, parser, options).unwrap();
+        assert_eq!(format_ast(&parsed.ast, options).unwrap(), output);
+        assert_eq!(format(&output, parser, options).unwrap(), output);
+        output
+    }
+
+    fn assert_order(output: &str, fragments: &[&str]) {
+        let mut remaining = output;
+        for fragment in fragments {
+            assert_eq!(output.matches(fragment).count(), 1);
+            remaining = remaining.split_once(fragment).unwrap().1;
+        }
+    }
+
+    let parser = ParserOptions {
+        comments: CommentMode::Flat,
+        preserve_parens: true,
+        ..ParserOptions::default()
+    };
+    let always = FormatOptions::prettier();
+    let as_needed = FormatOptions {
+        semicolons: Semicolons::AsNeeded,
+        ..always
+    };
+    for options in [always, as_needed] {
+        for line in ["\n", "\u{2028}", "\u{2029}"] {
+            let input = format!("(a /* operand{line} */)++;");
+            let output = format_checked(&input, parser, options);
+            let comment = format!("/* operand{line}");
+            assert_order(&output, &["(", &comment, ")++"]);
+
+            let input = format!("let a // initializer{line}= [1] // declarator{line}, b;");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["// initializer", "=", "// declarator", ","]);
+
+            let input = format!("a // before{line} /* block */\n&& b;");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["// before", "/* block */", "&&"]);
+
+            let input = format!("a{line}// before\n&& b;");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["// before", "&&"]);
+
+            let input = format!("a{line}< // after\nb;");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["<", "// after"]);
+
+            let input = format!("a < // after{line} /* block */\nb;");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["<", "// after", "/* block */"]);
+
+            let input = format!("a // before{line}, // after\nb;");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["// before", ",", "// after"]);
+
+            let input = format!("const a // @ts-expect-error{line}= [missing];");
+            let output = format_checked(&input, parser, options);
+            assert_order(&output, &["// @ts-expect-error", "= [missing]"]);
+        }
+    }
+}
+
+#[test]
 fn ambient_module_attribute_recovery() {
     let allocator = Allocator::new();
     let parser_options = ParserOptions {

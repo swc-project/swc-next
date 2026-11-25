@@ -11,8 +11,9 @@ a
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 _ = `${
-  a +
+  a
   // comment
+  +
   b
 }`;
 
@@ -20,8 +21,9 @@ _ = `${
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
 ---------- Output ----------
 _ = `${
-  a +
+  a
   // comment
+  +
   b
 }`
 
@@ -29,7 +31,8 @@ _ = `${
 {"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
 _ = `${
-  a +
+  a
   // comment
+  +
   b
 }`;

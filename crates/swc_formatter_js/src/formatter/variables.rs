@@ -293,7 +293,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if matches!(following, FollowingItem::End) {
                         Ok(ControlFlow::Break(output))
                     } else {
-                        self.finish_delimited_item(item, output.tail, writer)
+                        self.finish_declarator_item(item, output.tail, writer)
                             .map(ControlFlow::Continue)
                     }
                 };

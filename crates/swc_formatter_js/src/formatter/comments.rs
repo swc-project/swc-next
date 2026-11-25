@@ -106,8 +106,8 @@ pub(super) enum CommentRunLayout {
     SourceAfter(u32),
     /// Inside a retained operand, an ordinary visually inline line comment is a suffix.
     EnclosedTail(u32),
-    /// Preserve source-only line gaps before a conditional's retained tail comments.
-    ConditionalTail(u32),
+    /// Preserve source-only line gaps inside a retained tail.
+    SourceLineTail(u32),
     /// Preserve source order when a released expression tail joins a statement suffix.
     StatementTail(u32),
     SourceLeading {
@@ -2183,15 +2183,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None => None,
             };
             let prepared = self.prepare_comment(comment)?;
-            let conditional_gap = if let CommentRunLayout::ConditionalTail(start) = layout {
+            let source_gap = if let CommentRunLayout::SourceLineTail(start) = layout {
                 let end = previous.as_ref().map_or(start, |comment| comment.span.end);
                 Some((end, self.source_line_breaks(end, comment.span.start)))
             } else {
                 None
             };
             let line_suffix = match (layout, comment.kind) {
-                (CommentRunLayout::ConditionalTail(_), CommentKind::Line) => {
-                    conditional_gap.is_some_and(|(_, breaks)| breaks == 0)
+                (CommentRunLayout::SourceLineTail(_), CommentKind::Line) => {
+                    source_gap.is_some_and(|(_, breaks)| breaks == 0)
                         && previous
                             .as_ref()
                             .is_none_or(|comment| comment.kind != CommentKind::Line)
@@ -2224,7 +2224,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 _ => false,
             };
-            if let Some((start, breaks)) = conditional_gap
+            if let Some((start, breaks)) = source_gap
                 && breaks != 0
                 && self.line_breaks(start, comment.span.start) == 0
             {
@@ -2238,7 +2238,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         layout,
                         CommentRunLayout::StatementTail(_)
                             | CommentRunLayout::EnclosedTail(_)
-                            | CommentRunLayout::ConditionalTail(_)
+                            | CommentRunLayout::SourceLineTail(_)
                     ) || adjacency
                         .previous
                         .is_some_and(|comment| comment.span == previous.span))
@@ -2262,7 +2262,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         | CommentRunLayout::SourceDangling
                         | CommentRunLayout::SourceAfter(_)
                         | CommentRunLayout::EnclosedTail(_)
-                        | CommentRunLayout::ConditionalTail(_)
+                        | CommentRunLayout::SourceLineTail(_)
                         | CommentRunLayout::StatementTail(_)
                         | CommentRunLayout::SourceLeading { .. } => self
                             .comment_gap_after_with_packet(
@@ -2315,7 +2315,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             } else if let CommentRunLayout::SourceAfter(start)
             | CommentRunLayout::EnclosedTail(start)
-            | CommentRunLayout::ConditionalTail(start)
+            | CommentRunLayout::SourceLineTail(start)
             | CommentRunLayout::StatementTail(start) = layout
                 && !line_suffix
             {

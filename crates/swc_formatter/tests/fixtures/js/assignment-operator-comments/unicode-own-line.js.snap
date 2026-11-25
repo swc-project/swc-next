@@ -1,0 +1,32 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+var a // first  // second
+= 1, b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+var a // first
+  // second
+  =
+  1,
+  b;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+var a // first
+  // second
+  =
+  1,
+  b;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+var a // first
+  // second
+  =
+  1,
+  b

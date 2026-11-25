@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let a // initializer = [1] // declarator , b;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+let a // initializer
+  =
+    [1] // declarator
+  ,
+  b;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+let a // initializer
+  =
+    [1] // declarator
+  ,
+  b;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+let a // initializer
+  =
+    [1] // declarator
+  ,
+  b

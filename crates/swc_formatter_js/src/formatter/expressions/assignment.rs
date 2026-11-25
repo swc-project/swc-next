@@ -812,8 +812,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .max(formatter.line_breaks(boundary.operator_span.end, next));
                 // The displaced operator line contributes a separator, not a blank line.
                 match breaks {
-                    0 => writer.space(),
-                    1 => writer.hard_line(),
+                    0 if last.kind == CommentKind::Block => writer.space(),
+                    0 | 1 => writer.hard_line(),
                     _ => {
                         writer.hard_line();
                         writer.hard_line();
@@ -1681,14 +1681,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let before_line = before
                 .last()
                 .is_some_and(|last| last.kind == CommentKind::Line);
+            let retains_operator_gap = hugs_comments && before_line;
             let promoted = !sensitive
+                && !retains_operator_gap
                 && matches!(
                     self.comment_binding(before, span, None),
                     CommentBinding::Unbound
                 )
                 && before.first().is_some_and(|first| {
-                    hugs_comments && before_line
-                        || self.line_breaks(left_end, first.span.start) != 0
+                    self.line_breaks(left_end, first.span.start) != 0
                         || before.last().is_some_and(|last| {
                             last.kind == CommentKind::Block
                                 && self.line_breaks(last.span.end, operator_start) != 0
@@ -1769,6 +1770,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .is_none_or(|comment| comment.span.start >= source_right_end);
             let left_tail = !sensitive
                 && !promoted
+                && !retains_operator_gap
                 && before_line
                 && after.is_empty()
                 && self
@@ -2021,16 +2023,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary.after_operator =
                     self.comment_gap_after_constraint(*last, first.span.start);
             }
-            if let Some((last, previous)) = boundary.before.split_last()
-                && last.kind == CommentKind::Line
-                && self.line_breaks(
-                    previous.last().map_or(left_end, |comment| comment.span.end),
-                    last.span.start,
-                ) != 0
-                && boundary.before_operator == LineConstraint::Unconstrained
-            {
-                // Own-line comments are emitted directly, unlike deferred line suffixes.
-                boundary.before_operator = LineConstraint::NewLine(1);
+            if boundary.before_operator == LineConstraint::Unconstrained {
+                if let Some(&last) = before.last().filter(|_| retains_operator_gap) {
+                    boundary.before_operator =
+                        self.comment_gap_after_constraint(last, operator_start);
+                } else if self.comment_run_has_own_line_tail(boundary.before, left_end) {
+                    // Own-line comments are emitted directly, unlike deferred line suffixes.
+                    boundary.before_operator = LineConstraint::NewLine(1);
+                }
             }
             boundary.enclose_moved_head = !boundary.moved.is_empty()
                 && boundary.operator_line.is_empty()

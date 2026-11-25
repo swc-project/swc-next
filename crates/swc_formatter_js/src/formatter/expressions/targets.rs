@@ -2,7 +2,7 @@
 
 use swc_next_ecma_ast::{
     AssignmentExpression, AssignmentOperator, AssignmentTargetData, Ast, BindingPattern, Comment,
-    Expr, ExprData, GetSpan, SimpleAssignmentTarget, SimpleAssignmentTargetData, Span,
+    CommentKind, Expr, ExprData, GetSpan, SimpleAssignmentTarget, SimpleAssignmentTargetData, Span,
     UpdateExpression, UpdateOperator,
 };
 
@@ -22,15 +22,20 @@ use crate::{FormatError, Semicolons, document::Writer};
 #[derive(Clone, Copy)]
 enum TargetOperator {
     Assignment(AssignmentOperator),
-    Update(UpdateOperator),
-    Iteration { of: bool },
+    Update {
+        operator: UpdateOperator,
+        postfix: bool,
+    },
+    Iteration {
+        of: bool,
+    },
 }
 
 impl TargetOperator {
     fn as_str(self) -> &'static str {
         match self {
             Self::Assignment(operator) => operator.as_str(),
-            Self::Update(operator) => operator.as_str(),
+            Self::Update { operator, .. } => operator.as_str(),
             Self::Iteration { of } => {
                 if of {
                     "of"
@@ -116,7 +121,7 @@ impl SimpleTarget {
 pub(in crate::formatter) enum TargetUse {
     AssignmentLeft,
     DefaultLeft,
-    UpdateOperand,
+    UpdateOperand { postfix: bool },
     PatternElement,
     IterationLeft,
 }
@@ -125,7 +130,7 @@ impl TargetUse {
     fn requires_cast_parentheses(self) -> bool {
         matches!(
             self,
-            Self::AssignmentLeft | Self::DefaultLeft | Self::UpdateOperand
+            Self::AssignmentLeft | Self::DefaultLeft | Self::UpdateOperand { .. }
         )
     }
 
@@ -135,7 +140,7 @@ impl TargetUse {
                 context.member_layout = MemberLayout::Tight;
                 ExpressionPosition::AssignmentTarget
             }
-            Self::UpdateOperand => ExpressionPosition::UpdateArgument,
+            Self::UpdateOperand { .. } => ExpressionPosition::UpdateArgument,
             Self::PatternElement => ExpressionPosition::Nested,
             Self::IterationLeft => context.position,
         };
@@ -372,9 +377,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let target = update.argument(self.ast);
         let span = update.span(self.ast);
         let target_span = target.span(self.ast);
-        let operator = TargetOperator::Update(update.operator(self.ast));
+        let postfix = !update.prefix(self.ast);
+        let operator = TargetOperator::Update {
+            operator: update.operator(self.ast),
+            postfix,
+        };
         let length = operator.as_str().len() as u32;
-        let (prefix, suffix, operator_span) = if update.prefix(self.ast) {
+        let (prefix, suffix, operator_span) = if !postfix {
             (
                 Span::new(span.start + length, target_span.start),
                 Span::new(target_span.end, span.end),
@@ -426,7 +435,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut trailing = self.target_gap(suffix);
         let use_context = match operator {
             TargetOperator::Assignment(_) => TargetUse::AssignmentLeft,
-            TargetOperator::Update(_) => TargetUse::UpdateOperand,
+            TargetOperator::Update { postfix, .. } => TargetUse::UpdateOperand { postfix },
             TargetOperator::Iteration { .. } => TargetUse::IterationLeft,
         };
         let envelope =
@@ -568,6 +577,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 owner,
                 external,
             );
+            if layer.mode == TargetLayerMode::Remove
+                && matches!(use_context, TargetUse::UpdateOperand { postfix: true })
+            {
+                let tail = Span::new(layer.parentheses.inner.end, layer.parentheses.outer.end - 1);
+                if self.comments.in_range(tail).iter().any(|comment| {
+                    comment.kind == CommentKind::Block
+                        && self.source_line_breaks(comment.span.start, comment.span.end) != 0
+                }) {
+                    // The closing delimiter keeps the line terminator inside the operand.
+                    layer.mode = TargetLayerMode::Retain;
+                }
+            }
             if layer.mode != TargetLayerMode::Remove {
                 emitted_inner = None;
             }
