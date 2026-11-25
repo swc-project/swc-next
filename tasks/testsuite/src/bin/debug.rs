@@ -14,7 +14,10 @@ use testsuite::{
         },
     },
     runner::{
-        Runner, codegen::CodegenRunner, minifier::MinifierRunner, parser::ParserRunner,
+        Runner,
+        codegen::CodegenRunner,
+        minifier::MinifierRunner,
+        parser::ParserRunner,
         semantic::SemanticRunner,
         transform::{TransformerV1Runner, TransformerV2Runner},
     },

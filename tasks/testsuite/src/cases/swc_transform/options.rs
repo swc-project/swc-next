@@ -226,7 +226,9 @@ pub fn supports_options(case: &SwcCaseConfig) -> bool {
         Syntax::Es(parser) => {
             !parser.export_default_from && !parser.fn_bind && !parser.explicit_resource_management
         }
-        Syntax::Typescript(parser) => !parser.disallow_ambiguous_jsx_like && !parser.no_early_errors,
+        Syntax::Typescript(parser) => {
+            !parser.disallow_ambiguous_jsx_like && !parser.no_early_errors
+        }
     };
     if !syntax_supported || map_decorators(config).is_none() || map_module(config).is_none() {
         return false;
@@ -354,9 +356,7 @@ pub fn options(case: &SwcCaseConfig, path: &Path) -> JsTransformApiOptions {
         let es_version = config.jsc.target.unwrap_or_default();
         map_es_version(es_version).map(|v| JsTarget::Query(v.into()))
     };
-    let decorators = map_decorators(config)
-        .flatten()
-        .map(BoolOr::Options);
+    let decorators = map_decorators(config).flatten().map(BoolOr::Options);
     let module = map_module(config).flatten();
     let mut js_assumptions = config.jsc.assumptions.map(assumptions);
     if !transform.use_define_for_class_fields.into_bool() {

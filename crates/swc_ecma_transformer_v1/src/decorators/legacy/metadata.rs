@@ -140,7 +140,10 @@ impl<'ast> VisitMut<'ast> for ParamMetadata<'_, 'ast, '_> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/be15e4b756b61c64c00f6bb4d03d71aae1cd2d2f/crates/swc_ecma_transforms_proposal/src/decorators/legacy/metadata.rs#L54>.
-    fn visit_mut_method_definition(&mut self, method: MethodDefinition) -> Option<MethodDefinition> {
+    fn visit_mut_method_definition(
+        &mut self,
+        method: MethodDefinition,
+    ) -> Option<MethodDefinition> {
         if method.kind(self.ast) == MethodDefinitionKind::Constructor {
             return None;
         }
@@ -272,7 +275,8 @@ impl<'a, 'ast, 'r> Metadata<'a, 'ast, 'r> {
 
     fn serialize_formal_params(&mut self, params: FormalParameters) -> Expr {
         let items = params.items(self.ast);
-        let mut elems = Vec::with_capacity(items.len() + usize::from(params.rest(self.ast).is_some()));
+        let mut elems =
+            Vec::with_capacity(items.len() + usize::from(params.rest(self.ast).is_some()));
         for slot in items.iter() {
             let ann = match self
                 .ast
@@ -601,7 +605,10 @@ impl<'ast> VisitMut<'ast> for Metadata<'_, 'ast, '_> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/be15e4b756b61c64c00f6bb4d03d71aae1cd2d2f/crates/swc_ecma_transforms_proposal/src/decorators/legacy/metadata.rs#L203>.
-    fn visit_mut_method_definition(&mut self, method: MethodDefinition) -> Option<MethodDefinition> {
+    fn visit_mut_method_definition(
+        &mut self,
+        method: MethodDefinition,
+    ) -> Option<MethodDefinition> {
         let kind = method.kind(self.ast);
         if kind == MethodDefinitionKind::Constructor {
             return None;
@@ -624,17 +631,24 @@ impl<'ast> VisitMut<'ast> for Metadata<'_, 'ast, '_> {
                 self.serialize_param_type(return_type)
             }
             MethodDefinitionKind::Set => {
-                let first_ann = func.params(self.ast).items(self.ast).iter().next().and_then(
-                    |slot| match self
-                        .ast
-                        .formal_parameter_item_data(self.ast.get_node_in_sub_range(slot))
-                    {
-                        FormalParameterItemData::FormalParameter(p) => p.type_annotation(self.ast),
-                        FormalParameterItemData::TsParameterProperty(p) => {
-                            p.parameter(self.ast).type_annotation(self.ast)
+                let first_ann = func
+                    .params(self.ast)
+                    .items(self.ast)
+                    .iter()
+                    .next()
+                    .and_then(|slot| {
+                        match self
+                            .ast
+                            .formal_parameter_item_data(self.ast.get_node_in_sub_range(slot))
+                        {
+                            FormalParameterItemData::FormalParameter(p) => {
+                                p.type_annotation(self.ast)
+                            }
+                            FormalParameterItemData::TsParameterProperty(p) => {
+                                p.parameter(self.ast).type_annotation(self.ast)
+                            }
                         }
-                    },
-                );
+                    });
                 self.serialize_type(first_ann)
             }
             MethodDefinitionKind::Constructor => unreachable!(),

@@ -380,9 +380,11 @@ impl<'ast> VisitMut<'ast> for MovedStaticSuperFieldAccessFolder<'_, 'ast, '_> {
                 )
             };
             let args = self.folder.ast.add_sub_range(args);
-            return Some(self.folder.ast.expr_call_expression(
-                DUMMY_SP, callee, None, args, false, false,
-            ));
+            return Some(
+                self.folder
+                    .ast
+                    .expr_call_expression(DUMMY_SP, callee, None, args, false, false),
+            );
         }
         if let Some(member) = node
             .as_member_expression(self.folder.ast)

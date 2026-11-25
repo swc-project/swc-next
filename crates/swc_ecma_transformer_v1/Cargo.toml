@@ -23,5 +23,4 @@ swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
 
 [dev-dependencies]
-swc_next_ecma_codegen = { workspace = true }
 swc_next_ecma_parser  = { workspace = true }

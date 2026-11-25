@@ -104,9 +104,9 @@ impl Case for SwcTransformCase {
     }
 
     fn source_type(&self) -> SourceType {
-        self.options
-            .as_ref()
-            .map_or(SourceType::Module, |case| options::source_type(&case.config))
+        self.options.as_ref().map_or(SourceType::Module, |case| {
+            options::source_type(&case.config)
+        })
     }
 
     fn lang(&self) -> Lang {

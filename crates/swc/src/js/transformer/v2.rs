@@ -35,9 +35,7 @@ pub(super) fn to_options(
         for (feature, enabled) in features {
             match feature {
                 JsFeature::ClassStaticBlock => defaults.es2022.static_blocks = enabled,
-                JsFeature::OptionalCatchBinding => {
-                    defaults.es2019.optional_catch_binding = enabled
-                }
+                JsFeature::OptionalCatchBinding => defaults.es2019.optional_catch_binding = enabled,
             }
         }
     }

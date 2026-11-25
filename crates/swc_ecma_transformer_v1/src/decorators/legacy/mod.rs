@@ -89,7 +89,10 @@ impl<'ast> Visit<'ast> for EnumCollector<'_, 'ast> {
             });
 
         if let Some(kind) = enum_kind {
-            let name = self.ast.get_utf8(decl.id(self.ast).name(self.ast)).to_owned();
+            let name = self
+                .ast
+                .get_utf8(decl.id(self.ast).name(self.ast))
+                .to_owned();
             self.enums.insert(name, kind);
         }
     }
@@ -163,7 +166,8 @@ impl TscDecorator<'_, '_, '_> {
             self.vars.push(build::declarator(self.ast, var_name, None));
 
             let lhs = self.ctx.resolver.reference(self.ast, var_name);
-            self.prepended_exprs.push(build::assign(self.ast, lhs, expr));
+            self.prepended_exprs
+                .push(build::assign(self.ast, lhs, expr));
 
             let replacement_key = self.ctx.resolver.reference(self.ast, var_name);
             let key_arg = self.ctx.resolver.reference(self.ast, var_name);
@@ -256,7 +260,8 @@ impl TscDecorator<'_, '_, '_> {
             let expr = build::sequence(self.ast, appended_private);
             let stmt = self.ast.stmt_expression_statement(DUMMY_SP, expr);
             let block_body = self.ast.add_sub_range([stmt]);
-            let static_block = ClassElement::StaticBlock(self.ast.static_block(DUMMY_SP, block_body));
+            let static_block =
+                ClassElement::StaticBlock(self.ast.static_block(DUMMY_SP, block_body));
             let body = cls.body(self.ast);
             let mut members: Vec<_> = body
                 .body(self.ast)
@@ -430,7 +435,10 @@ impl<'ast> VisitMut<'ast> for TscDecorator<'_, 'ast, '_> {
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/be15e4b756b61c64c00f6bb4d03d71aae1cd2d2f/crates/swc_ecma_transforms_proposal/src/decorators/legacy/mod.rs#L411>.
-    fn visit_mut_method_definition(&mut self, method: MethodDefinition) -> Option<MethodDefinition> {
+    fn visit_mut_method_definition(
+        &mut self,
+        method: MethodDefinition,
+    ) -> Option<MethodDefinition> {
         method.visit_mut_children_with(self);
 
         if method.kind(self.ast) == MethodDefinitionKind::Constructor {

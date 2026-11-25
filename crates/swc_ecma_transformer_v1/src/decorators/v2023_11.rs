@@ -321,7 +321,11 @@ fn is_maybe_directive(ast: &Ast<'_>, stmt: Stmt) -> bool {
         .is_some_and(|expr_stmt| expr_stmt.expression(ast).is_string_literal(ast))
 }
 
-fn default_constructor(ast: &mut Ast<'_>, resolver: &mut Resolver, is_derived: bool) -> MethodDefinition {
+fn default_constructor(
+    ast: &mut Ast<'_>,
+    resolver: &mut Resolver,
+    is_derived: bool,
+) -> MethodDefinition {
     let (params, stmts) = if is_derived {
         let args_binding = resolver.private_binding(ast, "args");
         let rest = ast.formal_parameter_rest(
@@ -340,7 +344,8 @@ fn default_constructor(ast: &mut Ast<'_>, resolver: &mut Resolver, is_derived: b
         let args_ref = resolver.reference(ast, args_binding);
         let spread = Argument::SpreadElement(ast.spread_element(DUMMY_SP, args_ref));
         let call_args = ast.add_sub_range([spread]);
-        let super_call = ast.expr_call_expression(DUMMY_SP, super_expr, None, call_args, false, false);
+        let super_call =
+            ast.expr_call_expression(DUMMY_SP, super_expr, None, call_args, false, false);
         let stmt = ast.stmt_expression_statement(DUMMY_SP, super_call);
         (params, vec![stmt])
     } else {
@@ -431,7 +436,10 @@ impl DecoratorPass<'_, '_, '_> {
     }
 
     fn global_this_member_expr(&mut self, name: &str) -> Expr {
-        let global_this = self.ctx.resolver.marked_reference(self.ast, "globalThis", true);
+        let global_this = self
+            .ctx
+            .resolver
+            .marked_reference(self.ast, "globalThis", true);
         build::member(self.ast, global_this, name)
     }
 
@@ -777,7 +785,10 @@ impl DecoratorPass<'_, '_, '_> {
         expr: Expr,
         assignments: &mut Vec<Stmt>,
     ) -> BindingIdentifier {
-        let id = self.ctx.resolver.private_binding(self.ast, &format!("_{hint}"));
+        let id = self
+            .ctx
+            .resolver
+            .private_binding(self.ast, &format!("_{hint}"));
         self.extra_vars.push(build::declarator(self.ast, id, None));
         let lhs = self.ctx.resolver.reference(self.ast, id);
         let assign = build::assign(self.ast, lhs, expr);
@@ -894,7 +905,10 @@ impl DecoratorPass<'_, '_, '_> {
         self.preserve_side_effect_of_decorator_with_options(dec, true)
     }
 
-    fn preserve_side_effect_of_decorator_2023(&mut self, dec: Expr) -> (Option<Argument>, Argument) {
+    fn preserve_side_effect_of_decorator_2023(
+        &mut self,
+        dec: Expr,
+    ) -> (Option<Argument>, Argument) {
         if let Some(member) = dec.as_member_expression(self.ast) {
             let obj = member.object(self.ast);
             let this_target = self.preserve_decorator_this_target(obj);
@@ -906,7 +920,10 @@ impl DecoratorPass<'_, '_, '_> {
                 member.computed(self.ast),
                 member.optional(self.ast),
             );
-            return (Some(Argument::Expr(this_target)), Argument::Expr(new_member));
+            return (
+                Some(Argument::Expr(this_target)),
+                Argument::Expr(new_member),
+            );
         }
 
         if self.expr_uses_private_name(dec) && !self.expr_uses_yield_or_await(dec) {
@@ -929,7 +946,8 @@ impl DecoratorPass<'_, '_, '_> {
         let merged = if has_this {
             let mut elems = Vec::with_capacity(preserved.len() * 2);
             for (dec_this, dec) in preserved {
-                let this_arg = dec_this.unwrap_or_else(|| Argument::Expr(build::undefined(self.ast)));
+                let this_arg =
+                    dec_this.unwrap_or_else(|| Argument::Expr(build::undefined(self.ast)));
                 elems.push(Some(this_arg));
                 elems.push(Some(dec));
             }
@@ -986,7 +1004,8 @@ impl DecoratorPass<'_, '_, '_> {
         let decorators = if has_this {
             let mut elems = Vec::with_capacity(preserved.len() * 2);
             for (dec_this, dec) in preserved {
-                let this_arg = dec_this.unwrap_or_else(|| Argument::Expr(build::undefined(self.ast)));
+                let this_arg =
+                    dec_this.unwrap_or_else(|| Argument::Expr(build::undefined(self.ast)));
                 elems.push(Some(this_arg));
                 elems.push(Some(dec));
             }
@@ -1010,17 +1029,29 @@ impl DecoratorPass<'_, '_, '_> {
             MethodDefinitionKind::Constructor => unreachable!(),
         };
         let base = if is_static { base | 8 } else { base };
-        if decorators_have_this { base | 16 } else { base }
+        if decorators_have_this {
+            base | 16
+        } else {
+            base
+        }
     }
 
     fn field_kind_code(is_static: bool, decorators_have_this: bool) -> i32 {
         let base = if is_static { 8 } else { 0 };
-        if decorators_have_this { base | 16 } else { base }
+        if decorators_have_this {
+            base | 16
+        } else {
+            base
+        }
     }
 
     fn accessor_kind_code(is_static: bool, decorators_have_this: bool) -> i32 {
         let base = if is_static { 9 } else { 1 };
-        if decorators_have_this { base | 16 } else { base }
+        if decorators_have_this {
+            base | 16
+        } else {
+            base
+        }
     }
 
     fn int_expr(&mut self, value: i32) -> Expr {
@@ -1112,12 +1143,14 @@ impl DecoratorPass<'_, '_, '_> {
         }
 
         if let Some(init) = self.state.init_proto {
-            self.extra_vars.push(build::declarator(self.ast, init, None));
+            self.extra_vars
+                .push(build::declarator(self.ast, init, None));
             e_lhs.push(Some(BindingPattern::BindingIdentifier(init)));
         }
 
         if let Some(init) = self.state.init_static {
-            self.extra_vars.push(build::declarator(self.ast, init, None));
+            self.extra_vars
+                .push(build::declarator(self.ast, init, None));
             e_lhs.push(Some(BindingPattern::BindingIdentifier(init)));
         }
 
@@ -1165,7 +1198,10 @@ impl DecoratorPass<'_, '_, '_> {
             let value = BindingPattern::ArrayPattern(self.ast.array_pattern(DUMMY_SP, elems, None));
             let key_name = self.ast.add_utf8("e");
             let key = PropertyKey::IdentifierName(self.ast.identifier_name(DUMMY_SP, key_name));
-            props.push(self.ast.binding_property(DUMMY_SP, key, value, false, false));
+            props.push(
+                self.ast
+                    .binding_property(DUMMY_SP, key, value, false, false),
+            );
         }
         if !self.state.class_lhs.is_empty() {
             let class_lhs = mem::take(&mut self.state.class_lhs);
@@ -1173,7 +1209,10 @@ impl DecoratorPass<'_, '_, '_> {
             let value = BindingPattern::ArrayPattern(self.ast.array_pattern(DUMMY_SP, elems, None));
             let key_name = self.ast.add_utf8("c");
             let key = PropertyKey::IdentifierName(self.ast.identifier_name(DUMMY_SP, key_name));
-            props.push(self.ast.binding_property(DUMMY_SP, key, value, false, false));
+            props.push(
+                self.ast
+                    .binding_property(DUMMY_SP, key, value, false, false),
+            );
         }
 
         let props_range = self.ast.add_sub_range(props);
@@ -1182,9 +1221,9 @@ impl DecoratorPass<'_, '_, '_> {
         let left = build::assignment_target(self.ast, self.ctx.resolver, obj_pat);
         let callee = self.ctx.helper(self.ast, "apply_decs_2311");
         let call = build::call(self.ast, callee, combined_args, false);
-        let assign = self
-            .ast
-            .expr_assignment_expression(DUMMY_SP, left, call, AssignmentOperator::Assign);
+        let assign =
+            self.ast
+                .expr_assignment_expression(DUMMY_SP, left, call, AssignmentOperator::Assign);
 
         self.state
             .extra_stmts
@@ -1276,7 +1315,11 @@ impl DecoratorPass<'_, '_, '_> {
                 _ => {}
             }
         }
-        let ctor = default_constructor(self.ast, self.ctx.resolver, cls.super_class(self.ast).is_some());
+        let ctor = default_constructor(
+            self.ast,
+            self.ctx.resolver,
+            cls.super_class(self.ast).is_some(),
+        );
         let mut new_members = members;
         new_members.insert(insert_index, ClassElement::MethodDefinition(ctor));
         let range = self.ast.add_sub_range(new_members);
@@ -1480,8 +1523,11 @@ impl DecoratorPass<'_, '_, '_> {
                     {
                         if let Some(stmts) = last_static_block.take() {
                             let fn_body = build::function_body(self.ast, stmts);
-                            let arrow =
-                                build::arrow(self.ast, [], ArrowFunctionBody::FunctionBody(fn_body));
+                            let arrow = build::arrow(
+                                self.ast,
+                                [],
+                                ArrowFunctionBody::FunctionBody(fn_body),
+                            );
                             let static_iife = build::call(self.ast, arrow, [], false);
                             let field_value = prop
                                 .value(self.ast)
@@ -1578,8 +1624,8 @@ impl DecoratorPass<'_, '_, '_> {
                             && build::private_name(self.ast, p.key(self.ast)).is_some() =>
                     {
                         let func = p.value(self.ast);
-                        let needs_rewrite = self
-                            .function_needs_moved_static_rewrite(func, &instance_private_names);
+                        let needs_rewrite =
+                            self.function_needs_moved_static_rewrite(func, &instance_private_names);
                         if needs_rewrite {
                             let delegated = clone_function(self.ast, self.ctx.resolver, func);
                             rewrite_super_in_moved_static_member(
@@ -1588,8 +1634,7 @@ impl DecoratorPass<'_, '_, '_> {
                                 delegated,
                                 new_class_name,
                             );
-                            let priv_name =
-                                build::private_name(self.ast, p.key(self.ast)).unwrap();
+                            let priv_name = build::private_name(self.ast, p.key(self.ast)).unwrap();
                             let delegate = self.memoize_static_closure(
                                 &priv_name,
                                 Expr::Function(delegated),
@@ -1629,7 +1674,9 @@ impl DecoratorPass<'_, '_, '_> {
                             } else {
                                 (
                                     None,
-                                    self.ctx.resolver.marked_reference(self.ast, "arguments", true),
+                                    self.ctx
+                                        .resolver
+                                        .marked_reference(self.ast, "arguments", true),
                                 )
                             };
                             let items_range = self.ast.add_sub_range(new_param_items);
@@ -1722,18 +1769,30 @@ impl DecoratorPass<'_, '_, '_> {
             class_body.set_body(self.ast, outer_range);
 
             let preserved_sym = self.ctx.resolver.symbol_of(preserved_class_name.node_id());
-            replace_symbol(self.ast, self.ctx.resolver, cls, original_class_sym, preserved_sym);
+            replace_symbol(
+                self.ast,
+                self.ctx.resolver,
+                cls,
+                original_class_sym,
+                preserved_sym,
+            );
 
             {
                 let ctor = self.ensure_identity_constructor(cls);
                 let super_callee = self.ast.expr_super(DUMMY_SP);
-                let orig_ref = self.ctx.resolver.symbol_reference(self.ast, original_class_sym);
+                let orig_ref = self
+                    .ctx
+                    .resolver
+                    .symbol_reference(self.ast, original_class_sym);
                 let super_call = build::call(self.ast, super_callee, [orig_ref], false);
 
                 let init_callee = self.ctx.resolver.reference(self.ast, init_class);
                 let init_class_call = build::call(self.ast, init_callee, [], false);
 
-                let alias_lhs = self.ctx.resolver.reference(self.ast, member_class_ref_alias);
+                let alias_lhs = self
+                    .ctx
+                    .resolver
+                    .reference(self.ast, member_class_ref_alias);
                 let new_cls_ref = self.ctx.resolver.reference(self.ast, new_class_name);
                 let alias_assign = build::assign(self.ast, alias_lhs, new_cls_ref);
 
@@ -1797,7 +1856,13 @@ impl DecoratorPass<'_, '_, '_> {
 
         let preserved_sym = self.ctx.resolver.symbol_of(preserved_class_name.node_id());
         cls.set_id(self.ast, Some(preserved_class_name));
-        replace_symbol(self.ast, self.ctx.resolver, cls, original_class_sym, preserved_sym);
+        replace_symbol(
+            self.ast,
+            self.ctx.resolver,
+            cls,
+            original_class_sym,
+            preserved_sym,
+        );
 
         self.visit_class_body_and_finalize(cls);
 
@@ -1805,7 +1870,10 @@ impl DecoratorPass<'_, '_, '_> {
         let init_call = build::call(self.ast, init_callee, [], false);
         let init_stmt = self.ast.stmt_expression_statement(DUMMY_SP, init_call);
 
-        let alias_lhs = self.ctx.resolver.reference(self.ast, member_class_ref_alias);
+        let alias_lhs = self
+            .ctx
+            .resolver
+            .reference(self.ast, member_class_ref_alias);
         let new_cls_ref = self.ctx.resolver.reference(self.ast, new_class_name);
         let alias_assign = build::assign(self.ast, alias_lhs, new_cls_ref);
         let alias_stmt = self.ast.stmt_expression_statement(DUMMY_SP, alias_assign);
@@ -1852,7 +1920,11 @@ impl DecoratorPass<'_, '_, '_> {
         }
     }
 
-    fn process_prop_name(&mut self, key: PropertyKey, computed: bool) -> Option<(PropertyKey, bool)> {
+    fn process_prop_name(
+        &mut self,
+        key: PropertyKey,
+        computed: bool,
+    ) -> Option<(PropertyKey, bool)> {
         if !computed && key.is_identifier_name(self.ast) {
             return None;
         }
@@ -1944,7 +2016,8 @@ impl DecoratorPass<'_, '_, '_> {
                     && !prop.r#static(self.ast)
                     && let Some(value) = prop.value(self.ast)
                 {
-                    let call_clone = build::clone_expr(self.ast, self.ctx.resolver, init_proto_expr);
+                    let call_clone =
+                        build::clone_expr(self.ast, self.ctx.resolver, init_proto_expr);
                     let seq = build::sequence(self.ast, vec![call_clone, value]);
                     prop.set_value(self.ast, Some(seq));
                     proto_inited = true;
@@ -1955,7 +2028,12 @@ impl DecoratorPass<'_, '_, '_> {
             if !proto_inited {
                 let ctor = self.ensure_constructor(cls);
                 let ctor_body = ctor.value(self.ast).body(self.ast);
-                inject_after_super(self.ast, self.ctx.resolver, ctor_body, vec![init_proto_expr]);
+                inject_after_super(
+                    self.ast,
+                    self.ctx.resolver,
+                    ctor_body,
+                    vec![init_proto_expr],
+                );
             }
         }
 
@@ -2152,14 +2230,15 @@ impl DecoratorPass<'_, '_, '_> {
             Accessibility::None,
         );
 
-        let make_storage_obj = |ast: &mut Ast<'_>, resolver: &mut Resolver, cls: Option<BindingIdentifier>| -> Expr {
-            if is_static && !is_private {
-                cls.map(|c| resolver.reference(ast, c))
-                    .unwrap_or_else(|| ast.expr_this_expression(DUMMY_SP))
-            } else {
-                ast.expr_this_expression(DUMMY_SP)
-            }
-        };
+        let make_storage_obj =
+            |ast: &mut Ast<'_>, resolver: &mut Resolver, cls: Option<BindingIdentifier>| -> Expr {
+                if is_static && !is_private {
+                    cls.map(|c| resolver.reference(ast, c))
+                        .unwrap_or_else(|| ast.expr_this_expression(DUMMY_SP))
+                } else {
+                    ast.expr_this_expression(DUMMY_SP)
+                }
+            };
 
         let mut getter_function = {
             let obj = make_storage_obj(self.ast, self.ctx.resolver, self.current_class_name);
@@ -2197,7 +2276,8 @@ impl DecoratorPass<'_, '_, '_> {
                     .get_or_insert_with(|| k_name.clone());
             }
 
-            self.extra_vars.push(build::declarator(self.ast, init, None));
+            self.extra_vars
+                .push(build::declarator(self.ast, init, None));
             self.extra_vars
                 .push(build::declarator(self.ast, init_extra, None));
 
@@ -2218,7 +2298,8 @@ impl DecoratorPass<'_, '_, '_> {
                 (None, None)
             };
 
-            let kind_expr = self.int_expr(Self::accessor_kind_code(is_static, decorators_have_this));
+            let kind_expr =
+                self.int_expr(Self::accessor_kind_code(is_static, decorators_have_this));
 
             let dec_elems = if is_private {
                 let receiver_g = self.ctx.resolver.private_binding(self.ast, "_this");
@@ -2293,7 +2374,8 @@ impl DecoratorPass<'_, '_, '_> {
             };
 
             let dec_range = self.ast.add_sub_range(dec_elems);
-            let initialize_init = Argument::Expr(self.ast.expr_array_expression(DUMMY_SP, dec_range));
+            let initialize_init =
+                Argument::Expr(self.ast.expr_array_expression(DUMMY_SP, dec_range));
 
             self.push_lhs(init, is_static, false);
             for ident in getter_var.into_iter().chain(setter_var) {
@@ -2368,19 +2450,20 @@ impl DecoratorPass<'_, '_, '_> {
                 .ctx
                 .resolver
                 .private_binding(self.ast, &format!("_call_{priv_name}"));
-            self.extra_vars.push(build::declarator(self.ast, init, None));
+            self.extra_vars
+                .push(build::declarator(self.ast, init, None));
 
             if is_static {
-                self.state
-                    .init_static
-                    .get_or_insert_with(|| self.ctx.resolver.private_binding(self.ast, "_initStatic"));
+                self.state.init_static.get_or_insert_with(|| {
+                    self.ctx.resolver.private_binding(self.ast, "_initStatic")
+                });
             } else {
                 self.state
                     .instance_brand
                     .get_or_insert_with(|| priv_name.clone());
-                self.state
-                    .init_proto
-                    .get_or_insert_with(|| self.ctx.resolver.private_binding(self.ast, "_initProto"));
+                self.state.init_proto.get_or_insert_with(|| {
+                    self.ctx.resolver.private_binding(self.ast, "_initProto")
+                });
             }
 
             let func = method.value(self.ast);
@@ -2389,7 +2472,11 @@ impl DecoratorPass<'_, '_, '_> {
                 rewrite_super_in_moved_static_member(self.ast, self.ctx, caller_fn, class_name);
             }
 
-            let kind_expr = self.int_expr(Self::method_kind_code(is_static, kind, decorators_have_this));
+            let kind_expr = self.int_expr(Self::method_kind_code(
+                is_static,
+                kind,
+                decorators_have_this,
+            ));
             let name_expr = build::string(self.ast, &priv_name);
             let elems = self.ast.add_sub_range([
                 dec,
@@ -2397,7 +2484,9 @@ impl DecoratorPass<'_, '_, '_> {
                 Some(Argument::Expr(name_expr)),
                 Some(Argument::Expr(Expr::Function(caller_fn))),
             ]);
-            let arg = Some(Argument::Expr(self.ast.expr_array_expression(DUMMY_SP, elems)));
+            let arg = Some(Argument::Expr(
+                self.ast.expr_array_expression(DUMMY_SP, elems),
+            ));
             if is_static {
                 self.state.init_static_args.push(arg);
             } else {
@@ -2473,13 +2562,19 @@ impl DecoratorPass<'_, '_, '_> {
                 .get_or_insert_with(|| self.ctx.resolver.private_binding(self.ast, "_initProto"));
         }
 
-        let kind_expr = self.int_expr(Self::method_kind_code(is_static, kind, decorators_have_this));
+        let kind_expr = self.int_expr(Self::method_kind_code(
+            is_static,
+            kind,
+            decorators_have_this,
+        ));
         let elems = self.ast.add_sub_range([
             dec,
             Some(Argument::Expr(kind_expr)),
             Some(Argument::Expr(name)),
         ]);
-        let arg = Some(Argument::Expr(self.ast.expr_array_expression(DUMMY_SP, elems)));
+        let arg = Some(Argument::Expr(
+            self.ast.expr_array_expression(DUMMY_SP, elems),
+        ));
         if is_static {
             self.state.init_static_args.push(arg);
         } else {
@@ -2497,7 +2592,8 @@ impl DecoratorPass<'_, '_, '_> {
         let is_static = prop.r#static(self.ast);
         let decs = prop.decorators(self.ast);
         if decs.is_empty() {
-            let new_val = self.prepend_pending_instance_field_extras(prop.value(self.ast), is_static);
+            let new_val =
+                self.prepend_pending_instance_field_extras(prop.value(self.ast), is_static);
             prop.set_value(self.ast, new_val);
             return;
         }
@@ -2520,7 +2616,8 @@ impl DecoratorPass<'_, '_, '_> {
                 .resolver
                 .private_binding(self.ast, &format!("_init_extra_{priv_name}"));
 
-            self.extra_vars.push(build::declarator(self.ast, init, None));
+            self.extra_vars
+                .push(build::declarator(self.ast, init, None));
             self.extra_vars
                 .push(build::declarator(self.ast, init_extra, None));
 
@@ -2569,7 +2666,9 @@ impl DecoratorPass<'_, '_, '_> {
                 Some(Argument::Expr(getter)),
                 Some(Argument::Expr(setter)),
             ]);
-            let initialize_init = Some(Argument::Expr(self.ast.expr_array_expression(DUMMY_SP, elems)));
+            let initialize_init = Some(Argument::Expr(
+                self.ast.expr_array_expression(DUMMY_SP, elems),
+            ));
 
             if !is_static {
                 self.state
@@ -2599,7 +2698,8 @@ impl DecoratorPass<'_, '_, '_> {
             .resolver
             .private_binding(self.ast, &format!("_init_extra_{init_sym}"));
 
-        self.extra_vars.push(build::declarator(self.ast, init, None));
+        self.extra_vars
+            .push(build::declarator(self.ast, init, None));
         self.extra_vars
             .push(build::declarator(self.ast, init_extra, None));
 
@@ -2624,7 +2724,9 @@ impl DecoratorPass<'_, '_, '_> {
             Some(Argument::Expr(kind_expr)),
             Some(Argument::Expr(name)),
         ]);
-        let initialize_init = Some(Argument::Expr(self.ast.expr_array_expression(DUMMY_SP, elems)));
+        let initialize_init = Some(Argument::Expr(
+            self.ast.expr_array_expression(DUMMY_SP, elems),
+        ));
 
         self.push_lhs(init, is_static, true);
         self.push_lhs(init_extra, is_static, true);
@@ -2667,7 +2769,8 @@ impl DecoratorPass<'_, '_, '_> {
             }
             if !self.extra_lets.is_empty() {
                 let lets = mem::take(&mut self.extra_lets);
-                insert_builder.push_back(index, build::declaration(self.ast, VariableKind::Let, lets));
+                insert_builder
+                    .push_back(index, build::declaration(self.ast, VariableKind::Let, lets));
             }
         }
 
@@ -2800,7 +2903,9 @@ impl<'ast> VisitMut<'ast> for DecoratorPass<'_, 'ast, '_> {
                     self.current_class_name = old_name;
 
                     let local_name = self.ast.identifier_name(DUMMY_SP, orig_name);
-                    self.ctx.resolver.set_symbol(local_name.node_id(), local_sym);
+                    self.ctx
+                        .resolver
+                        .set_symbol(local_name.node_id(), local_sym);
                     let exported_name = self.ast.identifier_name(DUMMY_SP, orig_name);
                     self.extra_exports.push(self.ast.export_specifier(
                         span,
@@ -2830,7 +2935,9 @@ impl<'ast> VisitMut<'ast> for DecoratorPass<'_, 'ast, '_> {
                     self.current_class_name = old_name;
 
                     let local_name = self.ast.identifier_name(DUMMY_SP, orig_name);
-                    self.ctx.resolver.set_symbol(local_name.node_id(), local_sym);
+                    self.ctx
+                        .resolver
+                        .set_symbol(local_name.node_id(), local_sym);
                     let default_sym = self.ast.add_utf8("default");
                     let exported_name = self.ast.identifier_name(DUMMY_SP, default_sym);
                     self.extra_exports.push(self.ast.export_specifier(
