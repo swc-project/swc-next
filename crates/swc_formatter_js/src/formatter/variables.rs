@@ -20,7 +20,7 @@ use super::expressions::{
     ForInitializerGrammar, TailBoundary,
 };
 use super::statements::DeclarationKeyword;
-use super::suppression::{ContentMode, SuppressionPosition};
+use super::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -415,31 +415,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_operator_tail_destination(operator_tail_destination)
             .with_decorated_function_call(decorated_function);
         let rhs = self.assignment_rhs(right, &content);
-        let mut boundary = self.assignment_boundary(
-            left_end,
+        let (left_mode, source) = self.declarator_initializer_source(comments, operator);
+        let boundary = self.prepare_initializer_boundary(
+            left.span(ast),
             &rhs,
             Span::new(operator, operator + 1),
-            right.span(self.ast).end,
+            source,
             initializer_context,
         )?;
-        let mut left_mode = ContentMode::Formatted;
-        if self.has_suppression {
-            let before =
-                &comments[..comments.partition_point(|comment| comment.span.end <= operator)];
-            for position in self.suppression_positions(before, operator) {
-                match position {
-                    SuppressionPosition::Inline => left_mode = ContentMode::Verbatim,
-                    SuppressionPosition::OwnLine | SuppressionPosition::EndOfLine => {
-                        boundary.mode = ContentMode::Verbatim;
-                        if let Some(comment) = boundary.before.last() {
-                            boundary.before_operator =
-                                self.source_line_constraint(comment.span.end, operator);
-                        }
-                    }
-                }
-            }
-        }
-        self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
         let mut rhs_layout = self.ordinary_rhs_layout(&rhs, initializer_context, &boundary);
         if left_mode == ContentMode::Formatted
             && let Some(fixed_layout) =

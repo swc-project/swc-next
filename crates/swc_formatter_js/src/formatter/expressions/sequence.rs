@@ -92,6 +92,14 @@ impl PreparedSequenceHead {
     }
 }
 
+fn sequence_content(sequence: SequenceExpression) -> ExpressionContent {
+    ExpressionContent {
+        expression: Expr::SequenceExpression(sequence),
+        data: ExprData::SequenceExpression(sequence),
+        parentheses: None,
+    }
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn sequence_grammar_pair_is_enclosed(position: ExpressionPosition) -> bool {
         matches!(
@@ -204,12 +212,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let start = content.expression.span(self.ast).start;
-        let comments = self.ast.comments();
-        let first =
-            comments.partition_point(|comment| comment.span.start < sequence.span(self.ast).start);
-        let comments = &comments[first..];
-        let count = comments.partition_point(|comment| comment.span.end <= start);
-        let comments = &comments[..count];
+        let comments =
+            self.source_comments_in_range(Span::new(sequence.span(self.ast).start, start));
         matches!(
             self.expression_head_binding(comments, content.expression),
             CommentBinding::Unbound
@@ -234,30 +238,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return None;
         }
         let (start, comments) = self.released_sequence_head(sequence)?;
-        let head = NodeHead {
+        self.generated_enclosure_owner(
+            Expr::SequenceExpression(sequence),
+            ExprData::SequenceExpression(sequence),
             comments,
-            content_start: start,
-            layout: CommentRunLayout::Leading(start),
-            gap_end: None,
-        };
-        self.generated_sequence_head_enclosure(sequence, &head, context)?;
+            start,
+            CommentBinding::Unbound,
+            context,
+        )?;
         Some(Span::new(comments.last()?.span.end, start))
-    }
-
-    fn generated_sequence_head_enclosure(
-        &self,
-        sequence: SequenceExpression,
-        head: &NodeHead<'ast>,
-        context: ExpressionContext<'ast>,
-    ) -> Option<PreparedGeneratedEnclosure> {
-        let expression = Expr::SequenceExpression(sequence);
-        let content = ExpressionContent {
-            expression,
-            data: ExprData::SequenceExpression(sequence),
-            parentheses: None,
-        };
-        self.generated_enclosure_owner(expression, &content, head, CommentBinding::Unbound, context)
-            .map(|owner| PreparedGeneratedEnclosure { owner, content })
     }
 
     fn complete_inherited_sequence_head(
@@ -272,11 +261,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.source_cast_head(first).is_none() {
             return Ok(inherited);
         }
-        let comments = self.ast.comments();
-        let start = comments.partition_point(|comment| comment.span.start < leading.span.start);
-        let comments = &comments[start..];
-        let end = comments.partition_point(|comment| comment.span.end <= first_start);
-        let complete = &comments[..end];
+        let complete = self.source_comments_in_range(Span::new(leading.span.start, first_start));
         if let Some(interior) = complete.strip_prefix(inherited) {
             // The parent leased the exterior head. The remaining prefix owns
             // the same first member and carries its original cast target.
@@ -364,27 +349,36 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if !matches!(binding, CommentBinding::Unbound) {
                 return self.format_prepared_expression_with_resolved_head_and_raw_end(
                     Expr::SequenceExpression(sequence),
-                    ExpressionContent {
-                        expression: Expr::SequenceExpression(sequence),
-                        data: ExprData::SequenceExpression(sequence),
-                        parentheses: None,
-                    },
+                    sequence_content(sequence),
                     ResolvedExpressionHead { head, binding },
                     context,
                     writer,
                 );
             }
         }
-        let generated = if parenthesize && self.has_type_casts && !leading.is_empty() {
-            self.generated_sequence_head_enclosure(sequence, &head, context)
-        } else {
-            None
-        };
-        if let Some(enclosure) = generated {
+        if parenthesize
+            && self.has_type_casts
+            && !leading.is_empty()
+            && let Some(owner) = self.generated_enclosure_owner(
+                Expr::SequenceExpression(sequence),
+                ExprData::SequenceExpression(sequence),
+                head.comments,
+                head.content_start,
+                CommentBinding::Unbound,
+                context,
+            )
+        {
             context.expression_start =
                 self.format_node_head(head, context.expression_start, None, writer)?;
             return self
-                .format_prepared_generated_enclosure(enclosure, context, writer)
+                .format_prepared_generated_enclosure(
+                    PreparedGeneratedEnclosure {
+                        owner,
+                        content: sequence_content(sequence),
+                    },
+                    context,
+                    writer,
+                )
                 .map(ExpressionOutput::closed);
         }
         let start = if enclosed_head {
@@ -399,14 +393,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("(");
             context.head_scope = None;
             context = context.with_operator_tail_destination(OperatorTailDestination::Local);
-            context = self.with_head_scope(
-                context,
-                &ExpressionContent {
-                    expression: Expr::SequenceExpression(sequence),
-                    data: ExprData::SequenceExpression(sequence),
-                    parentheses: None,
-                },
-            );
+            context = self.with_head_scope(context, &sequence_content(sequence));
         }
         let arrow_body = parenthesize && Self::sequence_grammar_pair_is_enclosed(context.position);
         let (opening, closing) =

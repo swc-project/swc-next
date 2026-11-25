@@ -5,7 +5,7 @@ use super::comments::{
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
-use super::expressions::assignment::{AssignmentBoundary, RhsLayout};
+use super::expressions::assignment::{AssignmentBoundary, InitializerSource, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
 use super::expressions::{ExpressionContext, ExpressionOutput, ExpressionPosition};
@@ -229,6 +229,29 @@ fn binding_separator(separator: Separator, constraint: LineConstraint, writer: &
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    /// Untyped declarators and enum members share the same two ignore targets before '='.
+    pub(super) fn declarator_initializer_source(
+        &self,
+        comments: &[Comment],
+        operator: u32,
+    ) -> (ContentMode, InitializerSource) {
+        let mut left = ContentMode::Formatted;
+        let mut source = InitializerSource::VALUE;
+        if self.has_suppression {
+            let before =
+                &comments[..comments.partition_point(|comment| comment.span.end <= operator)];
+            for position in self.suppression_positions(before, operator) {
+                match position {
+                    SuppressionPosition::Inline => left = ContentMode::Verbatim,
+                    SuppressionPosition::OwnLine | SuppressionPosition::EndOfLine => {
+                        source.suppressed_before_equals = true;
+                    }
+                }
+            }
+        }
+        (left, source)
+    }
+
     pub(super) fn prepare_annotated_binding(
         &self,
         pattern: BindingPattern,
@@ -717,7 +740,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             operator,
             comments,
         } = gap;
-        let left_end = gap.start;
         let right_start = gap.end;
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
@@ -764,24 +786,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .trim_matches(super::source::is_source_whitespace);
                     self.line_breaks(right_end, comment.span.start) == 0 && matches!(gap, "" | ",")
                 })
-                .map_or(right_end, |comment| comment.span.end);
+                .map(|comment| comment.span.end);
             let rhs = self.assignment_rhs(right, &content);
             let initializer_context = ExpressionContext::binding_initializer();
-            let mut boundary = self.assignment_boundary(
-                left_end,
+            let mut boundary = self.prepare_initializer_boundary(
+                left,
                 &rhs,
                 operator,
-                source_end,
+                InitializerSource::with_following_comment(source_end),
                 initializer_context,
             )?;
-            self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
             let first = source_comments.partition_point(|comment| comment.span.start < left.start);
             let source_clear_left = source_comments
                 .get(first)
                 .is_none_or(|comment| comment.span.start >= left.end);
             let comments = self
                 .comments
-                .in_range(Span::new(left_end, boundary.binding_head_end()));
+                .in_range(Span::new(left.end, boundary.binding_head_end()));
             let head_comments = if source_clear_left
                 && !comments.is_empty()
                 && boundary.before.is_empty()

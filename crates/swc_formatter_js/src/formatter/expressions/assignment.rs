@@ -339,8 +339,41 @@ impl<'ast> AssignmentBoundary<'ast> {
     }
 }
 
+pub(in crate::formatter) struct InitializerSource {
+    /// An ignore before the equals sign binds the value and its preceding source line.
+    pub(in crate::formatter) suppressed_before_equals: bool,
+    tail: InitializerTail,
+}
+
+enum InitializerTail {
+    Value,
+    /// A list owns a comment beyond the value that occupies its trailing edge.
+    ThroughComment(u32),
+    /// A class-field terminator binds the original value tail.
+    Bound,
+}
+
+impl InitializerSource {
+    pub(in crate::formatter) const VALUE: Self = Self {
+        suppressed_before_equals: false,
+        tail: InitializerTail::Value,
+    };
+
+    pub(in crate::formatter) const BOUND_VALUE: Self = Self {
+        tail: InitializerTail::Bound,
+        ..Self::VALUE
+    };
+
+    pub(in crate::formatter) fn with_following_comment(end: Option<u32>) -> Self {
+        Self {
+            tail: end.map_or(InitializerTail::Value, InitializerTail::ThroughComment),
+            ..Self::VALUE
+        }
+    }
+}
+
 /// The original RHS endpoint stays separate from its parent's prepared tail owner.
-pub(in crate::formatter) enum AssignmentSourceEnd<'ast> {
+enum AssignmentSourceEnd<'ast> {
     Expression(u32),
     /// The real parent keeps an already prepared trailing packet bound to this value.
     ValueWithBoundTail(u32),
@@ -470,14 +503,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .with_operator_tail_destination(context.operator_tail_destination)
             .with_decorated_function_call(decorated_function);
         let rhs = self.assignment_rhs(right, &content);
-        let mut boundary = self.assignment_boundary(
-            target.left_end(),
+        let boundary = self.prepare_initializer_boundary(
+            Span::new(target.span().start, target.left_end()),
             &rhs,
             target.operator_span,
-            right.span(self.ast).end,
+            InitializerSource::VALUE,
             right_context,
         )?;
-        self.prepare_assignment_rhs(&rhs, &mut boundary, &right_context)?;
         let right_context = boundary.with_head_gap(right_context.with_content_mode(boundary.mode));
         let mut layout = self.assignment_layout(&rhs, context.position, right_context, &boundary);
         let binding = target.binding();
@@ -1389,32 +1421,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         PreparedHeadGaps::new(prefix, head, grouped).map(|gaps| &*self.allocator.alloc(gaps))
     }
 
-    pub(in crate::formatter) fn assignment_boundary(
+    pub(in crate::formatter) fn prepare_initializer_boundary(
         &self,
-        left_end: u32,
+        left: Span,
         rhs: &AssignmentRhs<'_>,
         operator_span: Span,
-        source_right_end: u32,
+        initializer: InitializerSource,
         context: ExpressionContext<'ast>,
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        self.assignment_boundary_with_source(
-            left_end,
-            rhs,
-            operator_span,
-            AssignmentSourceEnd::Expression(source_right_end),
-            context,
-        )
-    }
-
-    pub(in crate::formatter) fn assignment_boundary_with_source(
-        &self,
-        left_end: u32,
-        rhs: &AssignmentRhs<'_>,
-        operator_span: Span,
-        source: AssignmentSourceEnd<'ast>,
-        context: ExpressionContext<'ast>,
-    ) -> Result<AssignmentBoundary<'ast>, FormatError> {
-        let boundary = 'prepared: {
+        let left_end = left.end;
+        let mut boundary = 'prepared: {
+            let value_end = rhs.expression.span(self.ast).end;
+            let source = match initializer.tail {
+                InitializerTail::Value => AssignmentSourceEnd::Expression(value_end),
+                InitializerTail::ThroughComment(end) => AssignmentSourceEnd::Expression(end),
+                InitializerTail::Bound => AssignmentSourceEnd::ValueWithBoundTail(value_end),
+            };
             let source_right_end = source.end();
             let value_tail_bound = matches!(source, AssignmentSourceEnd::ValueWithBoundTail(_));
             if value_tail_bound {
@@ -1426,9 +1448,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let source_opening = content
                 .parentheses
                 .map(|removed| removed.source.outer.start);
-            let source_comments = self.ast.comments();
-            let first = source_comments.partition_point(|comment| comment.span.start < left_end);
-            let remaining = &source_comments[first..];
+            let (previous, remaining) =
+                self.partition_source_comments(|comment| comment.span.start < left_end);
             let original_right_start = content.expression.span(self.ast).start;
             let (original_count, original_before_count) = if self.has_suppression {
                 let count =
@@ -1453,9 +1474,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
-            let overlaps_left = first
-                .checked_sub(1)
-                .is_some_and(|index| source_comments[index].span.end > left_end);
+            let overlaps_left = previous
+                .last()
+                .is_some_and(|comment| comment.span.end > left_end);
             let has_source_packet = overlaps_left
                 || remaining
                     .first()
@@ -1616,10 +1637,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             {
                 let start = parenthesized.span(self.ast).start;
                 let end = child.span(self.ast).start;
-                let first = source_comments.partition_point(|comment| comment.span.start < start);
-                let head = &source_comments[first..];
-                let count = head.partition_point(|comment| comment.span.end <= end);
-                let head = &head[..count];
+                let head = self.source_comments_in_range(Span::new(start, end));
                 boundary.own_line = head.iter().any(|comment| comment.kind == CommentKind::Line);
             }
             let sensitive = !clear_rhs_source && self.diagnostic_range_is_sensitive(span);
@@ -2037,30 +2055,27 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.assignment_head_gaps(&boundary, &heads, content, head_mode, *head_context);
             boundary
         };
-        Ok(boundary)
-    }
-
-    /// Prepare the value only after its parent has selected the final source mode.
-    #[inline]
-    pub(in crate::formatter) fn prepare_assignment_rhs(
-        &self,
-        rhs: &AssignmentRhs<'_>,
-        boundary: &mut AssignmentBoundary<'ast>,
-        context: &ExpressionContext<'ast>,
-    ) -> Result<(), FormatError> {
-        let ExprData::UnaryExpression(unary) = rhs.content.data else {
-            return Ok(());
-        };
-        if context.content_mode == ContentMode::Formatted
+        if initializer.suppressed_before_equals {
+            boundary.mode = ContentMode::Verbatim;
+            if let Some(comment) = boundary.before.last() {
+                boundary.before_operator =
+                    self.source_line_constraint(comment.span.end, operator_span.start);
+            }
+        } else if context.content_mode == ContentMode::Verbatim {
+            boundary.mode = ContentMode::Verbatim;
+        }
+        // A unary operand needs the final mode chosen by its actual initializer owner.
+        if let ExprData::UnaryExpression(unary) = rhs.content.data
+            && context.content_mode == ContentMode::Formatted
             && boundary.mode == ContentMode::Formatted
             && (self.has_suppression
                 || self.has_target_annotations
                 || self.has_file_directives
                 || !self.diagnostic_lines.is_empty())
         {
-            self.prepare_assignment_unary_rhs(unary, boundary, context)?;
+            self.prepare_assignment_unary_rhs(unary, &mut boundary, &context)?;
         }
-        Ok(())
+        Ok(boundary)
     }
 
     #[inline(never)]

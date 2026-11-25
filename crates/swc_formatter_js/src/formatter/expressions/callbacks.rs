@@ -9,8 +9,9 @@ use swc_next_ecma_ast::{
 };
 
 use super::arguments::{
-    ArgumentGroup, ArgumentHead, CallArgumentFrame, CallArgumentPolicy, CallFrameRole,
-    ChainArgumentExpansion, ChainArgumentFacts, SelectedArgumentSequence, SourceArguments,
+    ArgumentGroup, ArgumentHead, CallAlternatives, CallArgumentFrame, CallArgumentPolicy,
+    CallFrameRole, ChainArgumentExpansion, ChainArgumentFacts, SelectedArgumentSequence,
+    SourceArguments,
 };
 use super::arrays::{ArrayArgumentArity, RecordedArray, RecordedArrayArgument};
 use super::arrows::{ArrowBodyGroup, ArrowBodyLayout, PreparedArrowBody, RecordedArrow};
@@ -381,7 +382,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         callback: TestCallback,
         jsx_call: Option<CallExpression>,
-        chain_facts: &mut Option<&mut ChainArgumentFacts<'ast>>,
+        chain_facts: &mut Option<&mut ChainArgumentFacts>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         if let Some(facts) = chain_facts.as_deref_mut() {
@@ -1088,13 +1089,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         sequence: SelectedArgumentSequence,
         head: ArgumentHead,
-        protect_runtime_items: bool,
         selected: SelectedArgument,
-        mut chain_facts: Option<&mut ChainArgumentFacts<'ast>>,
+        chain_facts: Option<&mut ChainArgumentFacts>,
+        alternatives: CallAlternatives,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<Option<ChainArgumentExpansion<'ast>>, FormatError> {
         let ast = self.ast;
-        let SelectedArgumentSequence { arguments, content } = sequence;
+        let SelectedArgumentSequence {
+            arguments,
+            content,
+            protect_runtime_items,
+        } = sequence;
         let source_opening = head
             .source_opening
             .map(|opening| {
@@ -1285,13 +1290,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 } => true,
                 _ => false,
             });
-        if let Some(facts) = chain_facts.as_deref_mut() {
+        if let Some(facts) = chain_facts {
             facts.has_function |= observed_facts.has_function;
             // A locally expanded fallback owns its argument breaks. Only source
             // preferences that escape that frame can expand the enclosing chain.
             facts.source_expanded_object |=
                 observed_facts.source_expanded_object && !expand_fallback;
         }
+        let mut alternative = None;
         let (fallback, ()) = writer.record_with_value(|writer| {
             fallback_group.write(expand_fallback, writer, |writer| {
                 if let Some(opening) = source_opening {
@@ -1381,9 +1387,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 None
             };
-            if let Some(facts) = chain_facts {
+            if alternatives == CallAlternatives::Record {
                 let expanded = expanded.unwrap_or(grouped);
-                facts.expansion = match outcome {
+                alternative = match outcome {
                     SelectionOutcome::FinalArray { .. } => {
                         Some(ChainArgumentExpansion::Array(expanded))
                     }
@@ -1401,7 +1407,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             writer.write_fragment(fallback);
         }
-        Ok(None)
+        Ok(alternative)
     }
 }
 

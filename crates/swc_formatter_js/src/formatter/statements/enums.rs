@@ -15,7 +15,7 @@ use crate::formatter::expressions::assignment::RhsLayout;
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition};
 use crate::formatter::literals::StringContext;
-use crate::formatter::suppression::{ContentMode, SuppressionPosition};
+use crate::formatter::suppression::ContentMode;
 use crate::formatter::types::TypeGap;
 use crate::{FormatError, TrailingCommas, document::Writer};
 
@@ -386,31 +386,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content = self.expression_content(right);
         let rhs = self.assignment_rhs(right, &content);
         let initializer_context = ExpressionContext::at(ExpressionPosition::EnumInitializer);
-        let mut boundary = self.assignment_boundary(
-            key_end,
+        let (left_mode, source) = self.declarator_initializer_source(comments, operator);
+        let boundary = self.prepare_initializer_boundary(
+            member.key.span,
             &rhs,
             Span::new(operator, operator + 1),
-            right.span(self.ast).end,
+            source,
             initializer_context,
         )?;
-        let mut left_mode = ContentMode::Formatted;
-        if self.has_suppression {
-            let before =
-                &comments[..comments.partition_point(|comment| comment.span.end <= operator)];
-            for position in self.suppression_positions(before, operator) {
-                match position {
-                    SuppressionPosition::Inline => left_mode = ContentMode::Verbatim,
-                    SuppressionPosition::OwnLine | SuppressionPosition::EndOfLine => {
-                        boundary.mode = ContentMode::Verbatim;
-                        if let Some(comment) = boundary.before.last() {
-                            boundary.before_operator =
-                                self.source_line_constraint(comment.span.end, operator);
-                        }
-                    }
-                }
-            }
-        }
-        self.prepare_assignment_rhs(&rhs, &mut boundary, &initializer_context)?;
         let rhs_layout = if boundary.own_line || !boundary.operator_line.is_empty() {
             RhsLayout::BreakAfterOperator
         } else {
@@ -429,7 +412,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     rhs_layout,
                 },
                 left_mode,
-                context: ExpressionContext::at(ExpressionPosition::EnumInitializer),
+                context: initializer_context,
             },
             writer,
         )

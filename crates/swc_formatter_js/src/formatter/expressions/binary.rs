@@ -570,13 +570,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let prepared = owner.prepare(self);
             prepared.enclosure = self.generated_enclosure_owner(
                 expression,
-                &prepared.content,
-                &NodeHead {
-                    comments,
-                    content_start: end,
-                    layout: CommentRunLayout::Leading(end),
-                    gap_end: None,
-                },
+                prepared.content.data,
+                comments,
+                end,
                 binding,
                 ExpressionContext {
                     position: ExpressionPosition::BinaryOperand {
@@ -1463,13 +1459,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(binding, |removed| binding.combine(removed.head.binding));
             prepared.enclosure = self.generated_enclosure_owner(
                 right,
-                &prepared.content,
-                &NodeHead {
-                    comments: after,
-                    content_start: right_start,
-                    layout: CommentRunLayout::Leading(right_start),
-                    gap_end: None,
-                },
+                prepared.content.data,
+                after,
+                right_start,
                 binding,
                 ExpressionContext::at(ExpressionPosition::BinaryOperand {
                     operator: entry.binary.operator,

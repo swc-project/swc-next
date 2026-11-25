@@ -458,7 +458,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let exposed = if source.trailing.is_empty()
             && !matches!(source.content.data, ExprData::ParenthesizedExpression(_))
         {
-            self.exposed_expression_head(argument, source.context)?
+            self.exposed_expression_head(argument, &source.context)?
         } else {
             None
         };
