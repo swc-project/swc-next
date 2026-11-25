@@ -20,9 +20,7 @@ use super::util::{
 
 mod scan_ident;
 
-use scan_ident::{
-    is_identifier_byte, scan_ascii_identifier_continue, scan_ascii_identifier_or_keyword,
-};
+use scan_ident::{IdentifierScanner, is_identifier_byte, scan_ascii_identifier_continue};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LexicalError {
@@ -96,6 +94,7 @@ enum ConsumeUnicodeContext {
 #[derive(Clone, Debug)]
 pub struct Lexer<'a, C: ParserConfig = NoTokenParserConfig> {
     source: &'a [u8],
+    identifiers: IdentifierScanner,
 
     /// Whether Annex B HTML-like comments are recognized.
     allow_html_like_comments: bool,
@@ -150,6 +149,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
             tokens,
             collect_comments,
             source: source.as_bytes(),
+            identifiers: IdentifierScanner::new(source.as_bytes()),
             cursor: 0,
             allow_html_like_comments,
             hashbang: None,
@@ -619,7 +619,7 @@ impl<'a, C: ParserConfig> Lexer<'a, C> {
     /// Scans an ASCII identifier or keyword and builds its token with `flags`.
     #[inline(always)]
     fn scan_ascii_identifier(&mut self, start: u32, flags: u8, target: &mut Token) -> bool {
-        let Some((pos, tag)) = scan_ascii_identifier_or_keyword(self.source, start) else {
+        let Some((pos, tag)) = self.identifiers.scan(self.source, start) else {
             return false;
         };
         self.cursor = pos;
@@ -2467,14 +2467,17 @@ mod tests {
             .map_or(TokenTag::Identifier, |&(_, tag)| tag)
     }
 
-    /// The keyword tag that the fast identifier scan gives `lexeme`, both when a full SIMD
-    /// batch follows it and when the source ends right after it.
+    /// The fast identifier scan's tag with readable padding and at EOF.
     fn scanned_keyword_types(lexeme: &[u8]) -> [TokenTag; 2] {
         let padded = [lexeme, b" ".repeat(16).as_slice()].concat();
-        [padded.as_slice(), lexeme].map(|source| {
-            let (end, tag) = scan_ascii_identifier_or_keyword(source, 0).unwrap();
-            assert_eq!(end as usize, lexeme.len());
-            tag
+        [padded.as_slice(), lexeme].map(|bytes| {
+            let allocator = Allocator::new();
+            let source = str::from_utf8(bytes).unwrap();
+            let mut lexer = Lexer::init(&allocator, source, false, false, NoTokenParserConfig);
+            let mut token = Token::eof(0);
+            assert!(lexer.scan_ascii_identifier(0, 0, &mut token));
+            assert_eq!(token.end() as usize, lexeme.len());
+            token.tag()
         })
     }
 
@@ -2506,9 +2509,9 @@ mod tests {
 
         assert_eq!(get_keyword_type(b"constructors"), TokenTag::Identifier);
 
-        // Lexemes that fill the first SIMD batch up to and past its end.
-        for len in [1, 12, 15, 16, 17, 40] {
-            let lexeme = b"constructor".repeat(4)[..len].to_vec();
+        // Lexemes around the SIMD batch and block boundaries.
+        for len in [1, 12, 15, 16, 17, 40, 63, 64, 65] {
+            let lexeme = b"constructor".repeat(6)[..len].to_vec();
             assert_eq!(scanned_keyword_types(&lexeme), [TokenTag::Identifier; 2]);
         }
     }
