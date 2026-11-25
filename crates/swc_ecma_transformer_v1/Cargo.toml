@@ -23,10 +23,5 @@ swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
 
 [dev-dependencies]
-insta                 = { workspace = true }
-jsonc-parser          = { workspace = true }
-jwalk                 = { workspace = true }
-serde_json            = { workspace = true }
-swc_core              = { workspace = true, features = ["base", "ecma_transforms_react", "ecma_preset_env"] }
 swc_next_ecma_codegen = { workspace = true }
 swc_next_ecma_parser  = { workspace = true }
