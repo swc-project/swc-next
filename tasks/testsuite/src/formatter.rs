@@ -18,6 +18,7 @@ use std::{
     },
 };
 
+mod divergences;
 mod options;
 
 use options::{format_options, unsupported_option_names};
@@ -135,111 +136,38 @@ const IGNORE: &[IgnorePattern] = &[
     // TODO: Jest each tagged-template table formatting.
     IgnorePattern::Exact("js/test-declarations/jest-each.js"),
     IgnorePattern::Exact("js/test-declarations/jest-each-template-string.js"),
-    // Prettier 3.9.9 output is not idempotent for these fixtures.
-    // Listed upstream in tests/config/format-test/failed-format-tests.js.
-    // Trailing block comment placement on an arrow chain changes on the second pass.
-    // https://github.com/prettier/prettier/commit/5a0fdd97400293ac6b39a0d01b92610528c8f4d9
-    IgnorePattern::Exact("js/arrows/arrow-chain-with-trailing-comments.js"),
-    // A first sequence member's leading comment changes placement on the second pass.
-    // https://github.com/prettier/prettier/commit/52d170534ef2f836aab74c1daf2e699752da0531
+    // TODO: preserve comment ownership around source parentheses, commas, and
+    // statement terminators in these sequence and assignment expressions.
     IgnorePattern::Exact("js/sequence-expression/parenthesized.js"),
-    // A nested assignment's trailing comment changes placement on the second pass.
-    // https://github.com/prettier/prettier/commit/24a616d0b797fa2941178f61a73c1120827777ec
     IgnorePattern::Exact("js/sequence-expression/parenthesized-trailing-comment-unstable.js"),
-    // An own-line satisfies comment changes placement on the second pass.
-    // https://github.com/prettier/prettier/commit/5fd5b6908b8dfd8a5d07608b22403d2ebfa5b3f8
-    IgnorePattern::Exact("typescript/satisfies-operators/comments-unstable.ts"),
-    // Tag-boundary comments change attachment on the second pass.
-    // https://github.com/prettier/prettier/commit/b35943fa92110ec69dafb08fb98bbe37545a35d9
-    IgnorePattern::Exact("js/comments/tagged-template-literal.js"),
-    // In/of header comments migrate to different boundaries on the second pass.
+    // TODO: keep comments on their source side of in and of.
     IgnorePattern::Exact("js/for-of/comments.js"),
-    // Return-expression comments change layout on the second pass.
+    // TODO: keep the leading comment before the original return operand.
     IgnorePattern::Exact("js/comments/return-statement.js"),
-    // ASI and ignored-expression boundaries change on replay with semi: false.
-    IgnorePattern::Exact("js/ignore/semi/class-expression-decorator.js"),
-    IgnorePattern::Exact("js/ignore/semi/head-ignored.js"),
-    // Ignored receiver and mapped-type comments change attachment on replay.
-    IgnorePattern::Exact("typescript/prettier-ignore/issue-14238.ts"),
-    IgnorePattern::Exact("typescript/prettier-ignore/mapped-types.ts"),
-    // JSX attribute comments move on replay with bracketSameLine: true.
-    IgnorePattern::Exact("jsx/comments/in-attributes.js"),
-    // Nested singleton union heads move across the leading bar on replay.
+    // TODO: preserve the inner union's leading comment boundary when unwrapping.
     IgnorePattern::Exact("typescript/union/consistent-with-flow/single-type.ts"),
-    // Type query and call type-argument comments move on the second pass.
-    IgnorePattern::Exact("typescript/import-type/long-module-name/long-module-name4.ts"),
+    // TODO: keep pre-argument comments before the call's opening parenthesis.
     IgnorePattern::Exact("typescript/call/callee-comments.ts"),
-    // Semantic differences verified with TypeScript 6.0.3 against Prettier 3.9.9.
-    // Preserve the active JSDoc cast on the member receiver.
-    IgnorePattern::Exact("js/comments-closure-typecast/comment-in-the-middle.js"),
-    // The ASI guard must precede the active cast's full leading comment packet.
-    IgnorePattern::Exact("js/comments-closure-typecast/no-semi/not-on-same-line.js"),
-    // Keep the ASI guard before the cast and its intervening ordinary comment.
-    IgnorePattern::Exact("js/comments-closure-typecast/no-semi/with-other-comments.js"),
-    // Preserve the covered and uncovered signature lines of active TS directives.
-    IgnorePattern::Exact("js/comments/issue-11050.js"),
-    // Prettier wraps NBSP text onto separate lines.
-    // TypeScript 6.0.3 then drops both NBSP edges; preserve their Unicode value.
-    IgnorePattern::Exact("js/unicode/nbsp-jsx.js"),
-    // Keep the spread closing brace on the active @ts-ignore comment line.
-    // A separate brace line removes coverage of the following attribute.
+    // TODO: keep operand ignore markers after the spread token.
     IgnorePattern::Exact("jsx/ignore/spread.js"),
-    // Reference comment placement also reproduced on Prettier main:
-    // https://github.com/prettier/prettier/commit/344d6dc42c8057fbf5573326b52dbc8a43635e7e
-    // Keep comments before their elision comma. Moving @ts-expect-error past it
-    // changes diagnostic coverage with TypeScript 7.0.2.
-    IgnorePattern::Exact("js/arrays/numbers-with-holes.js"),
-    // Preserve lexical order around empty constructor parameters. Prettier
-    // swaps comments outside the parameter list with comments inside it.
+    // TODO: preserve comments around the optional marker and parameter opener.
     IgnorePattern::Exact("typescript/comments/method_types.ts"),
-    // Retain parentheses that keep each tail comment with its curried arrow body.
-    IgnorePattern::Exact("js/arrows/currying-4.js"),
-    // Keep own-line JSDoc before the inner arrow on its own line.
+    // TODO: keep arrow-body comments before the source body brace.
     IgnorePattern::Exact("js/arrows/issue-17421.js"),
-    // Keep block comments that start on the arrow's line on that line.
+    // The difference is line layout for block comments on arrow body heads.
     IgnorePattern::Exact("typescript/arrow/comments/issue-11100.ts"),
-    // Keep receiver-bound ignore markers inside their source pair. Moving them
-    // before the statement expands their target from BinaryExpression or
-    // AwaitExpression to the complete ExpressionStatement.
-    IgnorePattern::Exact("js/ignore/issue-11077.js"),
-    IgnorePattern::Exact("js/ignore/issue-14404.js"),
-    // Choose chain layout from canonical contents. Collapsing this fixture's
-    // object literal makes Prettier change its output on the second pass.
-    IgnorePattern::Exact("js/method-chain/multiple-members.js"),
-    // Keep operand comments before as and type comments between as and const.
+    // TODO: keep type assertion tails before the statement terminator.
     IgnorePattern::Exact("typescript/as/as-const/as-const.ts"),
-    // Keep comments between as or satisfies and the type they precede.
-    IgnorePattern::Exact("typescript/as/comments/18160.ts"),
-    // An ignored parenthesized type owns its complete source frame here.
-    // Prettier removes the pair; retain it to honor that ignore contract.
+    // TODO: keep the full verbatim parenthesized type. The matched snapshots
+    // currently drop the source parentheses.
     IgnorePattern::Exact("typescript/prettier-ignore/prettier-ignore-parenthesized-type.ts"),
     IgnorePattern::Exact(
         "typescript/prettier-ignore/no-semi/prettier-ignore-parenthesized-type.ts",
     ),
-    // Preserve the ignored union's source pair and internal marker. Prettier
-    // rebuilds the delimiter frame and moves the internal marker outside.
-    IgnorePattern::Exact("typescript/prettier-ignore/prettier-ignore-nested-unions.ts"),
-    // Keep the source blank line after comments released from removed statement terminators.
+    // TODO: preserve the side of the source terminator after continue and break.
     IgnorePattern::Exact("js/for/continue-and-break-comment-without-blocks.js"),
-    // Preserve the complete hashbang payload; Prettier trims trailing spaces.
-    IgnorePattern::Exact("js/comments/trailing_space.js"),
-    // Preserve rendered JSX space counts; Prettier collapses these ASCII spaces.
-    IgnorePattern::Exact("jsx/escape/nbsp.js"),
-    IgnorePattern::Exact("jsx/text-wrap/test.js"),
-    // Keep signature comments before the opening brace, outside the body.
-    IgnorePattern::Exact("js/class-comment/misc.js"),
-    IgnorePattern::Exact("js/comments/function-declaration.js"),
-    IgnorePattern::Exact("js/comments/function/18146.js"),
-    IgnorePattern::Exact("js/comments/function/between-parentheses-and-function-body.js"),
-    // Keep the block comment before the body brace on its own line.
+    // The difference is the line break before a block comment in a function head.
     IgnorePattern::Exact("js/trailing-comma/trailing_whitespace.js"),
-    // Keep interface header comments before the body brace.
-    IgnorePattern::Exact("typescript/interface/comments-generic.ts"),
-    IgnorePattern::Exact("typescript/interface2/comments-declare.ts"),
-    IgnorePattern::Exact("typescript/interface2/comments.ts"),
-    // Retain the conservative source frame around the ignored expression.
-    // Both active ignore targets and their exact contents remain protected.
-    IgnorePattern::Exact("js/ignore/issue-13737.js"),
 ];
 
 #[derive(Clone, Copy)]
@@ -334,6 +262,15 @@ struct CaseResult {
     ast_error: Option<String>,
     idempotent: Option<bool>,
     second_pass_error: bool,
+}
+
+impl CaseResult {
+    fn is_valid_output(&self) -> bool {
+        matches!(self.status, CaseStatus::Matched | CaseStatus::Mismatched)
+            && self.ast_parity == Some(true)
+            && self.ast_error.is_none()
+            && self.idempotent == Some(true)
+    }
 }
 
 enum CaseStatus {
@@ -451,10 +388,9 @@ pub fn run_conformance(config: ConformanceConfig) -> ConformanceOutput {
         };
     }
 
-    let report = build_report(config, &results, &discovery);
     ConformanceOutput {
-        report: Some(report),
-        structural_errors: Vec::new(),
+        report: Some(build_report(config, &results, &discovery)),
+        structural_errors: divergences::stale_errors(config, &results),
     }
 }
 
@@ -689,11 +625,7 @@ fn discover_directory(
 }
 
 fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
-    let options = if debug {
-        display_options(&case.spec.snapshot_options)
-    } else {
-        String::new()
-    };
+    let options = display_options(&case.spec.snapshot_options);
     let expected_parser = case
         .spec
         .expected_parser_errors
@@ -815,11 +747,7 @@ fn run_case_catching_panic(case: &FormatCase, debug: bool) -> CaseResult {
         Ok(result) => result,
         Err(payload) => CaseResult {
             path: case.relative_path.clone(),
-            options: if debug {
-                display_options(&case.spec.snapshot_options)
-            } else {
-                String::new()
-            },
+            options: display_options(&case.spec.snapshot_options),
             status: CaseStatus::Panic(panic_message(payload.as_ref())),
             debug_diff: None,
             ast_debug_diff: None,
@@ -989,13 +917,7 @@ fn build_report(
         .count();
     let passed = results
         .iter()
-        .filter(|result| {
-            is_comparison_result(result)
-                && matches!(result.status, CaseStatus::Matched)
-                && result.ast_parity == Some(true)
-                && result.ast_error.is_none()
-                && result.idempotent == Some(true)
-        })
+        .filter(|result| matches!(result.status, CaseStatus::Matched) && result.is_valid_output())
         .count();
     let mismatched = results
         .iter()
@@ -1003,6 +925,14 @@ fn build_report(
             is_comparison_result(result) && matches!(result.status, CaseStatus::Mismatched)
         })
         .count();
+    let mut known_divergences = BTreeMap::<&str, Vec<&CaseResult>>::new();
+    for result in results {
+        if let Some(reason) = divergences::reason_for(result) {
+            known_divergences.entry(reason).or_default().push(result);
+        }
+    }
+    let known = known_divergences.values().map(Vec::len).sum::<usize>();
+    let unclassified = mismatched - known;
     let format_errors = results
         .iter()
         .filter(|result| {
@@ -1058,6 +988,8 @@ fn build_report(
     writeln!(report, "AST mismatched: {ast_mismatched}/{ast_compared}").unwrap();
     writeln!(report, "AST format errors: {ast_errors}/{total}").unwrap();
     writeln!(report, "Mismatched: {mismatched}/{total}").unwrap();
+    writeln!(report, "Known mismatches: {known}/{total}").unwrap();
+    writeln!(report, "Unclassified mismatches: {unclassified}/{total}").unwrap();
     writeln!(report, "Format errors: {format_errors}/{total}").unwrap();
     writeln!(report, "Panicked: {panics}/{total}").unwrap();
     writeln!(report, "Not idempotent: {not_idempotent}/{total}").unwrap();
@@ -1098,6 +1030,17 @@ fn build_report(
         }
     }
 
+    if !known_divergences.is_empty() {
+        report.push_str("\n# Known divergences\n");
+        for (reason, cases) in known_divergences {
+            writeln!(report, "\n## {reason}\n").unwrap();
+            for case in cases {
+                let options = divergences::option_label(&case.options);
+                writeln!(report, "- {} ({options})", case.path).unwrap();
+            }
+        }
+    }
+
     let mut failures = BTreeMap::<&str, FileFailures>::new();
     for result in results {
         if !is_comparison_result(result) {
@@ -1106,10 +1049,8 @@ fn build_report(
         if matches!(result.status, CaseStatus::ParseError(_)) {
             continue;
         }
-        if matches!(result.status, CaseStatus::Matched)
-            && result.ast_parity == Some(true)
-            && result.ast_error.is_none()
-            && result.idempotent == Some(true)
+        if (matches!(result.status, CaseStatus::Matched) && result.is_valid_output())
+            || divergences::reason_for(result).is_some()
         {
             continue;
         }
@@ -1193,6 +1134,9 @@ fn print_debug_results(results: &[CaseResult]) {
             CaseStatus::Matched => println!("Snapshot matched"),
             CaseStatus::Mismatched => {
                 println!("Snapshot mismatch");
+                if let Some(reason) = divergences::reason_for(result) {
+                    println!("Known divergence: {reason}");
+                }
                 let (expected, actual) = result.debug_diff.as_ref().unwrap();
                 print_text_diff(expected, actual);
             }
@@ -1645,8 +1589,63 @@ fn string_literal(ast: &Ast<'_>, literal: StringLiteral) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{JAVASCRIPT, TYPESCRIPT, prettier_language};
+    use super::{CaseResult, CaseStatus, JAVASCRIPT, TYPESCRIPT, divergences, prettier_language};
     use swc_next_ecma_ast::Lang;
+
+    fn case_result(path: &str, options: &str, status: CaseStatus) -> CaseResult {
+        CaseResult {
+            path: path.to_string(),
+            options: options.to_string(),
+            status,
+            debug_diff: None,
+            ast_debug_diff: None,
+            ast_parity: Some(true),
+            ast_error: None,
+            idempotent: Some(true),
+            second_pass_error: false,
+        }
+    }
+
+    #[test]
+    fn divergence_options() {
+        let path = "js/babel-plugins/bigint.js";
+
+        let mismatch = case_result(path, "", CaseStatus::Mismatched);
+        assert!(divergences::reason_for(&mismatch).is_some());
+        assert!(
+            !divergences::stale_errors(JAVASCRIPT, &[mismatch])
+                .iter()
+                .any(|error| error.starts_with(path))
+        );
+
+        let matched = case_result(path, "", CaseStatus::Matched);
+        let other_option = case_result(path, "semi: false", CaseStatus::Mismatched);
+        assert!(divergences::reason_for(&other_option).is_none());
+        assert!(
+            divergences::stale_errors(JAVASCRIPT, &[matched, other_option])
+                .iter()
+                .any(|error| error.starts_with(path))
+        );
+    }
+
+    #[test]
+    fn divergence_output_checks() {
+        let path = "js/babel-plugins/bigint.js";
+
+        let mut ast_mismatch = case_result(path, "", CaseStatus::Mismatched);
+        ast_mismatch.ast_parity = Some(false);
+        assert!(divergences::reason_for(&ast_mismatch).is_none());
+
+        let mut unstable = case_result(path, "", CaseStatus::Mismatched);
+        unstable.idempotent = Some(false);
+        assert!(divergences::reason_for(&unstable).is_none());
+
+        let invalid = case_result(path, "", CaseStatus::StructuralError(String::new()));
+        assert!(divergences::reason_for(&invalid).is_none());
+
+        let panic = case_result(path, "", CaseStatus::Panic(String::new()));
+        assert!(divergences::reason_for(&panic).is_none());
+    }
 
     #[test]
     fn parser_partition_selection() {

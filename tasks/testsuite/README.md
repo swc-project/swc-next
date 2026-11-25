@@ -56,8 +56,11 @@ full semantic equivalence. Formatting and parser failures remain visible as
 syntax support grows.
 
 Summaries are written to `snapshots/formatter_prettier_{js,typescript}.snap`.
-A normal run can succeed with known mismatches or unsupported syntax; CI checks
-the generated reports against the committed snapshots.
+All output mismatches count toward the raw snapshot match rate. Register a
+verified difference in [the divergence list](src/formatter/divergences.rs) by
+fixture and option set. A full run fails if a registered option set no longer
+produces an output mismatch. Output that fails a correctness check remains a
+failure. CI checks the generated reports against the committed snapshots.
 
 Inspect matching inputs and detailed diffs without changing reports:
 

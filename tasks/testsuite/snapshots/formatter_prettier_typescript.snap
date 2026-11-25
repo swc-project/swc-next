@@ -1,19 +1,21 @@
 formatter * prettier 3.9.9 * typescript
 ========================================
 Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 649
+Fixture files: 661
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 797/801 (99.50%)
-Snapshot matched: 797/801
-AST parity: 801/801
-AST mismatched: 0/801
-AST format errors: 0/801
-Mismatched: 4/801
-Format errors: 0/801
-Panicked: 0/801
-Not idempotent: 0/801
-Ignored files: 84
-Parse errors: 0/801
+Passed: 797/815 (97.79%)
+Snapshot matched: 797/815
+AST parity: 815/815
+AST mismatched: 0/815
+AST format errors: 0/815
+Mismatched: 18/815
+Known mismatches: 16/815
+Unclassified mismatches: 2/815
+Format errors: 0/815
+Panicked: 0/815
+Not idempotent: 0/815
+Ignored files: 72
+Parse errors: 0/815
 Expected parser errors: 1
 Unsupported option sets: 4
 
@@ -21,12 +23,46 @@ Unsupported option sets: 4
 
 - typescript/conformance/types/functions/functionOverloadErrorsSyntax.ts: 1 expected parser error(s)
 
+# Known divergences
+
+## Keep ignore markers on their original verbatim target
+
+- typescript/prettier-ignore/issue-14238.ts (default options)
+- typescript/prettier-ignore/mapped-types.ts (default options)
+- typescript/prettier-ignore/prettier-ignore-nested-unions.ts (default options)
+
+## Keep signature comments outside the body they precede
+
+- typescript/interface/comments-generic.ts (default options)
+- typescript/interface/comments-generic.ts (semi: false)
+- typescript/interface2/comments-declare.ts (trailingComma: "es5")
+- typescript/interface2/comments.ts (trailingComma: "es5")
+
+## Preserve comments on their original side of operator and terminator tokens
+
+- typescript/as/comments/18160.ts (default options)
+- typescript/binary-expressions/chain-expression.ts (default options)
+
+## Preserve the original rendered JSX text
+
+- jsx/escape/nbsp.js (default options)
+- jsx/text-wrap/test.js (default options)
+
+## Prettier 3.9.9 changes these outputs on a second pass
+
+- jsx/comments/in-attributes.js (bracketSameLine: true)
+- typescript/import-type/long-module-name/long-module-name4.ts (default options)
+- typescript/satisfies-operators/comments-unstable.ts (default options)
+- typescript/satisfies-operators/comments-unstable.ts (semi: false)
+
+## Separate opening angles in heritage type arguments to preserve TypeScript syntax
+
+- typescript/type-arguments-bit-shift-left-like/3.ts (default options)
+
 # Failed
 
-- typescript/binary-expressions/chain-expression.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/class-implements.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/declare.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/type-arguments-bit-shift-left-like/3.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 
