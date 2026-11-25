@@ -132,21 +132,22 @@ pub fn lang(config: &Config) -> Lang {
     }
 }
 
-fn map_es_version(version: SwcEsVersion) -> &'static str {
+fn map_es_version(version: SwcEsVersion) -> Option<&'static str> {
     match version {
-        SwcEsVersion::Es3 => "es3",
-        SwcEsVersion::Es5 => "es5",
-        SwcEsVersion::Es2015 => "es2015",
-        SwcEsVersion::Es2016 => "es2016",
-        SwcEsVersion::Es2017 => "es2017",
-        SwcEsVersion::Es2018 => "es2018",
-        SwcEsVersion::Es2019 => "es2019",
-        SwcEsVersion::Es2020 => "es2020",
-        SwcEsVersion::Es2021 => "es2021",
-        SwcEsVersion::Es2022 => "es2022",
-        SwcEsVersion::Es2023 => "es2023",
-        SwcEsVersion::Es2024 => "es2024",
-        SwcEsVersion::EsNext => "esnext",
+        // SwcEsVersion::Es3 => Some("es3"),
+        // SwcEsVersion::Es5 => Some("es5"),
+        SwcEsVersion::Es3 | SwcEsVersion::Es5 => None,
+        SwcEsVersion::Es2015 => Some("es2015"),
+        SwcEsVersion::Es2016 => Some("es2016"),
+        SwcEsVersion::Es2017 => Some("es2017"),
+        SwcEsVersion::Es2018 => Some("es2018"),
+        SwcEsVersion::Es2019 => Some("es2019"),
+        SwcEsVersion::Es2020 => Some("es2020"),
+        SwcEsVersion::Es2021 => Some("es2021"),
+        SwcEsVersion::Es2022 => Some("es2022"),
+        SwcEsVersion::Es2023 => Some("es2023"),
+        SwcEsVersion::Es2024 => Some("es2024"),
+        SwcEsVersion::EsNext => Some("esnext"),
     }
 }
 
@@ -218,6 +219,8 @@ pub fn supports_options(case: &SwcCaseConfig) -> bool {
         if env.targets.is_some() && case.env_target.is_none() {
             return false;
         }
+    } else if map_es_version(jsc.target.unwrap_or_default()).is_none() {
+        return false;
     }
     let syntax_supported = match jsc.syntax.unwrap_or_default() {
         Syntax::Es(parser) => {
@@ -349,7 +352,7 @@ pub fn options(case: &SwcCaseConfig, path: &Path) -> JsTransformApiOptions {
             .or_else(|| Some(JsTarget::Queries(Vec::new())))
     } else {
         let es_version = config.jsc.target.unwrap_or_default();
-        Some(JsTarget::Query(map_es_version(es_version).into()))
+        map_es_version(es_version).map(|v| JsTarget::Query(v.into()))
     };
     let decorators = map_decorators(config)
         .flatten()

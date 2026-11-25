@@ -51,7 +51,8 @@ macro_rules! named_enum {
 }
 
 named_enum!(EsVersion {
-    Es3 => "es3", Es5 => "es5", Es2015 => "es2015", Es2016 => "es2016",
+    // Es3 => "es3", Es5 => "es5",
+    Es2015 => "es2015", Es2016 => "es2016",
     Es2017 => "es2017", Es2018 => "es2018", Es2019 => "es2019", Es2020 => "es2020",
     Es2021 => "es2021", Es2022 => "es2022", Es2023 => "es2023", Es2024 => "es2024",
     Es2025 => "es2025", Es2026 => "es2026", EsNext => "esnext",

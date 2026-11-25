@@ -197,6 +197,7 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_ecma_transformer",
+ "swc_next_ecma_transformer_v1",
  "swc_next_formatter",
  "swc_next_type_strip",
  "tracy-client",
