@@ -14900,7 +14900,16 @@ fn import_or_export_kind_for_declare(declare: bool) -> ImportOrExportKind {
 fn can_follow_type_arguments_in_expression(token: Token) -> bool {
     match token.tag() {
         TokenTag::LeftParen | TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => true,
-        TokenTag::LessThan | TokenTag::GreaterThan | TokenTag::Plus | TokenTag::Minus => false,
+        // TypeScript scans every token that starts with `>` as `>` here.
+        TokenTag::LessThan
+        | TokenTag::GreaterThan
+        | TokenTag::GreaterThanEqual
+        | TokenTag::RightShift
+        | TokenTag::UnsignedRightShift
+        | TokenTag::RightShiftAssign
+        | TokenTag::UnsignedRightShiftAssign
+        | TokenTag::Plus
+        | TokenTag::Minus => false,
         _ => {
             token.has_line_terminator_before()
                 || is_binary_operator_like(token.tag())
