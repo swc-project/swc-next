@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use swc_next_ecma_ast::*;
 
-use crate::{common::resolver::context::Resolver, modules::ModuleType};
+use crate::{common::resolver::context::Resolver, module::ModuleType};
 
 mod config;
 mod retain;

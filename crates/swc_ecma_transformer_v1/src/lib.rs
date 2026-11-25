@@ -23,7 +23,7 @@
 //!     es2021::ES2021Options,
 //!     es2022::{ClassPropertiesOptions, ES2022Options},
 //!     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
-//!     modules::{ModuleType, ModulesOptions},
+//!     module::{ModuleOptions, ModuleType},
 //!     regexp::RegExpOptions,
 //!     typescript::{TsImportExportAssignConfig, TypeScriptOptions},
 //! };
@@ -61,7 +61,7 @@
 //!         refresh: Some(ReactRefreshOptions::default()),
 //!         ..Default::default()
 //!     }),
-//!     modules: ModulesOptions { r#type: ModuleType::CommonJs },
+//!     module: ModuleOptions { r#type: ModuleType::CommonJs },
 //!     typescript: Some(TypeScriptOptions {
 //!         import_export_assign_config: TsImportExportAssignConfig::EsNext,
 //!         ..Default::default()
@@ -74,7 +74,7 @@ use swc_next_ecma_ast::{AstCtx, Diagnostic, TraverseMutCtx};
 
 use self::{
     common::{TraverseCtx, resolver::context::Resolver},
-    modules::ModulesOptions,
+    module::ModuleOptions,
 };
 
 pub mod decorators;
@@ -87,7 +87,7 @@ pub mod es2020;
 pub mod es2021;
 pub mod es2022;
 pub mod jsx;
-pub mod modules;
+pub mod module;
 pub mod regexp;
 pub mod typescript;
 
@@ -117,7 +117,7 @@ pub struct TransformerOptions {
     /// TypeScript stripping/lowering and JSX import-retention options.
     pub typescript: Option<typescript::TypeScriptOptions>,
     /// Module output format. Defaults to preserving ECMAScript modules.
-    pub modules: ModulesOptions,
+    pub module: ModuleOptions,
 }
 
 /// Diagnostics produced while transforming an AST in place.
@@ -185,7 +185,7 @@ impl Transformer {
                 context.ast,
                 typescript,
                 jsx_enabled,
-                options.modules.r#type,
+                options.module.r#type,
                 context.state.resolver,
             ));
         }
@@ -206,10 +206,10 @@ impl Transformer {
         es2017::transform(&mut context, options.env.es2017);
         es2016::transform(&mut context, options.env.es2016);
         regexp::transform(context.ast, context.state.resolver, options.env.regexp);
-        modules::transform(
+        module::transform(
             context.ast,
             &mut context.state,
-            options.modules.r#type,
+            options.module.r#type,
             options.filename.as_deref(),
             options.env.module_features,
         );

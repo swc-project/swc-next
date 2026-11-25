@@ -32,7 +32,7 @@ use swc_next_ecma_transformer_v1::{
         JsxOptions as V1JsxOptions, JsxRuntime as V1JsxRuntime,
         ReactRefreshOptions as V1ReactRefreshOptions,
     },
-    modules::{ModuleType as V1ModuleType, ModulesOptions as V1ModulesOptions},
+    module::{ModuleOptions as V1ModuleOptions, ModuleType as V1ModuleType},
     typescript::TypeScriptOptions as V1TypeScriptOptions,
 };
 use swc_next_formatter::js::{FormatOptions, format_ast};
@@ -282,7 +282,7 @@ fn setup_transform_v1(source: &'static str, filename: &str) -> TransformV1Input 
             refresh: Some(V1ReactRefreshOptions::default()),
             ..V1JsxOptions::default()
         }),
-        modules: V1ModulesOptions {
+        module: V1ModuleOptions {
             r#type: V1ModuleType::CommonJs,
         },
     };

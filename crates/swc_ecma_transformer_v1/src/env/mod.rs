@@ -8,7 +8,7 @@ mod compat;
 mod config;
 mod target;
 
-pub use crate::modules::ModuleFeatures;
+pub use crate::module::ModuleFeatures;
 pub use config::{
     AsyncToGeneratorConfig, ClassFieldsUseSetConfig, ClassPropertiesConfig, ES2016Config,
     ES2017Config, ES2018Config, ES2019Config, ES2020Config, ES2021Config, ES2022Config, EnvConfig,
