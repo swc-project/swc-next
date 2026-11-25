@@ -164,8 +164,8 @@ compares native and Prettier output with identical normalized source and options
 
 ### Current Scope
 
-The plugin is experimental and currently pins Prettier to 3.9.9. It reuses
-Prettier's JavaScript option declarations and defaults, with `printWidth` limited
+The plugin is experimental. It uses Prettier's JavaScript option declarations
+and defaults, with `printWidth` limited
 to 0–65535 and `tabWidth` to 0–64.
 
 The following options are not supported:

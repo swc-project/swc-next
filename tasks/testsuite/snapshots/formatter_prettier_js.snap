@@ -1,43 +1,54 @@
-formatter * prettier 3.9.9 * js
+formatter * prettier 3.10.1 * js
 ========================================
-Fixture revision: cdd17f2288b28b170a76416c72dac56e3ea5daff
-Fixture files: 825
+Fixture revision: deda65fd47c285b974e2a4397f26a33cfc1746b8
+Fixture files: 859
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1067/1114 (95.78%)
-Snapshot matched: 1067/1114
-AST parity: 1114/1114
-AST mismatched: 0/1114
-AST format errors: 0/1114
-Mismatched: 47/1114
-Known mismatches: 38/1114
-Unclassified mismatches: 9/1114
-Format errors: 0/1114
-Panicked: 0/1114
-Not idempotent: 0/1114
-Ignored files: 250
-Parse errors: 0/1114
-Expected parser errors: 36
-Unsupported option sets: 14
+Passed: 1024/1094 (93.60%)
+Snapshot matched: 1024/1094
+AST parity: 1094/1094
+AST mismatched: 0/1094
+AST format errors: 0/1094
+Mismatched: 70/1094
+Known mismatches: 33/1094
+Unclassified mismatches: 37/1094
+Format errors: 0/1094
+Unparsable output: 0/1094
+Panicked: 0/1094
+Not idempotent: 0/1094
+Ignored files: 244
+Parse errors: 0/1094
+Expected parser errors: 133
+Unsupported option sets: 16
 
 # Expected parser errors
 
 - js/babel-plugins/async-do-expressions.js: 1 expected parser error(s)
+- js/babel-plugins/deferred-reexports.js: 1 expected parser error(s)
 - js/babel-plugins/destructuring-private.js: 1 expected parser error(s)
 - js/babel-plugins/discard-binding.js: 1 expected parser error(s)
 - js/babel-plugins/do-expressions.js: 1 expected parser error(s)
 - js/babel-plugins/export-default-from.js: 1 expected parser error(s)
 - js/babel-plugins/flow.js: 1 expected parser error(s)
+- js/babel-plugins/function-bind-2.js: 1 expected parser error(s)
 - js/babel-plugins/function-bind.js: 1 expected parser error(s)
 - js/babel-plugins/function-sent.js: 1 expected parser error(s)
 - js/babel-plugins/module-blocks.js: 1 expected parser error(s)
-- js/babel-plugins/optional-chaining-assignment.js: 1 expected parser error(s)
+- js/babel-plugins/namespace-import-filter.js: 1 expected parser error(s)
+- js/babel-plugins/optional-chaining-assign.js: 1 expected parser error(s)
 - js/babel-plugins/partial-application.js: 1 expected parser error(s)
-- js/babel-plugins/pipeline-operator-fsharp.js: 1 expected parser error(s)
-- js/babel-plugins/pipeline-operator-hack.cjs: 1 expected parser error(s)
-- js/babel-plugins/pipeline-operator-minimal.js: 1 expected parser error(s)
+- js/babel-plugins/pipeline-operator.js: 1 expected parser error(s)
+- js/babel-plugins/structs.js: 1 expected parser error(s)
 - js/babel-plugins/throw-expressions.js: 1 expected parser error(s)
 - js/babel-plugins/typescript.js: 1 expected parser error(s)
 - js/babel-plugins/v8intrinsic.js: 1 expected parser error(s)
+- js/decorators/rest-parameters/constructor.js: 1 expected parser error(s)
+- js/decorators/rest-parameters/method.js: 1 expected parser error(s)
+- js/decorators/rest-parameters/setter.js: 1 expected parser error(s)
+- js/deferred-reexports/comment-before-braces.js: 1 expected parser error(s)
+- js/deferred-reexports/default-from-export-default-from.js: 1 expected parser error(s)
+- js/deferred-reexports/export-defer.js: 1 expected parser error(s)
+- js/deferred-reexports/named.js: 1 expected parser error(s)
+- js/deferred-reexports/namespace.js: 1 expected parser error(s)
 - js/discard-binding/array-pattern.js: 1 expected parser error(s)
 - js/discard-binding/basic.js: 1 expected parser error(s)
 - js/discard-binding/discard-binding-arrow-params.js: 1 expected parser error(s)
@@ -55,8 +66,91 @@ Unsupported option sets: 14
 - js/discard-binding/using.js: 1 expected parser error(s)
 - js/explicit-resource-management/valid-module-block-top-level-await-using-binding.js: 1 expected parser error(s)
 - js/explicit-resource-management/valid-module-block-top-level-using-binding.js: 1 expected parser error(s)
-- js/v8_intrinsic/avoid-conflicts-to-pipeline.js: 1 expected parser error(s)
-- js/v8_intrinsic/intrinsic_call.js: 1 expected parser error(s)
+- js/filtered-namespaces/bracket-spacing/bracket-spacing.js: 2 expected parser error(s)
+- js/filtered-namespaces/dangling-comments.js: 1 expected parser error(s)
+- js/filtered-namespaces/namespace-export-filter.js: 1 expected parser error(s)
+- js/filtered-namespaces/namespace-import-filter.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/comments-trailing-comma.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/comments.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-attributes.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-defer-missing-namespace-import-filter.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-defer.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-duplicate-export.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-duplicate.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-empty.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-module-export-names.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-newline-as-from.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-rename.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/export-without-from.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/filtered-namespaces.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-attributes.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-default.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-defer.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-duplicate-binding.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-duplicate.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-empty.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-module-export-names.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-newline-as.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-not-bindings.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-rename.js: 1 expected parser error(s)
+- js/filtered-namespaces/parse/import-source-phase.js: 1 expected parser error(s)
+- js/filtered-namespaces/quote/quote.js: 2 expected parser error(s)
+- js/filtered-namespaces/trailing-comma/comma.js: 2 expected parser error(s)
+- js/function-sent/function-sent.js: 1 expected parser error(s)
+- js/ignore/semi/asi-bind-expression.js: 2 expected parser error(s)
+- js/parentheses/do-expression.js: 1 expected parser error(s)
+- js/source-phase-imports/no-named.js: 1 expected parser error(s)
+- js/source-phase-imports/no-namespace.js: 1 expected parser error(s)
+- js/structs/comments/dangling.js: 1 expected parser error(s)
+- js/structs/comments/head.js: 1 expected parser error(s)
+- js/structs/comments/super-class.js: 1 expected parser error(s)
+- js/structs/parse/basic.js: 1 expected parser error(s)
+- js/structs/parse/export-default-anonymous-struct-declaration-extends.js: 1 expected parser error(s)
+- js/structs/parse/export-default-body-linebreak.js: 1 expected parser error(s)
+- js/structs/parse/export-default-extends-linebreak.js: 1 expected parser error(s)
+- js/structs/parse/export-default-struct-declaration-extends.js: 1 expected parser error(s)
+- js/structs/parse/export-default-struct-declaration.js: 1 expected parser error(s)
+- js/structs/parse/export-default.js: 1 expected parser error(s)
+- js/structs/parse/export-named-struct-declaration-extends.js: 1 expected parser error(s)
+- js/structs/parse/export-named-struct-declaration.js: 1 expected parser error(s)
+- js/structs/parse/export-named.js: 1 expected parser error(s)
+- js/structs/parse/extends.js: 1 expected parser error(s)
+- js/structs/parse/invalid-anonymous-struct-declaration.js: 1 expected parser error(s)
+- js/structs/parse/invalid-duplicate-export-alias.js: 1 expected parser error(s)
+- js/structs/parse/invalid-duplicate-export-declaration-first.js: 1 expected parser error(s)
+- js/structs/parse/invalid-duplicate-export-specifier-first.js: 1 expected parser error(s)
+- js/structs/parse/invalid-duplicate-struct-binding.js: 1 expected parser error(s)
+- js/structs/parse/invalid-escaped-struct-keyword-1.js: 1 expected parser error(s)
+- js/structs/parse/invalid-escaped-struct-keyword-2-export-default.js: 1 expected parser error(s)
+- js/structs/parse/invalid-escaped-struct-keyword-2-export-named.js: 1 expected parser error(s)
+- js/structs/parse/invalid-escaped-struct-keyword-2.js: 1 expected parser error(s)
+- js/structs/parse/invalid-export-default-anonymous-extends-linebreak.js: 1 expected parser error(s)
+- js/structs/parse/invalid-export-named-linebreak.js: 1 expected parser error(s)
+- js/structs/parse/invalid-outer-private-name.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-declaration-if-statement.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-declaration-left-brace.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-declaration-right-brace.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-decorators.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-expression.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-linebreak-extends.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-member-decorators.js: 1 expected parser error(s)
+- js/structs/parse/invalid-struct-sloppy-production.js: 1 expected parser error(s)
+- js/structs/parse/invalid-undefined-private-name.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration-2.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration-empty-body.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration-export-default-anonymous.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration-export-default.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration-export-named.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration-extends.js: 1 expected parser error(s)
+- js/structs/parse/struct-declaration.js: 1 expected parser error(s)
+- js/structs/parse/struct-id-escaped.js: 1 expected parser error(s)
+- js/structs/parse/struct-id-non-bmp.js: 1 expected parser error(s)
+- js/structs/parse/struct-member-class-accessor.js: 1 expected parser error(s)
+- js/structs/parse/struct-sloppy-production-after.js: 1 expected parser error(s)
+- js/structs/parse/superclass-parentheses.js: 1 expected parser error(s)
+- js/structs/parse/with-comments.js: 1 expected parser error(s)
+- js/v8-intrinsic/avoid-conflicts-to-pipeline.js: 1 expected parser error(s)
+- js/v8-intrinsic/intrinsic-call.js: 1 expected parser error(s)
 
 # Known divergences
 
@@ -68,7 +162,7 @@ Unsupported option sets: 14
 
 ## Keep comments before their array elision comma
 
-- js/arrays/numbers-with-holes.js (default options)
+- js/array-exprssion/numbers-with-holes.js (default options)
 
 ## Keep ignore markers on their original verbatim target
 
@@ -90,13 +184,12 @@ Unsupported option sets: 14
 
 ## Keep source parentheses around commented curried arrow bodies
 
-- js/arrows/currying-4.js (arrowParens: "always")
-- js/arrows/currying-4.js (arrowParens: "avoid")
+- js/arrow-function/currying-4.js (arrowParens: "always")
+- js/arrow-function/currying-4.js (arrowParens: "avoid")
 
 ## Preserve comments on their original side of operator and terminator tokens
 
-- js/babel-plugins/bigint.js (default options)
-- js/binary-expressions/chain-expression.js (default options)
+- js/binary-expression/chain-expression.js (default options)
 - js/comments/binary-expressions.js (default options)
 - js/comments/binary-expressions.js (semi: false)
 - js/comments/empty-statements.js (default options)
@@ -120,32 +213,55 @@ Unsupported option sets: 14
 - js/comments/issue-11050.js (default options)
 - js/comments/issue-11050.js (semi: false)
 
-## Prettier 3.9.9 changes these outputs on a second pass
+## Prettier changes these outputs on a second pass
 
-- js/arrows/arrow-chain-with-trailing-comments.js (arrowParens: "always")
-- js/arrows/arrow-chain-with-trailing-comments.js (arrowParens: "avoid")
-- js/comments/tagged-template-literal.js (default options)
-- js/comments/tagged-template-literal.js (semi: false)
 - jsx/comments/in-attributes.js (bracketSameLine: true)
 
 # Failed
 
+- js/arrow-function/arrow-chain-with-trailing-comments.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
+- js/arrow-function/comments/multiple-comments-before-arrow.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/binary-expression/inline-object-array.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/binary-expression/logic-expression.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/binary-expression/return.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/binary-math/parens.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/class-comment/superclass.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/comments-closure-typecast/nullish-coalescing.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/comments/dangling-blank-lines.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/dangling_for.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/try.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - js/comments/while-like/switch.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/decorators/export-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/explicit-resource-management/for-await-using-of-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/explicit-resource-management/valid-await-using-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/try/try.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/for-of-statement/comments-before-keyword.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/for-of-statement/comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/ignore/semi/asi.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/ignore/semi/class-property.js: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
+- js/import-sync/comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/import-sync/long-module-name.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/import-sync/trailing-comma.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/last-argument-expansion/edge_case.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/method-chain/issue-18523.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/nullish-coalescing/array-chain.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/return-statement/binaryish.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/sequence-expression/unary.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/sequence-expression/yield.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/top-level-await/test.cjs: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/try-statement/try.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- js/yield-exprsssion/comment.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
+- jsx/comments/in-opening-tag-name.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 
 # Unsupported option sets
 
-- js/binary-expressions/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
-- js/binary-expressions/mutiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
-- js/call/boolean/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
-- js/conditional/format.test.js - unsupported Prettier option experimentalTernaries=true
+- js/binary-expression/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/binary-expression/mutiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/call-expression/boolean/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/conditional-expression/format.test.js - unsupported Prettier option experimentalTernaries=true
 - js/cursor/require-pragma/format.test.js - unsupported Prettier option requirePragma=true
-- js/logical-expressions/multiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
+- js/filtered-namespaces/object-wrap/format.test.js - unsupported Prettier option objectWrap="collapse"
+- js/filtered-namespaces/object-wrap/format.test.js - unsupported Prettier option objectWrap="preserve"
+- js/logical-expression/multiple-comments/format.test.js - unsupported Prettier option experimentalOperatorPosition="start"
 - js/multiparser-html/format.test.js - unsupported Prettier option htmlWhitespaceSensitivity="ignore"
 - js/multiparser-markdown/format.test.js - unsupported Prettier option proseWrap="always"
 - js/object-multiline/format.test.js - unsupported Prettier option objectWrap="collapse"

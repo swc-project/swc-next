@@ -44,11 +44,11 @@ Run the Prettier compatibility matrix:
 cargo run -p testsuite --bin formatter --profile conformance
 ```
 
-The fixture is pinned to Prettier 3.9.9 at commit
-`cdd17f2288b28b170a76416c72dac56e3ea5daff`. The runner verifies the version,
-reads physical JS/JSX/TS/TSX inputs, discovers options from `runFormatTest`, and
-compares output against committed Jest snapshots. Unsupported options are
-reported explicitly. Shared JSX inputs exercise both parser partitions.
+The runner checks the pinned Prettier version, reads physical JS/JSX/TS/TSX
+inputs, discovers options from `runFormatTest`, and
+compares output against committed Jest snapshots. Parser-specific error snapshots
+identify expected rejections for each option set. Shared JSX inputs exercise both
+parser partitions. The reports list unsupported options separately.
 
 Successful formatting checks output parsing, comment retention, source/AST
 entry-point parity, and second-pass idempotency. These checks do not establish

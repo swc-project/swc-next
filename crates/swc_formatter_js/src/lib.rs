@@ -37,7 +37,7 @@ pub use options::{
 pub use producer::{EcmaDocumentProducer, ast_to_doc};
 
 /// Prettier version used as the output oracle for [`FormatOptions::prettier`].
-pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.9.9";
+pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.10.1";
 
 pub use swc_next_formatter_core::DOCUMENT_FORMAT_VERSION;
 

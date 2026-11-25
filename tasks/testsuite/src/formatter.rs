@@ -21,6 +21,7 @@ use std::{
 mod divergences;
 mod options;
 
+use divergences::KNOWN_DIVERGENCES;
 use options::{format_options, unsupported_option_names};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde_json::Value;
@@ -35,7 +36,7 @@ use swc_next_formatter_js::{FormatError, PRETTIER_COMPATIBILITY_VERSION};
 
 use crate::util::crate_root;
 
-pub const PRETTIER_FIXTURE_REVISION: &str = "cdd17f2288b28b170a76416c72dac56e3ea5daff";
+pub const PRETTIER_FIXTURE_REVISION: &str = "deda65fd47c285b974e2a4397f26a33cfc1746b8";
 
 const FORMAT_TEST_SPEC_NAME: &str = "format.test.js";
 const SNAPSHOT_DIR_NAME: &str = "__snapshots__";
@@ -69,33 +70,23 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Contains(
         "typescript/conformance/classes/constructorDeclarations/constructorParameters/readonlyReadonly.ts",
     ),
-    IgnorePattern::Contains("js/call/invalid"),
+    IgnorePattern::Contains("js/call-expression/invalid/"),
     IgnorePattern::Contains("typescript/trailing-comma/invalid.ts"),
     IgnorePattern::Contains("typescript/error-recovery/"),
     // Syntax proposals not accepted by the parser.
     IgnorePattern::Contains("js/optional-chaining-assignment/"),
-    IgnorePattern::Contains("js/async-do-expressions/"),
-    IgnorePattern::Contains("js/do"),
-    IgnorePattern::Contains("jsx/do/"),
+    IgnorePattern::Contains("js/do-expression/"),
+    IgnorePattern::Contains("jsx/do-expression/"),
     IgnorePattern::Contains("js/export-default/export-default-from"),
     IgnorePattern::Contains("js/export-default/escaped"),
-    IgnorePattern::Contains("js/module-blocks"),
-    IgnorePattern::Contains("js/comments-pipeline-own-line"),
+    IgnorePattern::Contains("js/module-block/"),
     IgnorePattern::Contains("js/partial-application"),
     IgnorePattern::Contains("js/pipeline-operator"),
-    IgnorePattern::Contains("js/arrows-bind"),
-    IgnorePattern::Contains("js/bind-expressions"),
+    IgnorePattern::Contains("js/arrow-function/arrows-bind/"),
+    IgnorePattern::Contains("js/bind-expression/"),
     IgnorePattern::Contains("js/objects/expression.js"),
-    IgnorePattern::Contains("js/no-semi-babylon-extensions/no-semi.js"),
     IgnorePattern::Contains("js/destructuring-private-fields"),
-    IgnorePattern::Contains("js/throw_expressions"),
-    // Static import phases parse, but the formatter does not implement them yet.
-    // Keep their small mixed suites together.
-    IgnorePattern::Contains("js/deferred-import-evaluation"),
-    IgnorePattern::Contains("js/source-phase-imports"),
-    // Other Babel plugin rejections are declared by the spec as parser errors.
-    IgnorePattern::Exact("js/babel-plugins/deferred-import-evaluation.js"),
-    IgnorePattern::Exact("js/babel-plugins/source-phase-imports.js"),
+    IgnorePattern::Contains("js/throw-expression/"),
     // FBT-specific JSX whitespace formatting is not implemented.
     IgnorePattern::Contains("jsx/fbt/"),
     // Embedded languages are separate formatters, not JS/TS layout cases.
@@ -116,7 +107,6 @@ const IGNORE: &[IgnorePattern] = &[
     // Range and cursor fixtures use selection markers and position-mapping APIs.
     IgnorePattern::Contains("/range/"),
     IgnorePattern::Contains("js/eol/range-"),
-    IgnorePattern::Exact("js/module-blocks/range.js"),
     IgnorePattern::Exact("js/new-target/range.js"),
     IgnorePattern::Contains("cursor"),
     // Parser-mode differences that do not exercise formatter layout.
@@ -125,10 +115,10 @@ const IGNORE: &[IgnorePattern] = &[
     IgnorePattern::Exact("typescript/top-level-await/test.ts"),
     IgnorePattern::Exact("typescript/top-level-await/test.tsx"),
     IgnorePattern::Exact("js/ternaries/parenthesis/await-expression.js"),
-    IgnorePattern::Exact("js/await/like-call.js"),
+    IgnorePattern::Exact("js/await-expression/like-call.js"),
     // This mixed fixture uses await in non-async functions and class fields,
     // which our parser rejects.
-    IgnorePattern::Exact("js/await/await-with-parens.js"),
+    IgnorePattern::Exact("js/await-expression/await-with-parens.js"),
     // TODO: embedded-language formatting; keep template text unchanged for now.
     IgnorePattern::Exact("js/embeded/indention/19518.js"),
     IgnorePattern::Exact("js/embeded/indention/indention-2.js"),
@@ -136,12 +126,6 @@ const IGNORE: &[IgnorePattern] = &[
     // TODO: Jest each tagged-template table formatting.
     IgnorePattern::Exact("js/test-declarations/jest-each.js"),
     IgnorePattern::Exact("js/test-declarations/jest-each-template-string.js"),
-    // TODO: preserve comment ownership around source parentheses, commas, and
-    // statement terminators in these sequence and assignment expressions.
-    IgnorePattern::Exact("js/sequence-expression/parenthesized.js"),
-    IgnorePattern::Exact("js/sequence-expression/parenthesized-trailing-comment-unstable.js"),
-    // TODO: keep comments on their source side of in and of.
-    IgnorePattern::Exact("js/for-of/comments.js"),
     // TODO: keep the leading comment before the original return operand.
     IgnorePattern::Exact("js/comments/return-statement.js"),
     // TODO: preserve the inner union's leading comment boundary when unwrapping.
@@ -153,9 +137,9 @@ const IGNORE: &[IgnorePattern] = &[
     // TODO: preserve comments around the optional marker and parameter opener.
     IgnorePattern::Exact("typescript/comments/method_types.ts"),
     // TODO: keep arrow-body comments before the source body brace.
-    IgnorePattern::Exact("js/arrows/issue-17421.js"),
+    IgnorePattern::Exact("js/arrow-function/issue-17421.js"),
     // The difference is line layout for block comments on arrow body heads.
-    IgnorePattern::Exact("typescript/arrow/comments/issue-11100.ts"),
+    IgnorePattern::Exact("typescript/arrow-function/comments/issue-11100.ts"),
     // TODO: keep type assertion tails before the statement terminator.
     IgnorePattern::Exact("typescript/as/as-const/as-const.ts"),
     // TODO: keep the full verbatim parenthesized type. The matched snapshots
@@ -165,7 +149,7 @@ const IGNORE: &[IgnorePattern] = &[
         "typescript/prettier-ignore/no-semi/prettier-ignore-parenthesized-type.ts",
     ),
     // TODO: preserve the side of the source terminator after continue and break.
-    IgnorePattern::Exact("js/for/continue-and-break-comment-without-blocks.js"),
+    IgnorePattern::Exact("js/for-statement/continue-and-break-comment-without-blocks.js"),
     // The difference is the line break before a block comment in a function head.
     IgnorePattern::Exact("js/trailing-comma/trailing_whitespace.js"),
 ];
@@ -200,48 +184,15 @@ struct SpecCall {
     parsers: Vec<String>,
     options: OptionSet,
     snapshot_options: Vec<(String, String)>,
-    expected_parser_errors: ExpectedParserErrors,
-}
-
-#[derive(Clone, Default)]
-struct ExpectedParserErrors {
-    all: bool,
-    javascript: ParserErrorExpectation,
-    typescript: ParserErrorExpectation,
-}
-
-impl ExpectedParserErrors {
-    fn fixture_parser(&self, language: Lang, file_name: &str) -> Option<&'static str> {
-        let parser = fixture_parser_key(language);
-        let expected = if language.is_typescript() {
-            self.typescript.matches(file_name)
-        } else {
-            self.javascript.matches(file_name)
-        };
-        (self.all || expected).then_some(parser)
-    }
-}
-
-#[derive(Clone, Default)]
-struct ParserErrorExpectation {
-    all: bool,
-    files: BTreeSet<String>,
-}
-
-impl ParserErrorExpectation {
-    fn matches(&self, file_name: &str) -> bool {
-        self.all || self.files.contains(file_name)
-    }
 }
 
 #[derive(Clone)]
 struct FormatCase {
     parser_options: ParserOptions,
-    file_name: String,
     relative_path: String,
     source: Arc<str>,
-    snapshots: Arc<str>,
-    expected: String,
+    expected: Option<String>,
+    expected_parser_error: bool,
     spec: SpecCall,
 }
 
@@ -279,6 +230,7 @@ enum CaseStatus {
     FormatError(String),
     ParseError(String),
     ExpectedParserError(String),
+    UnparsableOutput(&'static str),
     StructuralError(String),
     Panic(String),
 }
@@ -297,7 +249,12 @@ struct FileFailures {
 struct FormattedSource {
     text: String,
     ast: Result<String, String>,
-    output_invariants: Result<(), String>,
+    output_invariants: Result<(), OutputInvariantError>,
+}
+
+enum OutputInvariantError {
+    Unparsable,
+    CommentCount { input: usize, output: usize },
 }
 
 enum FormatSourceError {
@@ -390,7 +347,7 @@ pub fn run_conformance(config: ConformanceConfig) -> ConformanceOutput {
 
     ConformanceOutput {
         report: Some(build_report(config, &results, &discovery)),
-        structural_errors: divergences::stale_errors(config, &results),
+        structural_errors: KNOWN_DIVERGENCES.stale_errors(config, &results),
     }
 }
 
@@ -535,8 +492,8 @@ fn discover_directory(
     }
 
     let snapshot_path = dir.join(SNAPSHOT_DIR_NAME).join(SNAPSHOT_FILE_NAME);
-    let snapshots: Arc<str> = match fs::read_to_string(&snapshot_path) {
-        Ok(snapshots) => snapshots.into(),
+    let snapshots = match fs::read_to_string(&snapshot_path) {
+        Ok(snapshots) => snapshots,
         Err(error) => {
             discovery
                 .structural_errors
@@ -601,23 +558,31 @@ fn discover_directory(
         let file_name = input.file_name().to_string_lossy().into_owned();
 
         for spec in &supported_specs {
-            let Some(expected) =
-                find_output_from_snapshots(&snapshots, &file_name, &spec.snapshot_options)
-            else {
+            let parser_options = parser_options(config, &path, &spec.parsers);
+            let expected =
+                find_output_from_snapshots(&snapshots, &file_name, &spec.snapshot_options);
+            // The parser-qualified snapshots record rejections for their exact options,
+            // including specs that compute their `errors` metadata in JavaScript.
+            let expected_parser_error = has_parser_error_snapshot(
+                &snapshots,
+                &file_name,
+                fixture_parser_key(parser_options.lang),
+                &spec.options,
+            );
+            if expected.is_none() && !expected_parser_error {
                 discovery.structural_errors.push(format!(
                     "snapshot section missing for {} with {}",
                     relative_path,
                     display_options(&spec.snapshot_options)
                 ));
                 continue;
-            };
+            }
             discovery.cases.push(FormatCase {
-                parser_options: parser_options(config, &path, &spec.parsers),
-                file_name: file_name.clone(),
+                parser_options,
                 relative_path: relative_path.clone(),
                 source: source.clone(),
-                snapshots: snapshots.clone(),
                 expected,
+                expected_parser_error,
                 spec: spec.clone(),
             });
         }
@@ -626,10 +591,6 @@ fn discover_directory(
 
 fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
     let options = display_options(&case.spec.snapshot_options);
-    let expected_parser = case
-        .spec
-        .expected_parser_errors
-        .fixture_parser(case.parser_options.lang, &case.file_name);
     let formatted = match format_source(case.parser_options, &case.source, &case.spec.options) {
         Ok(formatted) => formatted,
         Err(FormatSourceError::Options(error)) => {
@@ -650,25 +611,7 @@ fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
             };
         }
         Err(FormatSourceError::Formatter(error)) => {
-            let status = classify_format_error(error, expected_parser);
-            if let Some(parser) = expected_parser
-                && matches!(&status, CaseStatus::ExpectedParserError(_))
-                && !has_parser_error_snapshot(&case.snapshots, &case.file_name, parser)
-            {
-                return CaseResult {
-                    path: case.relative_path.clone(),
-                    options,
-                    status: CaseStatus::StructuralError(format!(
-                        "expected {parser} parser-error snapshot missing"
-                    )),
-                    debug_diff: None,
-                    ast_debug_diff: None,
-                    ast_parity: None,
-                    ast_error: None,
-                    idempotent: None,
-                    second_pass_error: false,
-                };
-            }
+            let status = classify_format_error(error, case.expected_parser_error);
             return CaseResult {
                 path: case.relative_path.clone(),
                 options,
@@ -699,21 +642,18 @@ fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
     let second = format_text(case.parser_options, &actual, &case.spec.options);
     let idempotent = second.as_deref() == Ok(actual.as_str());
     let second_pass_error = second.is_err();
-    let actual = replace_escape_and_eol(
-        &actual,
-        case.expected.contains("LF>") || case.expected.contains("<CR"),
-    );
-    let matched = actual == case.expected;
+    let expected = case.expected.as_deref();
+    let visualize_eol = expected.is_some_and(|text| text.contains("LF>") || text.contains("<CR"));
+    let actual = replace_escape_and_eol(&actual, visualize_eol);
+    let matched = expected == Some(actual.as_str());
     let invariant_failed = output_invariants.is_err();
-    let status = if let Err(error) = output_invariants {
-        CaseStatus::StructuralError(error)
-    } else if matched {
-        CaseStatus::Matched
-    } else {
-        CaseStatus::Mismatched
+    let status = match output_invariants {
+        Ok(()) if matched => CaseStatus::Matched,
+        Ok(()) => CaseStatus::Mismatched,
+        Err(error) => classify_output_invariant_error(case, error),
     };
-    let debug_diff =
-        (debug && (!matched || invariant_failed)).then(|| (case.expected.clone(), actual));
+    let debug_diff = (debug && (!matched || invariant_failed))
+        .then(|| (expected.unwrap_or("Parser rejection").to_string(), actual));
 
     CaseResult {
         path: case.relative_path.clone(),
@@ -728,18 +668,31 @@ fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
     }
 }
 
-fn classify_format_error(error: FormatError, expected_parser: Option<&'static str>) -> CaseStatus {
+fn classify_format_error(error: FormatError, expected_parser_error: bool) -> CaseStatus {
     let message = error.to_string();
     match error {
-        // The fixture metadata explicitly marks parser failures that are expected for a
-        // particular parser. Other parser failures remain comparison failures so they cannot
-        // inflate the pass rate by being counted as formatter errors or silently passed.
-        FormatError::Parse(_) => match expected_parser {
-            Some(_) => CaseStatus::ExpectedParserError(message),
-            None => CaseStatus::ParseError(message),
-        },
+        FormatError::Parse(_) if expected_parser_error => CaseStatus::ExpectedParserError(message),
+        FormatError::Parse(_) => CaseStatus::ParseError(message),
         FormatError::Unsupported { .. } => CaseStatus::FormatError(message),
     }
+}
+
+fn classify_output_invariant_error(case: &FormatCase, error: OutputInvariantError) -> CaseStatus {
+    let message = match error {
+        OutputInvariantError::Unparsable
+            if case.relative_path == "typescript/instantiation-expression/before-operator.ts"
+                && case.spec.options.is_empty() =>
+        {
+            return CaseStatus::UnparsableOutput(
+                "the formatter drops required parentheses around instantiation expressions before binary operators",
+            );
+        }
+        OutputInvariantError::Unparsable => "formatted output does not parse".to_string(),
+        OutputInvariantError::CommentCount { input, output } => {
+            format!("formatting changed comment count from {input} to {output}")
+        }
+    };
+    CaseStatus::StructuralError(message)
 }
 
 fn run_case_catching_panic(case: &FormatCase, debug: bool) -> CaseResult {
@@ -811,12 +764,13 @@ fn format_source(
         .any(|diagnostic| diagnostic.severity == Severity::Error);
     let input_comments = parsed.ast.comments().len();
     let output_comments = formatted.ast.comments().len();
-    let output_invariants = if output_has_parse_errors {
-        Err("formatted output does not parse".to_string())
-    } else if input_comments != output_comments {
-        Err(format!(
-            "formatting changed comment count: {input_comments} -> {output_comments}"
-        ))
+    let output_invariants = if input_comments != output_comments {
+        Err(OutputInvariantError::CommentCount {
+            input: input_comments,
+            output: output_comments,
+        })
+    } else if output_has_parse_errors {
+        Err(OutputInvariantError::Unparsable)
     } else {
         Ok(())
     };
@@ -868,7 +822,7 @@ fn prettier_language(config: ConformanceConfig, path: &str, parsers: &[String]) 
     language
 }
 
-// Prettier fixture metadata and parser-error snapshot names use these upstream keys.
+// Prettier's parser-error snapshot names use these upstream keys.
 fn fixture_parser_key(language: Lang) -> &'static str {
     if language.is_typescript() {
         "oxc-ts"
@@ -899,6 +853,13 @@ fn build_report(
         .iter()
         .filter(|result| matches!(result.status, CaseStatus::ExpectedParserError(_)))
         .count();
+    let unparsable_outputs = results
+        .iter()
+        .filter_map(|result| match result.status {
+            CaseStatus::UnparsableOutput(reason) => Some((result.path.as_str(), reason)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
     let total = results
         .iter()
         .filter(|result| is_comparison_result(result))
@@ -927,7 +888,7 @@ fn build_report(
         .count();
     let mut known_divergences = BTreeMap::<&str, Vec<&CaseResult>>::new();
     for result in results {
-        if let Some(reason) = divergences::reason_for(result) {
+        if let Some(reason) = KNOWN_DIVERGENCES.reason_for(result) {
             known_divergences.entry(reason).or_default().push(result);
         }
     }
@@ -991,6 +952,12 @@ fn build_report(
     writeln!(report, "Known mismatches: {known}/{total}").unwrap();
     writeln!(report, "Unclassified mismatches: {unclassified}/{total}").unwrap();
     writeln!(report, "Format errors: {format_errors}/{total}").unwrap();
+    writeln!(
+        report,
+        "Unparsable output: {}/{total}",
+        unparsable_outputs.len()
+    )
+    .unwrap();
     writeln!(report, "Panicked: {panics}/{total}").unwrap();
     writeln!(report, "Not idempotent: {not_idempotent}/{total}").unwrap();
     writeln!(report, "Ignored files: {}", discovery.ignored_files).unwrap();
@@ -1030,6 +997,13 @@ fn build_report(
         }
     }
 
+    if !unparsable_outputs.is_empty() {
+        report.push_str("\n# Unparsable output\n\n");
+        for (path, reason) in unparsable_outputs {
+            writeln!(report, "- {path}: {reason}").unwrap();
+        }
+    }
+
     if !known_divergences.is_empty() {
         report.push_str("\n# Known divergences\n");
         for (reason, cases) in known_divergences {
@@ -1046,11 +1020,14 @@ fn build_report(
         if !is_comparison_result(result) {
             continue;
         }
-        if matches!(result.status, CaseStatus::ParseError(_)) {
+        if matches!(
+            result.status,
+            CaseStatus::ParseError(_) | CaseStatus::UnparsableOutput(_)
+        ) {
             continue;
         }
         if (matches!(result.status, CaseStatus::Matched) && result.is_valid_output())
-            || divergences::reason_for(result).is_some()
+            || KNOWN_DIVERGENCES.reason_for(result).is_some()
         {
             continue;
         }
@@ -1062,6 +1039,7 @@ fn build_report(
             CaseStatus::FormatError(_) => failure.format_errors += 1,
             CaseStatus::ParseError(_)
             | CaseStatus::ExpectedParserError(_)
+            | CaseStatus::UnparsableOutput(_)
             | CaseStatus::StructuralError(_) => unreachable!(),
             CaseStatus::Panic(_) => failure.panics += 1,
         }
@@ -1134,7 +1112,7 @@ fn print_debug_results(results: &[CaseResult]) {
             CaseStatus::Matched => println!("Snapshot matched"),
             CaseStatus::Mismatched => {
                 println!("Snapshot mismatch");
-                if let Some(reason) = divergences::reason_for(result) {
+                if let Some(reason) = KNOWN_DIVERGENCES.reason_for(result) {
                     println!("Known divergence: {reason}");
                 }
                 let (expected, actual) = result.debug_diff.as_ref().unwrap();
@@ -1144,6 +1122,12 @@ fn print_debug_results(results: &[CaseResult]) {
             CaseStatus::ParseError(error) => println!("Parse error: {error}"),
             CaseStatus::ExpectedParserError(error) => {
                 println!("Expected parser error: {error}")
+            }
+            CaseStatus::UnparsableOutput(reason) => {
+                println!("Unparsable output: {reason}");
+                if let Some((expected, actual)) = &result.debug_diff {
+                    print_text_diff(expected, actual);
+                }
             }
             CaseStatus::StructuralError(error) => {
                 println!("Structural error: {error}");
@@ -1228,12 +1212,26 @@ fn find_output_from_snapshots(
     None
 }
 
-fn has_parser_error_snapshot(snapshot: &str, file_name: &str, parser: &str) -> bool {
-    let prefix = format!("exports[`{file_name} ");
-    let parser_marker = format!(" format[{parser}] ");
+fn has_parser_error_snapshot(
+    snapshot: &str,
+    file_name: &str,
+    parser: &str,
+    options: &OptionSet,
+) -> bool {
+    let prefix = format!("exports[`{file_name}");
+    let suffix = format!(" format[{parser}] 1`] = `");
     snapshot
         .lines()
-        .any(|line| line.starts_with(&prefix) && line.contains(&parser_marker))
+        .filter_map(|line| line.strip_prefix(&prefix)?.strip_suffix(&suffix))
+        .any(|title_options| {
+            if options.is_empty() {
+                return title_options.is_empty();
+            }
+            title_options
+                .strip_prefix(" - ")
+                .and_then(|json| serde_json::from_str::<OptionSet>(json).ok())
+                .is_some_and(|snapshot_options| snapshot_options == *options)
+        })
 }
 
 fn find_output_in_snapshot_block(
@@ -1392,18 +1390,12 @@ impl<'source> Visit<'source> for SpecParser<'_, 'source> {
 
         let mut options = OptionSet::new();
         let mut snapshot_options = Vec::new();
-        let mut expected_parser_errors = ExpectedParserErrors::default();
         if let Some(object) = arguments
             .get_node(self.ast, 2)
             .and_then(|argument| argument.as_expr(self.ast))
             .and_then(|expression| expression.as_object_expression(self.ast))
-            && let Err(error) = collect_options(
-                self.ast,
-                object,
-                &mut options,
-                &mut snapshot_options,
-                &mut expected_parser_errors,
-            )
+            && let Err(error) =
+                collect_options(self.ast, object, &mut options, &mut snapshot_options)
         {
             self.errors.push(error);
             return;
@@ -1424,7 +1416,6 @@ impl<'source> Visit<'source> for SpecParser<'_, 'source> {
             parsers,
             options,
             snapshot_options,
-            expected_parser_errors,
         });
     }
 }
@@ -1445,7 +1436,6 @@ fn collect_options(
     object: ObjectExpression,
     options: &mut OptionSet,
     snapshot_options: &mut Vec<(String, String)>,
-    expected_parser_errors: &mut ExpectedParserErrors,
 ) -> Result<(), String> {
     for property in object.properties(ast).iter() {
         let property = ast.get_node_in_sub_range(property);
@@ -1456,7 +1446,6 @@ fn collect_options(
             return Err("computed option name is not supported".to_string());
         };
         if name == "errors" {
-            collect_expected_parser_errors(ast, property.value(ast), expected_parser_errors)?;
             continue;
         }
         let value = property.value(ast);
@@ -1470,82 +1459,6 @@ fn collect_options(
         ));
     }
     Ok(())
-}
-
-fn collect_expected_parser_errors(
-    ast: &Ast<'_>,
-    value: Expr,
-    expected_parser_errors: &mut ExpectedParserErrors,
-) -> Result<(), String> {
-    if let Some(literal) = value.as_boolean_literal(ast) {
-        expected_parser_errors.all = literal.value(ast);
-        return Ok(());
-    }
-
-    let Some(object) = value.as_object_expression(ast) else {
-        // Prettier only treats `true` and parser-keyed objects as expected
-        // errors. Other values (including a top-level filename array) do not
-        // match shouldThrowOnFormat in the pinned test runner.
-        return Ok(());
-    };
-
-    for property in object.properties(ast).iter() {
-        let property = ast.get_node_in_sub_range(property);
-        let Some(property) = property.as_object_property(ast) else {
-            // Unknown parser metadata is intentionally ignored. It cannot
-            // affect the language-specific expectations selected by this runner.
-            continue;
-        };
-        let Some(name) = property_name(ast, property.key(ast)) else {
-            continue;
-        };
-        let expectation = match name.as_str() {
-            "oxc" => &mut expected_parser_errors.javascript,
-            "oxc-ts" => &mut expected_parser_errors.typescript,
-            _ => continue,
-        };
-        collect_parser_error_expectation(ast, property.value(ast), expectation)?;
-    }
-    Ok(())
-}
-
-fn collect_parser_error_expectation(
-    ast: &Ast<'_>,
-    value: Expr,
-    expectation: &mut ParserErrorExpectation,
-) -> Result<(), String> {
-    if let Some(literal) = value.as_boolean_literal(ast) {
-        expectation.all = literal.value(ast);
-        expectation.files.clear();
-        return Ok(());
-    }
-    let Some(array) = value.as_array_expression(ast) else {
-        // Some Prettier specs compute filename arrays in JavaScript. The
-        // static runner only models literal arrays; ignored fixture roots
-        // retain their existing discovery behavior for dynamic metadata.
-        return Ok(());
-    };
-    expectation.all = false;
-    if let Some(files) = string_array_elements(ast, array) {
-        expectation.files.extend(files);
-    }
-    Ok(())
-}
-
-fn string_array_elements(
-    ast: &Ast<'_>,
-    array: swc_next_ecma_ast::ArrayExpression,
-) -> Option<Vec<String>> {
-    array
-        .elements(ast)
-        .iter()
-        .map(|element| {
-            let element = ast.get_node_in_sub_range(element)?;
-            let expression = element.as_expr(ast)?;
-            let literal = expression.as_string_literal(ast)?;
-            Some(string_literal(ast, literal))
-        })
-        .collect()
 }
 
 fn property_name(ast: &Ast<'_>, key: PropertyKey) -> Option<String> {
@@ -1589,63 +1502,8 @@ fn string_literal(ast: &Ast<'_>, literal: StringLiteral) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{CaseResult, CaseStatus, JAVASCRIPT, TYPESCRIPT, divergences, prettier_language};
+    use super::{JAVASCRIPT, TYPESCRIPT, prettier_language};
     use swc_next_ecma_ast::Lang;
-
-    fn case_result(path: &str, options: &str, status: CaseStatus) -> CaseResult {
-        CaseResult {
-            path: path.to_string(),
-            options: options.to_string(),
-            status,
-            debug_diff: None,
-            ast_debug_diff: None,
-            ast_parity: Some(true),
-            ast_error: None,
-            idempotent: Some(true),
-            second_pass_error: false,
-        }
-    }
-
-    #[test]
-    fn divergence_options() {
-        let path = "js/babel-plugins/bigint.js";
-
-        let mismatch = case_result(path, "", CaseStatus::Mismatched);
-        assert!(divergences::reason_for(&mismatch).is_some());
-        assert!(
-            !divergences::stale_errors(JAVASCRIPT, &[mismatch])
-                .iter()
-                .any(|error| error.starts_with(path))
-        );
-
-        let matched = case_result(path, "", CaseStatus::Matched);
-        let other_option = case_result(path, "semi: false", CaseStatus::Mismatched);
-        assert!(divergences::reason_for(&other_option).is_none());
-        assert!(
-            divergences::stale_errors(JAVASCRIPT, &[matched, other_option])
-                .iter()
-                .any(|error| error.starts_with(path))
-        );
-    }
-
-    #[test]
-    fn divergence_output_checks() {
-        let path = "js/babel-plugins/bigint.js";
-
-        let mut ast_mismatch = case_result(path, "", CaseStatus::Mismatched);
-        ast_mismatch.ast_parity = Some(false);
-        assert!(divergences::reason_for(&ast_mismatch).is_none());
-
-        let mut unstable = case_result(path, "", CaseStatus::Mismatched);
-        unstable.idempotent = Some(false);
-        assert!(divergences::reason_for(&unstable).is_none());
-
-        let invalid = case_result(path, "", CaseStatus::StructuralError(String::new()));
-        assert!(divergences::reason_for(&invalid).is_none());
-
-        let panic = case_result(path, "", CaseStatus::Panic(String::new()));
-        assert!(divergences::reason_for(&panic).is_none());
-    }
 
     #[test]
     fn parser_partition_selection() {
