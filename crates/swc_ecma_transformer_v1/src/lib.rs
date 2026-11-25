@@ -93,6 +93,34 @@ pub mod typescript;
 
 mod common;
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[unsafe(no_mangle)]
+unsafe extern "Rust" fn __getrandom_v03_custom(
+    dest: *mut u8,
+    len: usize,
+) -> Result<(), getrandom::Error> {
+    use core::sync::atomic::{AtomicU64, Ordering};
+
+    static STATE: AtomicU64 = AtomicU64::new(0x9e37_79b9_7f4a_7c15);
+    let mut i = 0;
+    while i < len {
+        let mut z = STATE
+            .fetch_add(0x9e37_79b9_7f4a_7c15, Ordering::Relaxed)
+            .wrapping_add(0x9e37_79b9_7f4a_7c15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^= z >> 31;
+        let bytes = z.to_le_bytes();
+        let take = (len - i).min(bytes.len());
+        // SAFETY: `dest` is valid for `len` bytes by the getrandom custom backend contract.
+        unsafe {
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), dest.add(i), take);
+        }
+        i += take;
+    }
+    Ok(())
+}
+
 /// A boolean shorthand or explicit configuration, as in SWC Next's public API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoolOr<T> {
