@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{Diagnostic, Severity};
 
 use crate::BoolOr;
 
-#[cfg(all(feature = "bridge"))]
+#[cfg(feature = "bridge")]
 pub mod bridge;
 #[cfg(feature = "js_transformer_v1")]
 mod v1;
