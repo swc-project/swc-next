@@ -1,10 +1,7 @@
-//! The two-block identifier cache and NEON mask reduction follow Yuku's lexer
-//! (MIT, see `THIRD_PARTY_NOTICES`).
+//! A two-block identifier cache for targets with vector byte table lookups.
+//! The cache follows Yuku's lexer (MIT, see `THIRD_PARTY_NOTICES`).
 
-use core::arch::aarch64::{
-    uint8x16_t, vandq_u8, vbicq_u8, vdupq_n_u8, vgetq_lane_u64, vld1q_u8, vpaddq_u8, vqtbl1q_u8,
-    vreinterpretq_u64_u8, vshrq_n_u8, vtstq_u8,
-};
+use swc_next_simd::prelude::*;
 
 use super::{
     TokenTag, get_keyword_type, is_ascii_identifier_continue, lexeme_mask,
@@ -187,27 +184,23 @@ impl NibbleClasses {
 #[inline(always)]
 fn identifier_mask(block: &[u8; BLOCK as usize]) -> u64 {
     const CLASSES: NibbleClasses = NibbleClasses::identifiers();
-    const LANE_BITS: [u8; 16] = [1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128];
 
-    // SAFETY: This module is built only with NEON. The four unaligned loads
-    // cover the 64-byte array, and each lookup table has 16 readable bytes.
-    unsafe {
-        let low = vld1q_u8(CLASSES.low.as_ptr());
-        let high = vld1q_u8(CLASSES.high.as_ptr());
-        let lane_bits = vld1q_u8(LANE_BITS.as_ptr());
-        let classify = |bytes: uint8x16_t| {
-            let low = vqtbl1q_u8(low, vandq_u8(bytes, vdupq_n_u8(0x0f)));
-            let high = vqtbl1q_u8(high, vshrq_n_u8::<4>(bytes));
-            vbicq_u8(lane_bits, vtstq_u8(low, high))
-        };
-        let a = classify(vld1q_u8(block.as_ptr()));
-        let b = classify(vld1q_u8(block.as_ptr().add(16)));
-        let c = classify(vld1q_u8(block.as_ptr().add(32)));
-        let d = classify(vld1q_u8(block.as_ptr().add(48)));
-
-        // Reduce adjacent byte lanes. Each group of eight lane weights
-        // becomes one mask byte, with the first source byte in the low bit.
-        let halves = vpaddq_u8(vpaddq_u8(a, b), vpaddq_u8(c, d));
-        vgetq_lane_u64::<0>(vreinterpretq_u64_u8(vpaddq_u8(halves, halves)))
-    }
+    let low_table = u8x16::from_array(CLASSES.low);
+    let high_table = u8x16::from_array(CLASSES.high);
+    let classify = |chunk: &[u8; 16]| {
+        let bytes = u8x16::from_array(*chunk);
+        let low = low_table.swizzle_dyn(bytes & u8x16::splat(0x0f));
+        let high = high_table.swizzle_dyn(bytes >> 4);
+        (low & high).to_array()
+    };
+    let (chunks, _) = block.as_chunks::<16>();
+    let classes = [
+        classify(&chunks[0]),
+        classify(&chunks[1]),
+        classify(&chunks[2]),
+        classify(&chunks[3]),
+    ];
+    u8x64::from_slice(classes.as_flattened())
+        .simd_eq(u8x64::splat(0))
+        .to_bitmask()
 }

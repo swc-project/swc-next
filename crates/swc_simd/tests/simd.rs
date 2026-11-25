@@ -1,5 +1,5 @@
 use swc_next_simd::prelude::{SimdOrd, SimdPartialEq, SimdPartialOrd};
-use swc_next_simd::{Select, Simd, mask8x16, u8x16};
+use swc_next_simd::{Select, Simd, mask8x16, mask8x64, u8x16, u8x64};
 
 #[test]
 fn vector_conversions() {
@@ -57,7 +57,7 @@ fn mask_reductions() {
     for bitmask in 0..=u16::MAX {
         let values = std::array::from_fn(|lane| bitmask & (1 << lane) != 0);
         let mask = mask8x16::from_array(values);
-        assert_eq!(mask.to_bitmask(), bitmask);
+        assert_eq!(mask.to_bitmask(), u64::from(bitmask));
         // An empty mask leaves the trailing zero count at the lane count.
         assert_eq!(
             mask.first_set(),
@@ -65,6 +65,20 @@ fn mask_reductions() {
         );
         assert_eq!(mask.any(), bitmask != 0);
     }
+
+    assert_eq!(mask8x64::splat(false).to_bitmask(), 0);
+    assert_eq!(mask8x64::splat(true).to_bitmask(), u64::MAX);
+    for bit in 0..64 {
+        let mask = mask8x64::from_array(std::array::from_fn(|lane| lane == bit));
+        assert_eq!(mask.to_bitmask(), 1u64 << bit);
+    }
+
+    let bits = 0x0123_4567_89ab_cdef_u64;
+    let left = std::array::from_fn(|i| i as u8);
+    let right = std::array::from_fn(|i| if bits & (1 << i) != 0 { left[i] } else { 255 });
+    let (a, b) = (u8x64::from_array(left), u8x64::from_array(right));
+    assert_eq!(a.simd_eq(b).to_bitmask(), bits);
+    assert_eq!(a.simd_ne(b).to_bitmask(), !bits);
 }
 
 // Compare each lane with scalar operations, as in portable-simd's
@@ -119,6 +133,7 @@ fn unsigned_byte_operations() {
                 values.map(|right| left.wrapping_sub(right))
             );
             assert_eq!((a | b).to_array(), values.map(|right| left | right));
+            assert_eq!((a & b).to_array(), values.map(|right| left & right));
             assert_eq!(
                 a.simd_min(b).to_array(),
                 values.map(|right| left.min(right))
@@ -142,6 +157,25 @@ fn unsigned_byte_operations() {
                 std::array::from_fn(|lane| lane as u8 <= hi - lo),
             );
         }
+    }
+}
+
+#[test]
+fn byte_shifts_and_swizzles() {
+    let table = std::array::from_fn(|lane| 0xf0 + lane as u8);
+    let vector = u8x16::from_array(table);
+    for offset in 0..=u8::MAX {
+        assert_eq!(
+            (vector >> offset).to_array(),
+            table.map(|byte| byte.wrapping_shr(u32::from(offset)))
+        );
+
+        let indices = std::array::from_fn(|lane| offset.wrapping_add(lane as u8));
+        let shuffled = vector.swizzle_dyn(u8x16::from_array(indices));
+        assert_eq!(
+            shuffled.to_array(),
+            indices.map(|i| table.get(usize::from(i)).copied().unwrap_or(0))
+        );
     }
 }
 

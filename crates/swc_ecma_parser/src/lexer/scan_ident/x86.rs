@@ -9,14 +9,13 @@ use super::{
     scan_ascii_identifier_or_keyword_slow,
 };
 
-/// Whether `byte` continues an identifier, the complement of the set that
-/// [`identifier_stop_bits`] computes a batch at a time.
+/// Tests an identifier continuation byte in the final partial batch.
 #[inline]
 fn continues<const JSX: bool>(byte: u8) -> bool {
     is_ascii_identifier_continue(byte) || (JSX && byte == b'-')
 }
 
-/// The lanes that stop an ASCII identifier, as one bit per lane.
+/// The first lane that stops an ASCII identifier.
 ///
 /// `byte | 0x20` folds `A-Z` onto `a-z`. A range test subtracts the range start and compares
 /// the offset with the width as unsigned lanes. SSE2 compares signed lanes only, so the
@@ -29,7 +28,7 @@ fn continues<const JSX: bool>(byte: u8) -> bool {
 /// is this chain's depth rather than its instruction count: the tests are independent, so they
 /// are joined by depth, the letters test last because it is the deepest.
 #[inline]
-fn identifier_stop_bits<const JSX: bool>(bytes: u8x16) -> u16 {
+fn first_identifier_stop<const JSX: bool>(bytes: u8x16) -> Option<usize> {
     #[inline]
     fn lanes_outside(bytes: u8x16, lo: u8, hi: u8) -> mask8x16 {
         (bytes - u8x16::splat(lo)).simd_gt(u8x16::splat(hi - lo))
@@ -45,7 +44,7 @@ fn identifier_stop_bits<const JSX: bool>(bytes: u8x16) -> u16 {
         not_letters & (not_digits & not_marks)
     };
 
-    stops.to_bitmask()
+    stops.first_set()
 }
 
 /// Bytes one [`u8x16`] batch covers.
@@ -67,9 +66,7 @@ pub(in crate::lexer) fn scan_ascii_identifier_continue<const JSX: bool>(
     // One load and one branch per batch; only the first byte that stops the identifier is
     // looked at again.
     while let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() {
-        let stopped = identifier_stop_bits::<JSX>(u8x16::from_array(*chunk));
-        let lane = stopped.trailing_zeros() as usize;
-        if lane < IDENTIFIER_BATCH_SIZE {
+        if let Some(lane) = first_identifier_stop::<JSX>(u8x16::from_array(*chunk)) {
             // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
             let byte = unsafe { *source.get_unchecked(position + lane) };
             return ascii_identifier_end(byte, position + lane);
@@ -114,14 +111,12 @@ pub(super) fn scan_ascii_identifier_or_keyword(
     let Some(chunk) = source[position..].first_chunk::<IDENTIFIER_BATCH_SIZE>() else {
         return scan_ascii_identifier_or_keyword_slow(source, start);
     };
-    let stopped = identifier_stop_bits::<false>(u8x16::from_array(*chunk));
-    let lane = stopped.trailing_zeros() as usize;
-    if lane >= IDENTIFIER_BATCH_SIZE {
+    let Some(lane) = first_identifier_stop::<false>(u8x16::from_array(*chunk)) else {
         // No keyword is this long.
         let end =
             scan_ascii_identifier_continue::<false>(source, start + IDENTIFIER_BATCH_SIZE as u32)?;
         return Some((end, TokenTag::Identifier));
-    }
+    };
     // SAFETY: `lane` indexes the 16-byte chunk that starts at `position`.
     let byte = unsafe { *source.get_unchecked(position + lane) };
     let end = ascii_identifier_end(byte, position + lane)?;

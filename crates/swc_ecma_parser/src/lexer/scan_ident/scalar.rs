@@ -1,4 +1,4 @@
-//! Byte-table continuation scan for non-x86 targets, including the NEON slow paths.
+//! Byte-table continuation scan for JSX names and ordinary identifiers on non-x86 targets.
 
 use super::{ascii_identifier_end, is_ascii_identifier_continue};
 
