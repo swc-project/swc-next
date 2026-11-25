@@ -16239,6 +16239,16 @@ mod tests {
             depth
         }
 
+        fn assigned_binary_left(ast: &Ast<'_>) -> NodeKind {
+            let binary = expression(ast)
+                .as_assignment_expression(ast)
+                .unwrap()
+                .right(ast)
+                .as_binary_expression(ast)
+                .unwrap();
+            ast.node_kind(binary.left(ast).node_id())
+        }
+
         let typescript = Options {
             lang: Lang::Ts,
             ..Options::default()
@@ -16300,6 +16310,24 @@ mod tests {
 
             assert!(has_errors("a < (if[0]) > (0);", options));
             assert!(!has_errors("f<(const)>();", options));
+
+            assert!(has_errors("x = f<T> >> y;", options));
+
+            assert!(has_errors("x = f<T> >>> y;", options));
+
+            assert!(has_errors("x = f<T> >= y;", options));
+
+            let (errors, left) = parse("x = f<T> == y;", options, assigned_binary_left);
+            assert!(errors.is_empty());
+            assert_eq!(left, NodeKind::TsInstantiationExpression);
+
+            let (errors, left) = parse("x = f<T> << y;", options, assigned_binary_left);
+            assert!(errors.is_empty());
+            assert_eq!(left, NodeKind::TsInstantiationExpression);
+
+            let (errors, left) = parse("x = f<T>> y;", options, assigned_binary_left);
+            assert!(errors.is_empty());
+            assert_eq!(left, NodeKind::IdentifierReference);
         }
     }
 
