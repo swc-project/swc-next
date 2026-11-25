@@ -3916,6 +3916,7 @@ dependencies = [
 name = "swc_next_ecma_transformer_legacy"
 version = "0.7.0"
 dependencies = [
+ "base64 0.22.1",
  "browserslist-rs",
  "convert_case",
  "hashbrown 0.17.2",
@@ -3927,6 +3928,7 @@ dependencies = [
  "regex",
  "rustc-hash",
  "serde_json",
+ "sha1",
  "swc_core",
  "swc_next_allocator",
  "swc_next_ecma_ast",

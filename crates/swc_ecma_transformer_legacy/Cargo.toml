@@ -10,6 +10,7 @@ repository.workspace  = true
 version               = "0.7.0"
 
 [dependencies]
+base64             = { workspace = true }
 browserslist       = { workspace = true }
 convert_case       = { workspace = true }
 hashbrown          = { workspace = true }
@@ -17,6 +18,7 @@ indexmap           = { workspace = true }
 memchr             = { workspace = true }
 regex              = { workspace = true }
 rustc-hash         = { workspace = true }
+sha1               = { workspace = true }
 swc_next_allocator = { workspace = true }
 swc_next_ecma_ast  = { workspace = true }
 

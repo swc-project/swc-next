@@ -61,7 +61,7 @@ impl OptionalChaining<'_, '_> {
                 ExprData::MemberExpression(member)
                     if !member.computed(ast)
                         && !member.optional(ast)
-                        && !chain_part(ast, member.object(ast)) =>
+                        && !build::chain_part(ast, member.object(ast)) =>
                 {
                     member.object(ast).is_super(ast) || is_simple_member(ast, member.object(ast))
                 }
@@ -117,7 +117,7 @@ impl OptionalChaining<'_, '_> {
                 }
                 _ => unreachable!("an optional chain has a member or call spine"),
             };
-            if chain_part(self.ast, next) {
+            if build::chain_part(self.ast, next) {
                 current = next;
             } else {
                 next.visit_mut_children_with(self);
@@ -305,16 +305,6 @@ impl OptionalChaining<'_, '_> {
         };
         self.vars = outer;
         expression
-    }
-}
-
-fn chain_part(ast: &Ast<'_>, expression: Expr) -> bool {
-    match ast.expr_data(expression) {
-        ExprData::MemberExpression(member) => {
-            member.optional(ast) || chain_part(ast, member.object(ast))
-        }
-        ExprData::CallExpression(call) => call.optional(ast) || chain_part(ast, call.callee(ast)),
-        _ => false,
     }
 }
 

@@ -4,8 +4,8 @@ source: crates/swc_ecma_transformer_legacy/tests/conformance.rs
 transform_legacy * swc
 ========================
 Total: 2089
-Passed: 931
-Failed: 1147
+Passed: 949
+Failed: 1129
 Panicked: 0
 Skipped: 11
 Failed: codegen/comment-1/es5/input/index.tsx - transformed output differs from SWC snapshot
@@ -735,26 +735,12 @@ Failed: react/inline-regressions/shopify-2/input/src/App/App.tsx - transformed o
 Failed: react/inline-regressions/shopify-3/input/src/App/App.tsx - transformed output differs from SWC snapshot
 Failed: react/inline-regressions/shopify-4/input/src/App/App.tsx - transformed output differs from SWC snapshot
 Failed: react/jsx-transform/classic/react-arrow-functions/input/input.js - transformed output differs from SWC snapshot
-Failed: react/refresh/javascript/dont-consider-iife-as-hoc/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/ignore-not-hoc/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/ignore-unnamed-function-declarations/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/issue-11832-recursive-fn-decl/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/issue-11832-recursive-named-fn-expr/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/issue-11832-recursive-var-arrow/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/issue-11832-recursive-var-fn-expr/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/issue-2261/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/nested-hook/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/next-001/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/pascal-case-only/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/register-fn-expr-with-hooks-2/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/register-identifiers-used-in-create-element/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/refresh/javascript/register-implicit-arrow-returns/input/input.js - transform: Legacy transform has not been ported yet: react_refresh
+Failed: react/refresh/javascript/register-identifiers-used-in-create-element/input/input.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-10xxx/10698/input/index.jsx - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-10xxx/10729/input/index.jsx - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-10xxx/11054/input/index.ts - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-1xxx/1714/case1/input/index.js - transformed output differs from SWC snapshot
-Failed: react/regressions/issues-2xxx/2531/1/input/index.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/regressions/issues-2xxx/2531/2/input/index.js - transform: Legacy transform has not been ported yet: react_refresh
+Failed: react/regressions/issues-2xxx/2531/1/input/index.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-4xxx/4890/input/index.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-4xxx/4953/input/index.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-5xxx/5214/1/input/input1.js - transformed output differs from SWC snapshot
@@ -768,10 +754,6 @@ Failed: react/regressions/issues-8xxx/8199/input/1.js - transformed output diffe
 Failed: react/regressions/issues-8xxx/8228/input/1.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-8xxx/8572/input/1.js - snapshot: No such file or directory (os error 2)
 Failed: react/regressions/issues-8xxx/8871/input/1.js - transformed output differs from SWC snapshot
-Failed: react/regressions/issues-9xxx/9129/1/input/1.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/regressions/issues-9xxx/9129/1/input/2.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/regressions/issues-9xxx/9129/1/input/3.js - transform: Legacy transform has not been ported yet: react_refresh
-Failed: react/regressions/issues-9xxx/9129/1/input/4.js - transform: Legacy transform has not been ported yet: react_refresh
 Failed: react/regressions/issues-9xxx/9791/input/input.js - transformed output differs from SWC snapshot
 Failed: react/regressions/issues-9xxx/9929/input/index.jsx - transformed output differs from SWC snapshot
 Failed: regexp/dotall/with-unicode-property-escape/input/index.js - transformed output differs from SWC snapshot

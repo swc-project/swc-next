@@ -145,6 +145,17 @@ pub(crate) fn unwrap(ast: &Ast<'_>, mut expression: Expr) -> Expr {
     expression
 }
 
+/// Whether this expression corresponds to a SWC `OptChainExpr` link.
+pub(crate) fn chain_part(ast: &Ast<'_>, expression: Expr) -> bool {
+    match ast.expr_data(expression) {
+        ExprData::MemberExpression(member) => {
+            member.optional(ast) || chain_part(ast, member.object(ast))
+        }
+        ExprData::CallExpression(call) => call.optional(ast) || chain_part(ast, call.callee(ast)),
+        _ => false,
+    }
+}
+
 /// Next AST adapter for SWC's `RefRewriter::exit_object_pat_prop`.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_utils/src/lib.rs#L2648>.
 pub(crate) fn binding_shorthand(ast: &mut Ast<'_>, property: BindingProperty) {

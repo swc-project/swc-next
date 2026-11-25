@@ -16,7 +16,7 @@ mod refresh;
 mod static_check;
 
 pub use self::{Options as JsxOptions, Runtime as JsxRuntime};
-pub use refresh::options::Options as ReactRefreshOptions;
+pub use refresh::options::RefreshOptions as ReactRefreshOptions;
 
 use jsx_self::JsxSelfCtx;
 use jsx_src::JsxSrc;
@@ -68,8 +68,7 @@ pub struct Options {
     pub use_builtins: Option<bool>,
     /// Legacy SWC compatibility option; ignored by its current JSX lowering.
     pub use_spread: Option<bool>,
-    /// Configure React Refresh; `None` disables it. SWC applies it in development
-    /// mode only.
+    /// Configure React Refresh for modules in development mode. `None` disables it.
     pub refresh: Option<ReactRefreshOptions>,
 }
 
@@ -83,14 +82,7 @@ pub(crate) fn transform(
         return Vec::new();
     }
 
-    let mut diagnostics = jsx(ast, options, filename, resolver);
-    if options.development == Some(true) && options.refresh.is_some() {
-        let mut diagnostic =
-            Diagnostic::error("Legacy transform has not been ported yet", DUMMY_SP);
-        diagnostic.help = Some("react_refresh".into());
-        diagnostics.push(diagnostic);
-    }
-    diagnostics
+    jsx(ast, options, filename, resolver)
 }
 
 /// SWC JSX hook construction: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L212>.
@@ -115,6 +107,7 @@ fn jsx(
     if !diagnostics.is_empty() {
         return diagnostics;
     }
+    let development = options.development.unwrap_or_default();
     let mut comments: FxHashMap<u32, Vec<Comment>> = FxHashMap::default();
     for &comment in ast.comments() {
         if comment.kind != CommentKind::Block || comment.position != CommentPosition::Leading {
@@ -125,7 +118,6 @@ fn jsx(
             .or_default()
             .push(comment);
     }
-    let development = options.development.unwrap_or_default();
     let mut jsx = Jsx {
         resolver,
         runtime: options.runtime.unwrap_or_default(),
@@ -137,6 +129,7 @@ fn jsx(
         pragma: pragma.into(),
         pragma_frag: pragma_frag.into(),
         development,
+        refresh: options.refresh.as_ref().filter(|_| development),
         throw_if_namespace: options.throw_if_namespace.unwrap_or(true),
         filename: filename.unwrap_or_default().into(),
         source: development.then(|| JsxSrc::new(ast.source())),
@@ -180,6 +173,7 @@ struct Jsx<'r, 'ast> {
     pragma: String,
     pragma_frag: String,
     development: bool,
+    refresh: Option<&'r ReactRefreshOptions>,
     throw_if_namespace: bool,
     filename: String,
     source: Option<JsxSrc>,
@@ -238,6 +232,9 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         if ctx.ast.is_module() {
             self.pure_annotations
                 .collect_imports(ctx.ast, self.resolver, program);
+            if let Some(options) = self.refresh {
+                refresh::hook(ctx.ast, self.resolver, options).enter_module_items(program);
+            }
         }
         TraverseAction::Continue
     }
