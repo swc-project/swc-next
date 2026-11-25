@@ -1,4 +1,6 @@
 //! The super/new.target subset of SWC FnEnvHoister selected by async lowering.
+use std::{iter, mem};
+
 use crate::common::{build as b, resolver::context::Resolver};
 use swc_next_ecma_ast::*;
 
@@ -81,8 +83,7 @@ impl FnEnvHoister<'_, '_> {
         if self.extra.is_empty() {
             return body;
         }
-        let variables =
-            b::declaration(self.ast, VariableKind::Var, std::mem::take(&mut self.extra));
+        let variables = b::declaration(self.ast, VariableKind::Var, mem::take(&mut self.extra));
         b::prepend_stmts(self.ast, [variables], body)
     }
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_utils/src/function/fn_env_hoister.rs#L635>.
@@ -101,7 +102,7 @@ impl FnEnvHoister<'_, '_> {
             variables.push(b::declarator(self.ast, binding, Some(value)));
         }
         // SWC emits named fields before the computed field for each operation.
-        let mut updates = std::mem::take(&mut self.update);
+        let mut updates = mem::take(&mut self.update);
         updates.sort_by_key(|field| field.name.is_none());
         for field in updates {
             let prop = field
@@ -167,8 +168,8 @@ impl FnEnvHoister<'_, '_> {
             variables.push(b::declarator(self.ast, field.binding, Some(init)));
         }
         for (kind, mut fields) in [
-            (AccessKind::Get, std::mem::take(&mut self.get)),
-            (AccessKind::Set, std::mem::take(&mut self.set)),
+            (AccessKind::Get, mem::take(&mut self.get)),
+            (AccessKind::Set, mem::take(&mut self.set)),
         ] {
             fields.sort_by_key(|field| field.name.is_none());
             for field in fields {
@@ -213,13 +214,13 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
         None
     }
     fn visit_mut_binding_pattern(&mut self, node: BindingPattern) -> Option<BindingPattern> {
-        let old = std::mem::replace(&mut self.in_pattern, true);
+        let old = mem::replace(&mut self.in_pattern, true);
         let replacement = node.visit_mut_children_with(self);
         self.in_pattern = old;
         replacement
     }
     fn visit_mut_assignment_target(&mut self, node: AssignmentTarget) -> Option<AssignmentTarget> {
-        let old = std::mem::replace(&mut self.in_pattern, true);
+        let old = mem::replace(&mut self.in_pattern, true);
         let replacement = node.visit_mut_children_with(self);
         self.in_pattern = old;
         replacement
@@ -338,7 +339,7 @@ impl<'ast> VisitMut<'ast> for FnEnvHoister<'_, 'ast> {
                 .this
                 .get_or_insert_with(|| self.resolver.private_binding(self.ast, "_this"));
             let reference = self.resolver.reference(self.ast, binding);
-            let args: Vec<_> = std::iter::once(Argument::Expr(reference))
+            let args: Vec<_> = iter::once(Argument::Expr(reference))
                 .chain(
                     call.arguments(self.ast)
                         .iter()

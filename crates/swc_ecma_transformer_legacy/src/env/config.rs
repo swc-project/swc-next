@@ -254,7 +254,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::*;
-    use crate::env::{Engine, EsVersion};
+    use crate::env::{Engine, EsVersion, ModuleFeatures};
 
     fn resolve(target: Target) -> EnvOptions {
         EnvConfig {
@@ -271,7 +271,7 @@ mod tests {
 
     fn modern_env_options() -> EnvOptions {
         EnvOptions {
-            module_features: super::super::ModuleFeatures {
+            module_features: ModuleFeatures {
                 block_scoping: true,
                 arrow: true,
             },

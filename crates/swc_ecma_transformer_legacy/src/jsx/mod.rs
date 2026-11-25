@@ -1,6 +1,6 @@
 //! SWC's JSX transform on the Next AST.
 
-use std::borrow::Cow;
+use std::{borrow::Cow, mem};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::*;
@@ -663,7 +663,7 @@ impl Jsx<'_, '_> {
                         false
                     }
                     _ => {
-                        let children = array(ast, std::mem::take(&mut children));
+                        let children = array(ast, mem::take(&mut children));
                         properties.push(property(ast, "children", children));
                         true
                     }

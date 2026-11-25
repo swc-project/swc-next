@@ -1,3 +1,5 @@
+use std::{iter, mem};
+
 use rustc_hash::FxHashMap;
 use swc_next_allocator::{
     hash_set::HashSet as ArenaHashSet,
@@ -20,7 +22,7 @@ pub(super) fn analyzer_and_collect_unresolved(
         scope: Scope::new(true, allocator),
         hoisted: allocator.vec(),
         symbols: ArenaIndexVec::from_iter_in(
-            std::iter::repeat_n(SymbolUsage::Unseen, resolver.symbol_count()),
+            iter::repeat_n(SymbolUsage::Unseen, resolver.symbol_count()),
             allocator,
         ),
         pattern: false,
@@ -71,13 +73,13 @@ impl AnalyzerAndCollector<'_, '_> {
     /// SWC hoisted declarations: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyzer/mod.rs#L117>.
     fn with_scope(&mut self, function: bool, op: impl FnOnce(&mut Self)) {
         let allocator = self.ast.allocator();
-        let parent = std::mem::replace(&mut self.scope, Scope::new(function, allocator));
-        let hoisted = std::mem::replace(&mut self.hoisted, allocator.vec());
+        let parent = mem::replace(&mut self.scope, Scope::new(function, allocator));
+        let hoisted = mem::replace(&mut self.hoisted, allocator.vec());
         let flags = (self.pattern, self.hoist);
         self.hoist = false;
         op(self);
-        let mut child = std::mem::replace(&mut self.scope, parent);
-        let child_hoisted = std::mem::replace(&mut self.hoisted, hoisted);
+        let mut child = mem::replace(&mut self.scope, parent);
+        let child_hoisted = mem::replace(&mut self.hoisted, hoisted);
         (self.pattern, self.hoist) = flags;
         for id in child_hoisted {
             child.add_usage(id);
@@ -179,7 +181,7 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L246>.
     fn visit_expr(&mut self, node: Expr) {
-        let pattern = std::mem::replace(&mut self.pattern, false);
+        let pattern = mem::replace(&mut self.pattern, false);
         node.visit_children_with(self);
         self.pattern = pattern;
     }
@@ -198,21 +200,21 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L113>.
     fn visit_assignment_target(&mut self, node: AssignmentTarget) {
-        let pattern = std::mem::replace(&mut self.pattern, false);
+        let pattern = mem::replace(&mut self.pattern, false);
         node.visit_children_with(self);
         self.pattern = pattern;
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L461>.
     fn visit_variable_declaration(&mut self, node: VariableDeclaration) {
-        let hoist = std::mem::replace(&mut self.hoist, node.kind(self.ast) == VariableKind::Var);
+        let hoist = mem::replace(&mut self.hoist, node.kind(self.ast) == VariableKind::Var);
         node.visit_children_with(self);
         self.hoist = hoist;
     }
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_base/src/rename/analyer_and_collector.rs#L470>.
     fn visit_variable_declarator(&mut self, node: VariableDeclarator) {
-        let pattern = std::mem::replace(&mut self.pattern, true);
+        let pattern = mem::replace(&mut self.pattern, true);
         node.id(self.ast).visit_with(self);
         self.pattern = false;
         node.init(self.ast).visit_with(self);
@@ -276,7 +278,7 @@ impl<'a> Visit<'a> for AnalyzerAndCollector<'_, 'a> {
     fn visit_arrow_function_expression(&mut self, node: ArrowFunctionExpression) {
         self.with_scope(true, |child| {
             node.params(child.ast).visit_with(child);
-            let pattern = std::mem::replace(&mut child.pattern, false);
+            let pattern = mem::replace(&mut child.pattern, false);
             node.body(child.ast).visit_with(child);
             child.pattern = pattern;
         });

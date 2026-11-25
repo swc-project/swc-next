@@ -1,3 +1,5 @@
+use std::iter;
+
 use swc_next_ecma_ast::*;
 
 use crate::common::build;
@@ -72,9 +74,7 @@ impl<'ast> VisitMut<'ast> for SpecialRefRewriter<'_, '_, 'ast> {
                     let require = cx.reference(require);
                     Some(amd::amd_dynamic_import(cx, span, source, require))
                 } else {
-                    let args = std::iter::once(source)
-                        .chain(import.options(cx.ast))
-                        .collect();
+                    let args = iter::once(source).chain(import.options(cx.ast)).collect();
                     Some(cjs_dynamic_import(cx, span, args, is_literal))
                 }
             }

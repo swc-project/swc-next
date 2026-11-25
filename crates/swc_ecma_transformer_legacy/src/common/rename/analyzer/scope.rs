@@ -1,4 +1,4 @@
-use std::{borrow::Cow, ops::Range};
+use std::{borrow::Cow, iter, mem, ops::Range};
 
 use rustc_hash::FxHashMap;
 use swc_next_allocator::{
@@ -116,10 +116,10 @@ impl<'ast> ScopeSymbolsBuilder<'ast> {
         Self {
             symbols: ArenaVec::with_capacity_in(symbol_count, allocator),
             last_scope_start: ArenaIndexVec::from_iter_in(
-                std::iter::repeat_n(usize::MAX, symbol_count),
+                iter::repeat_n(usize::MAX, symbol_count),
                 allocator,
             ),
-            counts: ArenaIndexVec::from_iter_in(std::iter::repeat_n(0, symbol_count), allocator),
+            counts: ArenaIndexVec::from_iter_in(iter::repeat_n(0, symbol_count), allocator),
         }
     }
 
@@ -145,9 +145,9 @@ impl<'ast> ScopeSymbolsBuilder<'ast> {
         // the exclusive end of each symbol's sorted positions.
         let mut start = 0;
         for count in &mut ends {
-            start += std::mem::replace(count, start);
+            start += mem::replace(count, start);
         }
-        let mut positions = ArenaVec::from_iter_in(std::iter::repeat_n(0, start), symbols.bump());
+        let mut positions = ArenaVec::from_iter_in(iter::repeat_n(0, start), symbols.bump());
         for (position, &symbol) in symbols.iter().enumerate() {
             positions[ends[symbol]] = position;
             ends[symbol] += 1;
@@ -193,10 +193,7 @@ impl<'ast> Assignments<'ast> {
     pub(in crate::common::rename) fn new(symbol_count: usize, allocator: &'ast Allocator) -> Self {
         Self {
             reverse: FxHashMap::default(),
-            assigned: ArenaIndexVec::from_iter_in(
-                std::iter::repeat_n(None, symbol_count),
-                allocator,
-            ),
+            assigned: ArenaIndexVec::from_iter_in(iter::repeat_n(None, symbol_count), allocator),
             renames: FxHashMap::default(),
         }
     }

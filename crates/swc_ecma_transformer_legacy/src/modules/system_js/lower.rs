@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use swc_next_ecma_ast::*;
 
 use crate::common::{build, resolver::context::Resolver};
@@ -199,11 +201,7 @@ fn namespace_ident_for(cx: &mut ModuleCtx<'_, '_>, source: &str) -> BindingIdent
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_module/src/system_js/lower.rs#L560>.
-fn compare_module_entries(
-    ast: &Ast<'_>,
-    a: ModuleRecordEntry,
-    b: ModuleRecordEntry,
-) -> std::cmp::Ordering {
+fn compare_module_entries(ast: &Ast<'_>, a: ModuleRecordEntry, b: ModuleRecordEntry) -> Ordering {
     module_entry_rank(a)
         .cmp(&module_entry_rank(b))
         .then_with(|| module_entry_sort_name(ast, a).cmp(module_entry_sort_name(ast, b)))

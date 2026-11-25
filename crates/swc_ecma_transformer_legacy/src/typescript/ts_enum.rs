@@ -1,5 +1,5 @@
 //! SWC's enum constant evaluator before #12455.
-use crate::common::resolver::context::Resolver;
+use crate::common::{build::number_string, resolver::context::Resolver};
 use rustc_hash::FxHashMap;
 use std::collections::{HashMap, HashSet};
 use swc_next_allocator::wtf8::{Wtf8, Wtf8Buf};
@@ -54,9 +54,7 @@ impl TsEnumRecordValue {
     fn push_to_string(&self, output: &mut Wtf8Buf) -> bool {
         match self {
             Self::String(value) => output.push_wtf8(value),
-            Self::Number { value, .. } => {
-                output.push_str(&crate::common::build::number_string(*value))
-            }
+            Self::Number { value, .. } => output.push_str(&number_string(*value)),
             _ => return false,
         }
         true

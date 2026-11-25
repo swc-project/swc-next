@@ -1,3 +1,5 @@
+use std::{iter, mem};
+
 use crate::common::{TraverseCtx, build as b};
 use swc_next_ecma_ast::*;
 
@@ -132,7 +134,7 @@ impl<'ast> VisitMut<'ast> for SuperFieldAccessFolder<'_, 'ast, '_> {
         None
     }
     fn visit_mut_binding_pattern(&mut self, node: BindingPattern) -> Option<BindingPattern> {
-        let old = std::mem::replace(&mut self.in_pattern, true);
+        let old = mem::replace(&mut self.in_pattern, true);
         let replacement = node.visit_mut_children_with(self);
         self.in_pattern = old;
         replacement
@@ -209,9 +211,7 @@ impl<'ast> VisitMut<'ast> for SuperFieldAccessFolder<'_, 'ast, '_> {
             } else {
                 (
                     b::member(self.ast, callee, "call"),
-                    std::iter::once(Argument::Expr(this))
-                        .chain(original)
-                        .collect(),
+                    iter::once(Argument::Expr(this)).chain(original).collect(),
                 )
             };
             let args = self.ast.add_sub_range(args);

@@ -49,7 +49,7 @@ impl PrivatePropertyInObjectPass {
     fn push_var(
         &mut self,
         ast: &mut Ast<'_>,
-        resolver: &mut crate::common::resolver::context::Resolver,
+        resolver: &mut Resolver,
         binding: BindingIdentifier,
         init: Option<Expr>,
     ) {

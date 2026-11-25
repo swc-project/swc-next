@@ -9,6 +9,8 @@ pub struct Config {
     pub pure_getter: bool,
 }
 
+use std::mem;
+
 use crate::common::{build, resolver::context::Resolver};
 use swc_next_ecma_ast::*;
 
@@ -264,7 +266,7 @@ impl OptionalChaining<'_, '_> {
     }
 
     fn declarations(&mut self) -> Stmt {
-        let vars = self.ast.add_sub_range(std::mem::take(&mut self.vars));
+        let vars = self.ast.add_sub_range(mem::take(&mut self.vars));
         Stmt::Declaration(Decl::VariableDeclaration(self.ast.variable_declaration(
             DUMMY_SP,
             VariableKind::Var,
@@ -275,7 +277,7 @@ impl OptionalChaining<'_, '_> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/optional_chaining_impl.rs#L101>.
     fn initializer(&mut self, expression: Expr) -> Expr {
-        let outer = std::mem::take(&mut self.vars);
+        let outer = mem::take(&mut self.vars);
         let expression = expression.visit_mut_with(self).unwrap_or(expression);
         let expression = if self.vars.is_empty() {
             expression
@@ -336,7 +338,7 @@ impl<'ast> VisitMut<'ast> for OptionalChaining<'_, 'ast> {
         expression.visit_mut_children_with(self)
     }
     fn visit_mut_stmts(&mut self, statements: SubRange<Stmt>) -> Option<SubRange<Stmt>> {
-        let outer = std::mem::take(&mut self.vars);
+        let outer = mem::take(&mut self.vars);
         let statements = statements
             .visit_mut_children_with(self)
             .unwrap_or(statements);

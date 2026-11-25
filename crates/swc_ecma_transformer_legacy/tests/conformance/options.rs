@@ -6,7 +6,7 @@ use swc_core::{
     ecma::{
         parser::Syntax,
         preset_env::{Caniuse, EnvConfig as SwcEnvConfig, Feature},
-        transforms::react::Runtime,
+        transforms::{base::assumptions::Assumptions, react::Runtime},
     },
 };
 use swc_next_ecma_ast::{Lang, SourceType};
@@ -14,7 +14,7 @@ use swc_next_ecma_codegen::Options as GeneratorOptions;
 use swc_next_ecma_parser::Options as ParserOptions;
 use swc_next_ecma_transformer_legacy::{
     TransformerOptions,
-    env::EnvOptions,
+    env::{EnvOptions, ModuleFeatures},
     es2016::ES2016Options,
     es2017::{AsyncToGeneratorOptions, ES2017Options},
     es2018::{ES2018Options, ObjectRestSpreadOptions},
@@ -23,7 +23,7 @@ use swc_next_ecma_transformer_legacy::{
     es2021::ES2021Options,
     es2022::{ClassFieldsUseSetOptions, ClassPropertiesOptions, ES2022Options},
     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
-    module::{ModuleType, ModulesOptions},
+    modules::{ModuleType, ModulesOptions},
     regexp::RegExpOptions,
     typescript::{JsxImportOptions, TsImportExportAssignConfig, TypeScriptOptions},
 };
@@ -105,7 +105,7 @@ fn convert(config: Config) -> Options {
     let transform = config.jsc.transform.as_ref().unwrap_or(&default_transform);
     let assumptions = config.jsc.assumptions.unwrap_or_else(|| {
         if config.jsc.loose.into_bool() {
-            swc_core::ecma::transforms::base::assumptions::Assumptions::all()
+            Assumptions::all()
         } else {
             Default::default()
         }
@@ -126,7 +126,7 @@ fn convert(config: Config) -> Options {
             },
         },
         env: EnvOptions {
-            module_features: swc_next_ecma_transformer_legacy::env::ModuleFeatures {
+            module_features: ModuleFeatures {
                 block_scoping: !enabled(Feature::BlockScoping),
                 arrow: !enabled(Feature::ArrowFunctions),
             },

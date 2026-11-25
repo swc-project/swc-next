@@ -1,9 +1,11 @@
-use crate::common::build as utils;
+use std::mem;
+
+use super::{build as utils, resolver::context::Resolver};
 use swc_next_ecma_ast::*;
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_utils/src/constructor.rs#L9>.
 pub(crate) fn inject_after_super(
     ast: &mut Ast<'_>,
-    resolver: &mut crate::common::resolver::context::Resolver,
+    resolver: &mut Resolver,
     body: FunctionBody,
     expressions: Vec<Expr>,
 ) {
@@ -36,7 +38,7 @@ pub(crate) fn inject_after_super(
 
 struct Injector<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
-    resolver: &'a mut crate::common::resolver::context::Resolver,
+    resolver: &'a mut Resolver,
     expressions: Vec<Expr>,
     ignore_return_value: bool,
     injected: bool,
@@ -61,7 +63,7 @@ impl<'ast> VisitMut<'ast> for Injector<'_, 'ast> {
         &mut self,
         statement: ExpressionStatement,
     ) -> Option<ExpressionStatement> {
-        let old = std::mem::replace(&mut self.ignore_return_value, true);
+        let old = mem::replace(&mut self.ignore_return_value, true);
         statement.visit_mut_children_with(self);
         self.ignore_return_value = old;
         None
@@ -122,7 +124,7 @@ impl<'ast> VisitMut<'ast> for Injector<'_, 'ast> {
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_utils/src/lib.rs#L1577>.
 pub(crate) fn default_constructor(
     ast: &mut Ast<'_>,
-    resolver: &mut crate::common::resolver::context::Resolver,
+    resolver: &mut Resolver,
     derived: bool,
 ) -> MethodDefinition {
     let params = utils::parameters(ast, []);

@@ -10,6 +10,8 @@ pub(crate) mod resolver;
 pub(crate) mod super_field;
 pub(crate) mod var_declarations;
 
+use std::collections::HashSet;
+
 use self::{resolver::context::Resolver, var_declarations::VarDeclarationsStore};
 use helpers::Helpers;
 use swc_next_ecma_ast::{Ast, BindingIdentifier, BindingPattern, DUMMY_SP, Expr, NodeId};
@@ -18,7 +20,7 @@ pub(crate) struct TraverseCtx<'a> {
     pub(crate) helpers: Helpers,
     pub(crate) resolver: &'a mut Resolver,
     pub(crate) var_declarations: VarDeclarationsStore,
-    pub(crate) static_blocks: std::collections::HashSet<NodeId>,
+    pub(crate) static_blocks: HashSet<NodeId>,
 }
 
 impl<'a> TraverseCtx<'a> {

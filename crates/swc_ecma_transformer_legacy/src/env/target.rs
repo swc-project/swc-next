@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, fmt, str::FromStr};
+use std::{collections::BTreeMap, error::Error, fmt, str::FromStr};
 
 use super::compat::Feature;
 
@@ -75,7 +75,7 @@ impl fmt::Display for TargetError {
     }
 }
 
-impl std::error::Error for TargetError {}
+impl Error for TargetError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(super) struct Version(pub u32, pub u32, pub u32);

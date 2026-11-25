@@ -2,12 +2,15 @@
 use super::{
     ImportsNotUsedAsValues, TsImportExportAssignConfig, TypeScriptOptions, retain,
     semantic::SemanticInfo,
-    ts_enum,
+    shared, ts_enum,
     ts_enum::{EnumMembers, EnumValueComputer, EvalCtx, TsEnumRecordValue},
     utils,
 };
 use crate::common::{constructor::inject_after_super, resolver::context::Resolver};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+};
 use swc_next_allocator::wtf8::Wtf8;
 use swc_next_ecma_ast::*;
 
@@ -74,7 +77,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             .map(|slot| self.ast.get_node_in_sub_range(slot))
             .collect();
         if self.ast.is_module() && !self.export_var_list.is_empty() {
-            let ids = std::mem::take(&mut self.export_var_list);
+            let ids = mem::take(&mut self.export_var_list);
             let declaration = self.variables(ids);
             body.push(utils::export(self.ast, declaration));
         }
@@ -99,7 +102,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
         statements: SubRange<Stmt>,
         module: bool,
     ) -> SubRange<Stmt> {
-        let saved = std::mem::take(&mut self.var_list);
+        let saved = mem::take(&mut self.var_list);
         // Nested statement lists append after the caller's statements and
         // drain their own suffix before returning.
         let start = self.statement_buffer.len();
@@ -116,7 +119,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                 self.statement_buffer.push(statement);
             }
         }
-        let variables = std::mem::replace(&mut self.var_list, saved);
+        let variables = mem::replace(&mut self.var_list, saved);
         if !variables.is_empty() {
             let declaration = self.variables(variables);
             self.statement_buffer.push(Stmt::Declaration(declaration));
@@ -306,7 +309,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             DeclData::VariableDeclaration(variable) => {
                 for slot in variable.declarators(self.ast).iter() {
                     let declarator = self.ast.get_node_in_sub_range(slot);
-                    let old = std::mem::replace(&mut self.rewrite, exported);
+                    let old = mem::replace(&mut self.rewrite, exported);
                     if self.options.flow_syntax {
                         self.convert_flow_component_arrow(declarator);
                     }
@@ -484,7 +487,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         &mut self,
         assignment: AssignmentExpression,
     ) -> Option<AssignmentExpression> {
-        let old = std::mem::replace(&mut self.is_lhs, true);
+        let old = mem::replace(&mut self.is_lhs, true);
         if let Some(left) = assignment.left(self.ast).visit_mut_with(self) {
             assignment.set_left(self.ast, left);
         }
@@ -500,7 +503,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         &mut self,
         update: UpdateExpression,
     ) -> Option<UpdateExpression> {
-        let old = std::mem::replace(&mut self.is_lhs, true);
+        let old = mem::replace(&mut self.is_lhs, true);
         update.visit_mut_children_with(self);
         self.is_lhs = old;
         None
@@ -510,7 +513,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         &mut self,
         member: MemberExpression,
     ) -> Option<MemberExpression> {
-        let old = std::mem::replace(&mut self.is_lhs, false);
+        let old = mem::replace(&mut self.is_lhs, false);
         member.visit_mut_children_with(self);
         self.is_lhs = old;
         None
@@ -520,7 +523,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         &mut self,
         assignment: AssignmentPattern,
     ) -> Option<AssignmentPattern> {
-        let old = std::mem::replace(&mut self.is_lhs, true);
+        let old = mem::replace(&mut self.is_lhs, true);
         if let Some(left) = assignment.left(self.ast).visit_mut_with(self) {
             assignment.set_left(self.ast, left);
         }
@@ -595,7 +598,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         }
         declarator.set_type_annotation(self.ast, None);
         declarator.set_definite(self.ast, false);
-        let old = std::mem::replace(&mut self.rewrite, false);
+        let old = mem::replace(&mut self.rewrite, false);
         if let Some(pattern) = declarator.id(self.ast).visit_mut_with(self) {
             declarator.set_id(self.ast, pattern);
         }
@@ -1149,7 +1152,7 @@ impl Transform<'_, '_> {
         let id = ids[0];
         let owner = self.namespace_id;
         let saved_namespace = self.namespace_id.replace(*ids.last().unwrap());
-        let saved_in_namespace = std::mem::replace(&mut self.in_namespace, true);
+        let saved_in_namespace = mem::replace(&mut self.in_namespace, true);
         let mut statements = match self.ast.ts_module_body_data(module.body(self.ast).unwrap()) {
             TsModuleBodyData::TsModuleBlock(block) => {
                 let body = self.visit_mut_stmts_impl(block.body(self.ast), true);
@@ -1351,7 +1354,7 @@ impl Transform<'_, '_> {
         let mut members = Vec::new();
         for slot in enumeration.body(self.ast).members(self.ast).iter() {
             let member = self.ast.get_node_in_sub_range(slot);
-            let name = super::shared::enum_member_name(self.ast, member.id(self.ast));
+            let name = shared::enum_member_name(self.ast, member.id(self.ast));
             let mut value = self
                 .semantic
                 .enum_record
@@ -1477,7 +1480,7 @@ impl Transform<'_, '_> {
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1900>.
 fn jsx_member(
     ast: &mut Ast<'_>,
-    resolver: &mut crate::common::resolver::context::Resolver,
+    resolver: &mut Resolver,
     owner: SymbolId,
     property: JsxIdentifier,
 ) -> JsxElementName {
@@ -1494,7 +1497,7 @@ fn jsx_member(
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1900>.
 fn rewrite_jsx_object(
     ast: &mut Ast<'_>,
-    resolver: &mut crate::common::resolver::context::Resolver,
+    resolver: &mut Resolver,
     semantic: &SemanticInfo<'_>,
     member: JsxMemberExpression,
 ) {
@@ -1523,7 +1526,7 @@ fn rewrite_jsx_object(
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L1915>.
 struct EnumMemberRefQuery<'a, 'ast> {
     ast: &'a mut Ast<'ast>,
-    resolver: &'a mut crate::common::resolver::context::Resolver,
+    resolver: &'a mut Resolver,
     enum_id: SymbolId,
     member_names: &'a EnumMembers<'ast>,
 }

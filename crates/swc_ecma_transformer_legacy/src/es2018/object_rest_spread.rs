@@ -10,7 +10,7 @@ pub struct Config {
 }
 
 use crate::common::{TraverseCtx, build};
-use std::collections::HashMap;
+use std::{collections::HashMap, mem};
 use swc_next_ecma_ast::*;
 
 pub(crate) struct ObjectRestSpreadPass {
@@ -270,7 +270,7 @@ impl<'ast> TraverseMut<'ast, TraverseCtx<'_>> for ObjectRestSpreadPass {
                 let property = ctx.ast.get_node_in_sub_range(slot);
                 if let Some(spread) = property.as_spread_element(ctx.ast) {
                     if first || !properties.is_empty() {
-                        let props = ctx.ast.add_sub_range(std::mem::take(&mut properties));
+                        let props = ctx.ast.add_sub_range(mem::take(&mut properties));
                         arguments.push(ctx.ast.expr_object_expression(DUMMY_SP, props));
                         if !first && !self.options.pure_getters {
                             let helper = ctx.state.helper(ctx.ast, "object_spread_props");

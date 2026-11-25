@@ -16,11 +16,14 @@ pub struct Config {
     pub pure_getter: bool,
 }
 
-use crate::common::{TraverseCtx, build as b, constructor, super_field::SuperFieldAccessFolder};
+use crate::common::{
+    TraverseCtx, build as b, constructor, resolver::context::Resolver,
+    super_field::SuperFieldAccessFolder,
+};
 use class_name_tdz::ClassNameTdzFolder;
 use member_init::{MemberInit, MemberInitRecord, PrivAccessor, PrivMethod, PrivProp, PubProp};
 use private_field::{Private, PrivateKind, PrivateRecord};
-use std::collections::HashMap;
+use std::{collections::HashMap, mem};
 use swc_next_ecma_ast::*;
 use this_in_static::{NewTargetInProp, ThisInStaticFolder};
 use used_name::UsedNameCollector;
@@ -488,7 +491,7 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/mod.rs#L338>.
     fn visit_mut_stmt_like(&mut self, body: SubRange<Stmt>) -> SubRange<Stmt> {
-        let old = std::mem::take(&mut self.extra);
+        let old = mem::take(&mut self.extra);
         let mut output = Vec::new();
         for slot in body.iter() {
             let statement = self.ast.get_node_in_sub_range(slot);
@@ -549,7 +552,7 @@ impl<'ast, 'r> ClassProperties<'_, 'ast, 'r> {
                 extra.merge_with(self.ast, &mut output, statement);
             }
         }
-        let extra = std::mem::replace(&mut self.extra, old);
+        let extra = mem::replace(&mut self.extra, old);
         let mut prefix = Vec::new();
         if !extra.lets.is_empty() {
             prefix.push(b::declaration(self.ast, VariableKind::Let, extra.lets));
@@ -706,14 +709,14 @@ fn contains_super<'a, 'ast>(ast: &'a Ast<'ast>, key: PropertyKey) -> bool {
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_compat_es2022/src/class_properties/mod.rs#L267>.
 fn replace_class(
     ast: &mut Ast<'_>,
-    resolver: &mut crate::common::resolver::context::Resolver,
+    resolver: &mut Resolver,
     statement: Stmt,
     original: BindingIdentifier,
     replacement: BindingIdentifier,
 ) {
     struct Replacer<'a, 'ast> {
         ast: &'a mut Ast<'ast>,
-        resolver: &'a mut crate::common::resolver::context::Resolver,
+        resolver: &'a mut Resolver,
         original: BindingIdentifier,
         replacement: BindingIdentifier,
     }

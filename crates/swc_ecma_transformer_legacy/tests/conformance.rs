@@ -1,8 +1,10 @@
 use std::{
     fmt::Write,
     fs,
+    io::ErrorKind,
     panic::{AssertUnwindSafe, catch_unwind},
     path::{Path, PathBuf},
+    thread,
 };
 
 use jwalk::WalkDir;
@@ -61,7 +63,7 @@ fn check_diagnostics(diagnostics: &[Diagnostic]) -> Result<(), String> {
 fn check_transform_diagnostics(output: &Path, diagnostics: &[Diagnostic]) -> Result<(), String> {
     let stderr = match fs::read_to_string(output.with_added_extension("stderr")) {
         Ok(stderr) => stderr,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+        Err(error) if error.kind() == ErrorKind::NotFound => {
             return check_diagnostics(diagnostics);
         }
         Err(error) => return Err(format!("diagnostic snapshot: {error}")),
@@ -128,7 +130,7 @@ fn run(input: &Path, output: &Path, root: &Path) -> Result<bool, String> {
 #[test]
 #[ignore = "requires pinned SWC fixtures; run with --ignored"]
 fn swc() {
-    std::thread::Builder::new()
+    thread::Builder::new()
         .stack_size(32 * 1024 * 1024)
         .spawn(run_suite)
         .unwrap()

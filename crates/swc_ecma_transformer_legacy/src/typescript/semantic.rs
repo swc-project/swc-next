@@ -1,11 +1,14 @@
 //! SWC's usage, export, enum and namespace-alias collection before #12455.
 use super::{
-    TypeScriptOptions, retain,
+    TypeScriptOptions, retain, shared,
     ts_enum::{EnumValueComputer, EvalCtx, TsEnumRecord, TsEnumRecordValue},
     utils,
 };
 use crate::common::resolver::context::Resolver;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+};
 use swc_next_allocator::IndexVec;
 use swc_next_ecma_ast::*;
 
@@ -335,8 +338,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         if type_only {
             return;
         }
-        let Some(root) =
-            super::shared::get_module_ident(self.ast, import.module_reference(self.ast))
+        let Some(root) = shared::get_module_ident(self.ast, import.module_reference(self.ast))
         else {
             return;
         };
@@ -362,7 +364,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L463>.
     fn visit_export_named_declaration(&mut self, export: ExportNamedDeclaration) {
         if let Some(declaration) = export.declaration(self.ast) {
-            let exported = std::mem::replace(&mut self.exported, true);
+            let exported = mem::replace(&mut self.exported, true);
             declaration.visit_with(self);
             self.exported = exported;
             if self.skip_transform_info {
@@ -427,7 +429,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         {
             self.namespace_id = Some(self.resolver.symbol_of(node));
         }
-        let exported = std::mem::take(&mut self.exported);
+        let exported = mem::take(&mut self.exported);
         module.body(self.ast).visit_with(self);
         self.exported = exported;
         self.namespace_id = old;
@@ -495,7 +497,7 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         };
         for slot in enumeration.body(self.ast).members(self.ast).iter() {
             let member = self.ast.get_node_in_sub_range(slot);
-            let name = super::shared::enum_member_name(self.ast, member.id(self.ast));
+            let name = shared::enum_member_name(self.ast, member.id(self.ast));
             let value = if let Some(init) = member.initializer(self.ast) {
                 self.compute(
                     init,

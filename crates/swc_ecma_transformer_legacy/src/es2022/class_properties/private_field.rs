@@ -1,6 +1,10 @@
 use super::Config;
-use crate::common::{TraverseCtx, build as b};
-use std::collections::HashMap;
+use crate::{
+    common::{TraverseCtx, build as b},
+    es2020::OptionalChainingOptions,
+    es2022::optional_chaining_impl,
+};
+use std::{collections::HashMap, mem};
 use swc_next_ecma_ast::*;
 
 #[derive(Clone, Copy, Default)]
@@ -261,11 +265,11 @@ impl PrivateAccessVisitor<'_, '_, '_> {
         let private = terminal_member
             .is_some_and(|member| b::private_name(self.ast, member.property(self.ast)).is_some());
         if private {
-            let options = crate::es2020::OptionalChainingOptions {
+            let options = OptionalChainingOptions {
                 no_document_all: self.options.no_document_all,
                 pure_getter: self.options.pure_getter,
             };
-            let (expression, vars) = crate::es2022::optional_chaining_impl::expression(
+            let (expression, vars) = optional_chaining_impl::expression(
                 self.ast,
                 self.ctx.resolver,
                 options,
@@ -298,10 +302,10 @@ impl<'ast> VisitMut<'ast> for PrivateAccessVisitor<'_, 'ast, '_> {
         self.ast
     }
     fn visit_mut_function(&mut self, node: Function) -> Option<Function> {
-        let old = std::mem::take(&mut self.vars);
+        let old = mem::take(&mut self.vars);
         node.visit_mut_children_with(self);
         if !self.vars.is_empty() {
-            let decl = b::declaration(self.ast, VariableKind::Var, std::mem::take(&mut self.vars));
+            let decl = b::declaration(self.ast, VariableKind::Var, mem::take(&mut self.vars));
             let body = node.body(self.ast);
             let stmts = b::prepend_stmts(self.ast, [decl], body.body(self.ast));
             body.set_body(self.ast, stmts);

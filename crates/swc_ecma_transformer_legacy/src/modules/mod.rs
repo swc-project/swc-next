@@ -13,9 +13,14 @@ mod top_level_this;
 mod umd;
 mod util;
 
-use swc_next_ecma_ast::*;
+use swc_next_ecma_ast::Ast;
 
 use crate::common::TraverseCtx;
+
+use self::{
+    amd::amd, common_js::common_js, import_analysis::import_analyzer, system_js::system_js,
+    top_level_this::top_level_this, umd::umd, util::ModuleCtx,
+};
 
 /// Selects how ECMAScript modules are emitted.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -45,25 +50,25 @@ pub(crate) fn finish(
 ) {
     let lower = format != ModuleType::Preserve && ast.is_module();
     if lower && format != ModuleType::SystemJs {
-        import_analysis::import_analyzer(ast, ctx, format);
+        import_analyzer(ast, ctx, format);
     }
     ctx.helpers.inject_helpers(ast, ctx.resolver);
     if !lower {
         return;
     }
 
-    top_level_this::top_level_this(ast);
-    let mut cx = util::ModuleCtx {
+    top_level_this(ast);
+    let mut cx = ModuleCtx {
         ast,
         resolver: ctx.resolver,
         helpers: &mut ctx.helpers,
         features,
     };
     match format {
-        ModuleType::CommonJs => common_js::common_js(&mut cx),
-        ModuleType::Amd => amd::amd(&mut cx),
-        ModuleType::Umd => umd::umd(&mut cx, filename),
-        ModuleType::SystemJs => system_js::system_js(&mut cx),
+        ModuleType::CommonJs => common_js(&mut cx),
+        ModuleType::Amd => amd(&mut cx),
+        ModuleType::Umd => umd(&mut cx, filename),
+        ModuleType::SystemJs => system_js(&mut cx),
         ModuleType::Preserve => unreachable!(),
     }
 }

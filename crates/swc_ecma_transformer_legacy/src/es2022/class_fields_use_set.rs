@@ -1,3 +1,5 @@
+use std::{iter, mem};
+
 use crate::common::{build as b, constructor, resolver::context::Resolver};
 use swc_next_ecma_ast::*;
 
@@ -42,7 +44,7 @@ impl ClassFieldsUseSet<'_, '_> {
                 statements.push(b::declaration(
                     computed.ast,
                     VariableKind::Let,
-                    std::mem::take(&mut computed.var_decls),
+                    mem::take(&mut computed.var_decls),
                 ));
             }
             // Reborrow after the computed-key pass, matching SWC's two visitors.
@@ -204,9 +206,9 @@ impl<'ast> VisitMut<'ast> for ComputedFieldsHandler<'_, 'ast> {
         if !self.static_init_blocks.is_empty() {
             let statements = self
                 .ast
-                .add_sub_range(std::mem::take(&mut self.static_init_blocks));
+                .add_sub_range(mem::take(&mut self.static_init_blocks));
             let block = ClassElement::StaticBlock(self.ast.static_block(DUMMY_SP, statements));
-            let body: Vec<_> = std::iter::once(block)
+            let body: Vec<_> = iter::once(block)
                 .chain(
                     node.body(self.ast)
                         .iter()

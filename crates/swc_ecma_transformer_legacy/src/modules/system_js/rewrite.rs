@@ -1,3 +1,5 @@
+use std::iter;
+
 use swc_next_ecma_ast::*;
 
 use crate::common::build;
@@ -85,7 +87,7 @@ impl<'ast> VisitMut<'ast> for SpecialRefRewriter<'_, '_, 'ast> {
             {
                 import.visit_mut_children_with(self);
                 let source = import.source(self.cx.ast);
-                let args: Vec<_> = std::iter::once(source)
+                let args: Vec<_> = iter::once(source)
                     .chain(import.options(self.cx.ast))
                     .collect();
                 let callee = self.context_member("import");

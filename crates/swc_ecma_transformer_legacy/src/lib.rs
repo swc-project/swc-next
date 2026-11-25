@@ -23,7 +23,7 @@
 //!     es2021::ES2021Options,
 //!     es2022::{ClassPropertiesOptions, ES2022Options},
 //!     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
-//!     module::{ModuleType, ModulesOptions},
+//!     modules::{ModuleType, ModulesOptions},
 //!     regexp::RegExpOptions,
 //!     typescript::{TsImportExportAssignConfig, TypeScriptOptions},
 //! };
@@ -75,7 +75,20 @@ use swc_next_ecma_ast::{
 
 use self::{
     common::{TraverseCtx, resolver::context::Resolver, var_declarations::VarDeclarations},
-    es2022::private_property_in_object::PrivatePropertyInObjectPass,
+    es2016::exponentiation_operator::ExponentiationOperatorPass,
+    es2017::async_to_generator,
+    es2018::object_rest_spread::ObjectRestSpreadPass,
+    es2019::optional_catch_binding,
+    es2020::{export_namespace_from, nullish_coalescing::NullishCoalescingPass},
+    es2021::logical_assignment_operators::LogicalAssignmentOperatorsPass,
+    es2022::{
+        class_fields_use_set::class_fields_use_set, class_properties::class_properties,
+        class_static_block, optional_chaining_impl::optional_chaining_impl,
+        private_property_in_object::PrivatePropertyInObjectPass,
+    },
+    jsx::JsxRuntime,
+    modules::{ModuleType, ModulesOptions},
+    typescript::TsImportExportAssignConfig,
 };
 
 pub mod env;
@@ -87,7 +100,7 @@ pub mod es2020;
 pub mod es2021;
 pub mod es2022;
 pub mod jsx;
-pub mod module;
+pub mod modules;
 pub mod regexp;
 pub mod typescript;
 
@@ -115,7 +128,7 @@ pub struct TransformerOptions {
     /// TypeScript stripping/lowering and JSX import-retention options.
     pub typescript: Option<typescript::TypeScriptOptions>,
     /// Module output format. Defaults to preserving ECMAScript modules.
-    pub modules: module::ModulesOptions,
+    pub modules: ModulesOptions,
 }
 
 /// Diagnostics produced while transforming an AST in place.
@@ -167,9 +180,8 @@ impl Transformer {
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
         if let Some(mut typescript) = options.typescript {
-            if options.modules.r#type != module::ModuleType::Preserve && ast.is_module() {
-                typescript.import_export_assign_config =
-                    typescript::TsImportExportAssignConfig::Preserve;
+            if options.modules.r#type != ModuleType::Preserve && ast.is_module() {
+                typescript.import_export_assign_config = TsImportExportAssignConfig::Preserve;
             }
             diagnostics.extend(typescript::typescript(
                 ast,
@@ -185,7 +197,7 @@ impl Transformer {
                 options.filename.as_deref(),
                 &mut resolver,
             ));
-            if jsx.runtime != Some(jsx::JsxRuntime::Preserve)
+            if jsx.runtime != Some(JsxRuntime::Preserve)
                 && jsx.development == Some(true)
                 && jsx.refresh.is_some()
             {
@@ -198,21 +210,13 @@ impl Transformer {
         let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
         let program = context.ast.root_program();
         if let Some(options) = options.env.es2022.class_fields_use_set {
-            crate::es2022::class_fields_use_set::class_fields_use_set(
-                context.ast,
-                context.state.resolver,
-                options,
-            );
+            class_fields_use_set(context.ast, context.state.resolver, options);
         }
         if options.env.es2022.static_blocks {
-            crate::es2022::class_static_block::pass(context.ast, &mut context.state.static_blocks);
+            class_static_block::pass(context.ast, &mut context.state.static_blocks);
         }
         if let Some(options) = options.env.es2022.class_properties {
-            diagnostics.extend(crate::es2022::class_properties::class_properties(
-                context.ast,
-                &mut context.state,
-                options,
-            ));
+            diagnostics.extend(class_properties(context.ast, &mut context.state, options));
         }
         if options.env.es2022.private_in_object {
             let _ = program.traverse_mut_with(
@@ -224,36 +228,24 @@ impl Transformer {
             );
         }
         if options.env.es2021.logical_assignments {
-            hook_pass_with_var_declarations(
-                program,
-                crate::es2021::logical_assignment_operators::LogicalAssignmentOperatorsPass,
-                &mut context,
-            );
+            hook_pass_with_var_declarations(program, LogicalAssignmentOperatorsPass, &mut context);
         }
         if let Some(options) = options.env.es2020.optional_chaining {
-            crate::es2022::optional_chaining_impl::optional_chaining_impl(
-                context.ast,
-                context.state.resolver,
-                options,
-            );
+            optional_chaining_impl(context.ast, context.state.resolver, options);
         }
         if options.env.es2020.export_namespace_from {
-            crate::es2020::export_namespace_from::pass(context.ast, context.state.resolver);
+            export_namespace_from::pass(context.ast, context.state.resolver);
         }
         if let Some(options) = options.env.es2020.nullish_coalescing {
-            hook_pass_with_var_declarations(
-                program,
-                crate::es2020::nullish_coalescing::NullishCoalescingPass(options),
-                &mut context,
-            );
+            hook_pass_with_var_declarations(program, NullishCoalescingPass(options), &mut context);
         }
         if options.env.es2019.optional_catch_binding {
-            crate::es2019::optional_catch_binding::pass(context.ast, context.state.resolver);
+            optional_catch_binding::pass(context.ast, context.state.resolver);
         }
         if let Some(options) = options.env.es2018.object_rest_spread {
             hook_pass_with_var_declarations(
                 program,
-                crate::es2018::object_rest_spread::ObjectRestSpreadPass::new(options),
+                ObjectRestSpreadPass::new(options),
                 &mut context,
             );
         }
@@ -262,21 +254,13 @@ impl Transformer {
             .async_to_generator
             .or(es2017.async_generator_functions)
         {
-            crate::es2017::async_to_generator::pass(
-                &mut context,
-                es2017.async_to_generator.is_some(),
-                options,
-            );
+            async_to_generator::pass(&mut context, es2017.async_to_generator.is_some(), options);
         }
         if options.env.es2016.exponentiation {
-            hook_pass_with_var_declarations(
-                program,
-                crate::es2016::exponentiation_operator::ExponentiationOperatorPass,
-                &mut context,
-            );
+            hook_pass_with_var_declarations(program, ExponentiationOperatorPass, &mut context);
         }
-        crate::regexp::pass(context.ast, context.state.resolver, options.env.regexp);
-        module::finish(
+        regexp::pass(context.ast, context.state.resolver, options.env.regexp);
+        modules::finish(
             context.ast,
             &mut context.state,
             options.modules.r#type,

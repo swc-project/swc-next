@@ -1,3 +1,5 @@
+use std::mem;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 use swc_next_ecma_ast::*;
 
@@ -26,7 +28,7 @@ pub(super) fn emit(
     let export_inits = emit_export_inits(cx, &module, export);
 
     let mut body = Vec::new();
-    emit_var_decl(cx, &mut body, std::mem::take(&mut module.wrapper_vars));
+    emit_var_decl(cx, &mut body, mem::take(&mut module.wrapper_vars));
     emit_export_setters(cx, &mut body, &module, export);
     body.extend(
         module
@@ -36,7 +38,7 @@ pub(super) fn emit(
     );
     body.extend(export_inits);
 
-    let execute = std::mem::take(&mut module.execute_stmts)
+    let execute = mem::take(&mut module.execute_stmts)
         .into_iter()
         .map(|stmt| emit_execute_stmt(cx, &module, stmt, export))
         .collect();

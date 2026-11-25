@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use swc_next_ecma_ast::*;
 
 use crate::common::{build, helpers::Helpers, resolver::context::Resolver};
@@ -261,10 +263,7 @@ pub(super) fn meta_member(ast: &Ast<'_>, member: MemberExpression) -> bool {
         })
 }
 
-pub(super) fn member_name<'a>(
-    ast: &Ast<'a>,
-    member: MemberExpression,
-) -> Option<std::borrow::Cow<'a, str>> {
+pub(super) fn member_name<'a>(ast: &Ast<'a>, member: MemberExpression) -> Option<Cow<'a, str>> {
     let property = member.property(ast);
     if let Some(id) = property.as_identifier_name(ast) {
         return Some(ast.get_utf8(id.name(ast)).into());
