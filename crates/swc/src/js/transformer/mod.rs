@@ -1,15 +1,20 @@
 use std::collections::BTreeMap;
 
+#[cfg(any(feature = "js_transformer_v1", feature = "js_transformer_v2"))]
 use swc_next_ecma_ast::{Diagnostic, Severity};
 
 use crate::BoolOr;
 
-#[cfg(feature = "bridge")]
+#[cfg(all(feature = "bridge"))]
 pub mod bridge;
+#[cfg(feature = "js_transformer_v1")]
 mod v1;
+#[cfg(feature = "js_transformer_v2")]
 mod v2;
 
-pub use v1::transform_js;
+#[cfg(feature = "js_transformer_v1")]
+pub use v1::transform_js as transform_js_v1;
+#[cfg(feature = "js_transformer_v2")]
 #[doc(hidden)]
 pub use v2::transform_js as transform_js_v2;
 
@@ -262,6 +267,7 @@ pub struct JsAssumptions {
     pub super_is_callable_constructor: Option<bool>,
 }
 
+#[cfg(any(feature = "js_transformer_v1", feature = "js_transformer_v2"))]
 pub(super) fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Option<U> {
     match options {
         None | Some(BoolOr::Bool(false)) => None,
@@ -270,6 +276,7 @@ pub(super) fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>
     }
 }
 
+#[cfg(any(feature = "js_transformer_v1", feature = "js_transformer_v2"))]
 pub(super) fn has_errors(diagnostics: &[Diagnostic]) -> bool {
     diagnostics
         .iter()

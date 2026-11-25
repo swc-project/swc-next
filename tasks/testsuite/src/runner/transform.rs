@@ -2,7 +2,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use swc_next::js::{
     CommentsOption, JsOutput, JsTransformApiOptions,
-    transformer::{transform_js, transform_js_v2},
+    transformer::{transform_js_v1, transform_js_v2},
 };
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity};
@@ -20,7 +20,7 @@ impl<C: TransformCase> Runner<C> for TransformerV1Runner {
     const NAME: &'static str = "transform_v1";
 
     fn run(case: &C) -> TestResult {
-        run_with(case, transform_js::<true>)
+        run_with(case, transform_js_v1::<true>)
     }
 }
 

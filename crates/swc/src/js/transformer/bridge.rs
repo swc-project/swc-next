@@ -11,7 +11,11 @@
 use swc_next_bridge::{BridgeDecode, BridgeDecodeOptional, bridge};
 use swc_next_ecma_ast::ffi::ast::{diagnostics_buffer_size, serialize_diagnostics};
 
-use super::transform_js;
+#[cfg(feature = "js_transformer_v1")]
+use super::transform_js_v1 as transform_js;
+#[cfg(all(not(feature = "js_transformer_v1"), feature = "js_transformer_v2"))]
+use super::transform_js_v2 as transform_js;
+
 use crate::js::{
     CommentsOption, JsOutput, JsTransformApiOptions, bridge::Diagnostic,
     generator::JsGeneratorConfig, parser::JsParserConfig,

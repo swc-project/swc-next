@@ -17,8 +17,8 @@ use crate::{
 };
 
 use super::{
-    JsAssumptions, JsFeature, JsReactRefreshConfig, JsTransformerConfig, JsTypeScriptConfig,
-    JsxConfig, JsxRuntime, enabled_options, has_errors, v1::resolve_env,
+    JsAssumptions, JsFeature, JsReactRefreshConfig, JsTarget, JsTransformerConfig,
+    JsTypeScriptConfig, JsxConfig, JsxRuntime, enabled_options, has_errors,
 };
 
 pub(super) fn to_options(
@@ -26,10 +26,17 @@ pub(super) fn to_options(
     filename: Option<String>,
 ) -> Result<TransformerOptions, Diagnostic> {
     let mut defaults = TransformerOptions::default();
-    if config.target.is_some() {
-        let env = resolve_env(config.target.as_ref(), None)?;
-        defaults.es2022.static_blocks = env.es2022.static_blocks;
-        defaults.es2019.optional_catch_binding = env.es2019.optional_catch_binding;
+    if let Some(JsTarget::Query(query)) = config.target.as_ref() {
+        match query.as_str() {
+            "es2015" | "es2016" | "es2017" | "es2018" => {
+                defaults.es2019.optional_catch_binding = true;
+                defaults.es2022.static_blocks = true;
+            }
+            "es2019" | "es2020" | "es2021" => {
+                defaults.es2022.static_blocks = true;
+            }
+            _ => {}
+        }
     }
     if let Some(features) = config.features {
         for (feature, enabled) in features {

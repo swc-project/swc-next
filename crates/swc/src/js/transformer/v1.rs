@@ -32,7 +32,7 @@ fn target_diagnostic(error: swc_next_ecma_transformer_v1::env::TargetError) -> D
     diagnostic
 }
 
-pub(super) fn resolve_env(
+fn resolve_env(
     target: Option<&JsTarget>,
     features: Option<&BTreeMap<JsFeature, bool>>,
 ) -> Result<EnvOptions, Diagnostic> {

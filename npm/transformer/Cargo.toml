@@ -12,7 +12,7 @@ version               = "0.8.1"
 crate-type = ["cdylib"]
 
 [dependencies]
-swc_next          = { workspace = true, features = ["bridge", "js_transformer"] }
+swc_next          = { workspace = true, features = ["bridge", "js_transformer_v1"] }
 swc_next_bridge   = { workspace = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
