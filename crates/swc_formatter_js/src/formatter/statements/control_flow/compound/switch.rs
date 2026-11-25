@@ -4,7 +4,7 @@ use super::{CompoundBlock, CompoundGap, Formatter, GapLayout};
 use crate::formatter::comments::{
     CommentCursor, CommentRunLayout, NodeHead, PreparedCommentAdjacency,
 };
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::{
     ExpressionContext, ExpressionPosition, StringStatement, TailOwner,
 };
@@ -42,6 +42,7 @@ struct PreparedCase<'ast> {
 
 struct CaseGap<'ast> {
     source: CompoundGap<'ast>,
+    following_line: Option<LineConstraint>,
     blank_after: bool,
 }
 
@@ -274,9 +275,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         self.format_verbatim(current.node.span(ast), writer)?;
                         PreparedCommentAdjacency::default()
                     } else {
-                        self.format_case(current, writer)?
+                        self.format_case(current, &gap, writer)?
                     };
-                    self.format_case_gap(gap, pending.is_some(), adjacency, writer)?;
+                    self.format_case_gap(gap, adjacency, writer)?;
                     if pending.is_none() {
                         return Ok::<_, FormatError>(trailing);
                     }
@@ -307,6 +308,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .map_or(source.span.start, |comment| comment.span.end);
         CaseGap {
             source,
+            following_line: following.then(|| self.line_constraint(start, source.span.end)),
             blank_after: following && self.next_line_is_empty(start, source.span.end),
         }
     }
@@ -314,11 +316,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_case_gap(
         &mut self,
         gap: CaseGap<'ast>,
-        following: bool,
         adjacency: PreparedCommentAdjacency,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let source = gap.source;
+        let following = gap.following_line.is_some();
         if source.has_suppression() {
             if !following {
                 self.format_delimited_source_gap(source.span, DelimitedFollowing::End, writer)?;
@@ -380,21 +382,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             return Ok(());
         }
-        if following {
-            let end = source
-                .comments
-                .last()
-                .map_or(source.span.start, |comment| comment.span.end);
-            self.line_constraint(end, source.span.end).write(
-                writer,
-                FlatSeparator::Space,
-                |writer| {
+        if let Some(line) = gap.following_line {
+            line.write(writer, FlatSeparator::Space, |writer| {
+                writer.hard_line();
+                if gap.blank_after {
                     writer.hard_line();
-                    if gap.blank_after {
-                        writer.hard_line();
-                    }
-                },
-            );
+                }
+            });
         }
         Ok(())
     }
@@ -670,6 +664,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_case(
         &mut self,
         node: PreparedCase<'ast>,
+        following_gap: &CaseGap<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<PreparedCommentAdjacency, FormatError> {
         let ast = self.ast;
@@ -790,9 +785,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let terminator = if (node.trailing.has_suppression()
             && node.following_mode == ContentMode::Verbatim
             && self.line_breaks(node.trailing.span.start, node.trailing.span.end) == 0)
-            || node.has_following
-                && self.line_constraint(node.trailing.span.start, node.trailing.span.end)
-                    == crate::formatter::diagnostics::LineConstraint::SameLine
+            || following_gap.following_line == Some(LineConstraint::SameLine)
         {
             statements.last().and_then(|id| {
                 self.statement_source_terminator(ast.get_node_in_sub_range(id).span(ast))
