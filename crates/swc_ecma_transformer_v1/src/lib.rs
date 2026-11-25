@@ -66,6 +66,7 @@
 //!         import_export_assign_config: TsImportExportAssignConfig::EsNext,
 //!         ..Default::default()
 //!     }),
+//!     ..Default::default()
 //! };
 //! ```
 
@@ -76,6 +77,7 @@ use self::{
     modules::ModulesOptions,
 };
 
+pub mod decorators;
 pub mod env;
 pub mod es2016;
 pub mod es2017;
@@ -106,6 +108,8 @@ pub enum BoolOr<T> {
 pub struct TransformerOptions {
     /// Source filename for transforms such as JSX development metadata.
     pub filename: Option<String>,
+    /// Decorator transform options.
+    pub decorators: Option<decorators::DecoratorOptions>,
     /// Resolved ECMAScript and RegExp transform selections.
     pub env: env::EnvOptions,
     /// SWC's React preset options, including JSX and React Refresh.
@@ -164,25 +168,28 @@ impl Transformer {
         let ast = unsafe { ast.ast_mut() };
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
+        let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
+        if let Some(decorators) = options.decorators {
+            decorators::transform(context.ast, &mut context.state, decorators);
+        }
         if let Some(typescript) = options.typescript {
             diagnostics.extend(typescript::typescript(
-                ast,
+                context.ast,
                 typescript,
                 options.jsx.is_some(),
                 options.modules.r#type,
-                &mut resolver,
+                context.state.resolver,
             ));
         }
         if let Some(jsx) = &options.jsx {
             diagnostics.extend(jsx::transform(
-                ast,
+                context.ast,
                 jsx,
                 options.filename.as_deref(),
-                &mut resolver,
+                context.state.resolver,
             ));
         }
 
-        let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
         diagnostics.extend(es2022::transform(&mut context, options.env.es2022));
         es2021::transform(&mut context, options.env.es2021);
         es2020::transform(&mut context, options.env.es2020);

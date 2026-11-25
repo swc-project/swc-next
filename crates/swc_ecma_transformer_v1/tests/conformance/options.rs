@@ -2,7 +2,9 @@ use std::{fs, path::Path};
 
 use jsonc_parser::{ParseOptions, parse_to_serde_value};
 use swc_core::{
-    base::config::{Config, IsModule, ModuleConfig, OutputCharset, Rc, TransformConfig},
+    base::config::{
+        Config, IsModule, ModuleConfig, OutputCharset, Rc, TransformConfig,
+    },
     ecma::{
         parser::Syntax,
         preset_env::{Caniuse, EnvConfig as SwcEnvConfig, Feature},
@@ -14,6 +16,7 @@ use swc_next_ecma_codegen::Options as GeneratorOptions;
 use swc_next_ecma_parser::Options as ParserOptions;
 use swc_next_ecma_transformer_v1::{
     TransformerOptions,
+    decorators::{DecoratorOptions, DecoratorVersion},
     env::{EnvOptions, ModuleFeatures},
     es2016::ES2016Options,
     es2017::{AsyncToGeneratorOptions, ES2017Options},
@@ -198,13 +201,32 @@ fn convert(config: Config) -> Options {
         },
         ..Default::default()
     };
-    let lang = match config.jsc.syntax.unwrap_or_default() {
+    let syntax = config.jsc.syntax.unwrap_or_default();
+    let lang = match syntax {
         Syntax::Typescript(parser) if parser.dts => Lang::Dts,
         Syntax::Typescript(parser) if parser.tsx => Lang::Tsx,
         Syntax::Typescript(_) => Lang::Ts,
         Syntax::Es(parser) if parser.jsx => Lang::Jsx,
         _ => Lang::Js,
     };
+    if syntax.decorators() && !disable_builtin_transforms {
+        let version = transform
+            .decorator_version
+            .map(|version| format!("{version:?}"));
+        options.decorators = match version.as_deref() {
+            None | Some("V202112") if transform.legacy_decorator.into_bool() => {
+                Some(DecoratorOptions {
+                    version: DecoratorVersion::Legacy,
+                    metadata: transform.decorator_metadata.into_bool(),
+                })
+            }
+            Some("V202311") => Some(DecoratorOptions {
+                version: DecoratorVersion::V2023_11,
+                metadata: false,
+            }),
+            _ => None,
+        };
+    }
     let react = &transform.react;
     let jsx_enabled =
         !disable_builtin_transforms && lang.is_jsx() && react.runtime != Some(Runtime::Preserve);

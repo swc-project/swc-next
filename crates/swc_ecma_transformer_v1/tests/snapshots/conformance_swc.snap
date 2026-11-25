@@ -4,8 +4,8 @@ source: crates/swc_ecma_transformer_v1/tests/conformance.rs
 transform_v1 * swc
 ========================
 Total: 2089
-Passed: 949
-Failed: 1129
+Passed: 959
+Failed: 1119
 Panicked: 0
 Skipped: 11
 Failed: codegen/comment-1/es5/input/index.tsx - transformed output differs from SWC snapshot
@@ -1001,8 +1001,6 @@ Failed: typescript/regressions/issues-1xxx/1454/case1/input/index.ts - transform
 Failed: typescript/regressions/issues-1xxx/1454/case2/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1454/case3/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1455/case2/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-1xxx/1456/case1/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-1xxx/1456/case2/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1479/case-es5/input/index.tsx - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1505/case1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1505/case2/input/index.ts - transformed output differs from SWC snapshot
@@ -1010,7 +1008,6 @@ Failed: typescript/regressions/issues-1xxx/1505/case3/input/index.tsx - transfor
 Failed: typescript/regressions/issues-1xxx/1505/case4/input/index.tsx - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1505/case5/input/index.tsx - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1505/tsx-default/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-1xxx/1507/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1508/case1/input/index.ts - snapshot: No such file or directory (os error 2)
 Failed: typescript/regressions/issues-1xxx/1515/case1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-1xxx/1545/case1/input/index.js - transformed output differs from SWC snapshot
@@ -1030,7 +1027,6 @@ Failed: typescript/regressions/issues-2xxx/2139/input/index.tsx - transformed ou
 Failed: typescript/regressions/issues-2xxx/2216/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-2xxx/2281/case1/input/index.js - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-2xxx/2336/input/input.tsx - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-2xxx/2428/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-2xxx/2717/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-2xxx/2964/case-1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-2xxx/2964/case-3/input/index.ts - transformed output differs from SWC snapshot
@@ -1045,12 +1041,9 @@ Failed: typescript/regressions/issues-3xxx/3576/input/src/input.ts - transformed
 Failed: typescript/regressions/issues-3xxx/3686/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-3xxx/3782/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-3xxx/3929/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-4xxx/4021/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-4xxx/4063/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-4xxx/4108/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-4xxx/4120/1/input/index.js - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-4xxx/4127/1/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-4xxx/4127/2/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-4xxx/4208/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-4xxx/4233/1/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-4xxx/4311/input/1.js - transformed output differs from SWC snapshot
@@ -1072,8 +1065,6 @@ Failed: typescript/regressions/issues-6xxx/6730/input/index.ts - transformed out
 Failed: typescript/regressions/issues-6xxx/6782/1/input/src/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-6xxx/6791/1/input/input.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-6xxx/6951/1/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-6xxx/6951/2/input/index.ts - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-6xxx/6951/3/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-6xxx/6951/4/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-7xxx/7174/input/index.js - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-7xxx/7622/input/1.js - transformed output differs from SWC snapshot
@@ -1126,7 +1117,6 @@ Failed: typescript/regressions/issues-9xxx/9429/input/test.ts - transformed outp
 Failed: typescript/regressions/issues-9xxx/9579/input/index.js - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-9xxx/9592/input/1.ts - transformed output differs from SWC snapshot
 Failed: typescript/regressions/issues-9xxx/9640/input/1.js - transformed output differs from SWC snapshot
-Failed: typescript/regressions/issues-9xxx/9641/input/1.js - transformed output differs from SWC snapshot
 Failed: typescript/rewrite-import-specifier/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/rewrite-relative-import-specifier/issue-11143/input/index.ts - transformed output differs from SWC snapshot
 Failed: typescript/rewrite-relative-import-specifier/issue-11360/input/main.ts - transformed output differs from SWC snapshot
