@@ -1,9 +1,9 @@
 transform_v1 * typescript
 ========================
-Positive Passed: 12815/15613 (82.08%)
+Positive Passed: 12814/15613 (82.07%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/15613 (0.00%)
-Skipped: 1961/15613 (12.56%)
+Skipped: 1962/15613 (12.57%)
 Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/allowJsCrossMonorepoPackage.ts - virtual: /node_modules/pkg/index.d.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: declaration input emitted JavaScript
 Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/allowSyntheticDefaultImports1.ts - virtual: b.d.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: declaration input emitted JavaScript
 Failed: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/allowSyntheticDefaultImports10.ts - virtual: b.d.ts - [verbatimModuleSyntax: false, preserveConstEnums: false]: declaration input emitted JavaScript
