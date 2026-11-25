@@ -9,7 +9,8 @@ use super::super::{
     Formatter, PrintedStatement, StatementContent, StatementItem, StatementPunctuation,
 };
 use super::{ControlledBodyEnd, ControlledBodyRole};
-use crate::formatter::comments::{CommentBinding, CommentCursor, CommentRunLayout};
+use crate::formatter::LabelChainHead;
+use crate::formatter::comments::{CommentBinding, CommentRunLayout};
 use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::expressions::{ExpressionContext, ExpressionPosition, StringStatement};
 use crate::formatter::suppression::{
@@ -21,6 +22,14 @@ use crate::{FormatError, document::Writer};
 pub(in crate::formatter::statements) enum JumpStatement {
     Break(BreakStatement),
     Continue(ContinueStatement),
+}
+
+enum LabeledContent {
+    Verbatim,
+    Children {
+        label: ContentMode,
+        body: ContentMode,
+    },
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -90,7 +99,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = node.span(self.ast);
         let prepared = self
             .label_chain_head
-            .is_some_and(|head| head.start <= span.start && span.start < head.end);
+            .is_some_and(|head| head.contains(span.start));
         if prepared
             || !matches!(
                 self.ast.stmt_data(node.body(self.ast)),
@@ -122,7 +131,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         )
                     })
                 {
-                    self.format_comment_run(prefix, CommentRunLayout::Leading(head.end), writer)?;
+                    self.format_comment_run(
+                        prefix,
+                        CommentRunLayout::Leading(head.span.end),
+                        writer,
+                    )?;
                 } else {
                     self.format_comment_run(prefix, CommentRunLayout::Source, writer)?;
                     writer.hard_line();
@@ -137,9 +150,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_label_chain_head(
         &self,
         node: LabeledStatement,
-    ) -> Result<(Span, &'ast [Comment]), FormatError> {
+    ) -> Result<(LabelChainHead, &'ast [Comment]), FormatError> {
         let ast = self.ast;
         let start = node.span(ast).start;
+        if let Some(end) = self.ignored_label_chain_end(node)? {
+            return Ok((
+                LabelChainHead {
+                    span: Span::new(start, end),
+                    retain_headers: true,
+                },
+                &[],
+            ));
+        }
         let mut current = node;
         let mut prefix_end = start;
         let end = loop {
@@ -194,9 +216,48 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             current = next;
         };
         Ok((
-            Span::new(start, end),
+            LabelChainHead {
+                span: Span::new(start, end),
+                retain_headers: false,
+            },
             self.comments.in_range(Span::new(start, prefix_end)),
         ))
+    }
+
+    /// Determine whether a label header leads to a source-owned suffix before
+    /// any ancestor can lift its own header comments ahead of the chain.
+    fn ignored_label_chain_end(
+        &self,
+        mut node: LabeledStatement,
+    ) -> Result<Option<u32>, FormatError> {
+        if !self.has_suppression {
+            return Ok(None);
+        }
+        let ast = self.ast;
+        loop {
+            let body = node.body(ast);
+            let head = Span::new(node.label(ast).span(ast).end, body.span(ast).start);
+            let comments = self.source_comments_in_range(head);
+            if self.content_mode(comments) == ContentMode::Verbatim {
+                let colon = self
+                    .find_token(head, comments, ":")
+                    .ok_or_else(|| self.unsupported("label colon boundary", node))?;
+                if matches!(
+                    self.labeled_content(comments, colon, head.end),
+                    LabeledContent::Verbatim
+                        | LabeledContent::Children {
+                            body: ContentMode::Verbatim,
+                            ..
+                        }
+                ) {
+                    return Ok(Some(head.end));
+                }
+            }
+            let StmtData::LabeledStatement(next) = ast.stmt_data(body) else {
+                return Ok(None);
+            };
+            node = next;
+        }
     }
 
     fn format_labeled_contents(
@@ -212,33 +273,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let statement = node.body(ast);
         let head = Span::new(label.span(ast).end, statement.span(ast).start);
         let comments = self.comments.in_range(head);
-        let token_comments = if self.label_chain_head.is_some_and(|chain| {
-            chain.start <= node.span(ast).start && node.span(ast).start < chain.end
-        }) {
-            CommentCursor::new(ast.comments()).in_range(head)
+        let chain = self
+            .label_chain_head
+            .filter(|chain| chain.contains(node.span(ast).start));
+        let token_comments = if chain.is_some() {
+            self.source_comments_in_range(head)
         } else {
             comments
         };
         let colon = self
             .find_token(head, token_comments, ":")
             .ok_or_else(|| self.unsupported("label colon boundary", node))?;
-        let mut label_mode = ContentMode::Formatted;
-        let mut body_mode = ContentMode::Formatted;
-        let mut enclosing_mode = ContentMode::Formatted;
-        if self.has_suppression {
-            for (run, position) in self.suppressed_comment_runs(comments, head.end) {
-                if !matches!(position, SuppressionPosition::Inline) {
-                    enclosing_mode = ContentMode::Verbatim;
-                    continue;
-                }
-                if run.last().is_some_and(|comment| comment.span.end <= colon) {
-                    label_mode = ContentMode::Verbatim;
-                } else {
-                    body_mode = ContentMode::Verbatim;
-                }
-            }
-        }
-        if enclosing_mode == ContentMode::Verbatim {
+        let LabeledContent::Children {
+            label: label_mode,
+            body: body_mode,
+        } = self.labeled_content(comments, colon, head.end)
+        else {
             let span = node.span(ast);
             let content = self.statement_content(StatementItem::Statement(statement));
             let source_fence = Some((
@@ -252,7 +302,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 source_fence,
                 writer,
             );
-        }
+        };
         let mut body = self
             .prepare_controlled_body(
                 statement,
@@ -262,6 +312,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 body_mode.into(),
             )
             .with_enclosing_boundary(punctuation, source_candidate);
+        if chain.is_some_and(|chain| chain.retain_headers) {
+            self.format_jump_label(label, label_mode, writer)?;
+            self.format_source_gap(Span::new(head.start, colon), writer)?;
+            writer.text(":");
+            return self.format_controlled_body(body, writer);
+        }
         let split = comments.partition_point(|comment| comment.span.end <= colon);
         let (before, after) = comments.split_at(split);
         let (expression, declaration) = match ast.stmt_data(statement) {
@@ -331,6 +387,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         writer.text(":");
         self.format_controlled_body(body, writer)
+    }
+
+    fn labeled_content(&self, comments: &[Comment], colon: u32, end: u32) -> LabeledContent {
+        let mut label = ContentMode::Formatted;
+        let mut body = ContentMode::Formatted;
+        if self.has_suppression {
+            for (run, position) in self.suppressed_comment_runs(comments, end) {
+                if !matches!(position, SuppressionPosition::Inline) {
+                    return LabeledContent::Verbatim;
+                }
+                if run.last().is_some_and(|comment| comment.span.end <= colon) {
+                    label = ContentMode::Verbatim;
+                } else {
+                    body = ContentMode::Verbatim;
+                }
+            }
+        }
+        LabeledContent::Children { label, body }
     }
 
     fn label_comments_lead_statement(&self, comments: &[Comment], end: u32) -> bool {

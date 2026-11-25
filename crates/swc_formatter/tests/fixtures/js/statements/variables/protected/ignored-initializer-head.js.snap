@@ -1,0 +1,60 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+let x // prettier-ignore
+ = ( /* sequence */ a, b);
+let y = /* prettier-ignore */ ( // callee
+ a.b)();
+class A { f = /* prettier-ignore */ ( /* field */ a.b)(); }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1}
+---------- Output ----------
+let x // prettier-ignore
+=
+  ( /* sequence */ a, b);
+let y =
+  /* prettier-ignore */ ( // callee
+ a.b)();
+class A {
+  f =
+    /* prettier-ignore */ ( /* field */ a.b)();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+let x // prettier-ignore
+=
+  ( /* sequence */ a, b)
+let y =
+  /* prettier-ignore */ ( // callee
+ a.b)()
+class A {
+  f =
+    /* prettier-ignore */ ( /* field */ a.b)()
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+let x // prettier-ignore
+=
+  ( /* sequence */ a, b);
+let y = /* prettier-ignore */ ( // callee
+ a.b)();
+class A {
+  f = /* prettier-ignore */ ( /* field */ a.b)();
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+let x // prettier-ignore
+=
+  ( /* sequence */ a, b)
+let y = /* prettier-ignore */ ( // callee
+ a.b)()
+class A {
+  f = /* prettier-ignore */ ( /* field */ a.b)()
+}

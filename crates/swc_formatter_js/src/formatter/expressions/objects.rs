@@ -1,7 +1,7 @@
 //! Object literal properties and their source-ordered comment boundaries.
 
 use swc_next_ecma_ast::{
-    Argument, Comment, CommentKind, Expr, ExprData, GetSpan, ObjectExpression, ObjectProperty,
+    Comment, CommentKind, Expr, ExprData, GetSpan, ObjectExpression, ObjectProperty,
     ObjectPropertyKind, ObjectPropertyKindData, PropertyKey, PropertyKeyData, PropertyKind, Span,
     StringLiteral, SubRange,
 };
@@ -460,6 +460,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         } else {
                             ContentMode::Formatted
                         };
+                        let protected_gap = !terminal
+                            && (suppression
+                                .as_ref()
+                                .is_some_and(|source| source.preceding.is_some())
+                                || self.diagnostic_range_is_sensitive(Span::new(
+                                    property_span.end,
+                                    next_start,
+                                )));
                         self.comments.claim(leading)?;
                         self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
                         if let Some(last) = leading.last() {
@@ -470,31 +478,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             None
                         } else {
                             match ast.object_property_kind_data(property) {
-                                ObjectPropertyKindData::ObjectProperty(property) => {
-                                    self.format_object_property(property, quoting, writer)?
-                                }
-                                ObjectPropertyKindData::SpreadElement(spread) => self
-                                    .format_argument(
-                                        Argument::SpreadElement(spread),
-                                        mode,
+                                ObjectPropertyKindData::ObjectProperty(property) => self
+                                    .format_object_property(
+                                        property,
+                                        quoting,
+                                        protected_gap,
                                         writer,
                                     )?,
+                                ObjectPropertyKindData::SpreadElement(spread) => {
+                                    let frame = if protected_gap {
+                                        self.source_comment_frame(spread.argument(ast))
+                                    } else {
+                                        None
+                                    };
+                                    self.format_spread_element(spread, mode, frame, writer)?
+                                }
                             }
                         };
-                        let protected_gap = !terminal
-                            && (suppression
-                                .as_ref()
-                                .is_some_and(|source| source.preceding.is_some())
-                                || self.diagnostic_range_is_sensitive(Span::new(
-                                    property_span.end,
-                                    next_start,
-                                )));
                         let (end, next_leading) = if protected_gap {
-                            let content_end = tail
+                            let tail_end = tail
                                 .as_ref()
-                                .map_or(property_span.end, |tail| tail.source_end);
+                                .and_then(|tail| tail.comments.last())
+                                .map(|comment| comment.span.end);
+                            self.format_expression_tail(tail, writer)?;
+                            if let Some(tail_end) = tail_end {
+                                self.source_line_constraint(tail_end, property_span.end)
+                                    .write(writer, FlatSeparator::Empty, |_| {});
+                            }
                             let source = self.format_delimited_source_gap(
-                                Span::new(content_end, next_start),
+                                Span::new(property_span.end, next_start),
                                 DelimitedFollowing::Node,
                                 writer,
                             )?;
@@ -667,6 +679,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         property: ObjectProperty,
         quoting: PropertyKeyQuoting,
+        protected_gap: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         let ast = self.ast;
@@ -691,7 +704,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let value = property.value(ast);
         let content = self.expression_content(value);
-        let boundary = self.object_property_boundary(property, &content)?;
+        let boundary = self.object_property_boundary(property, &content, protected_gap)?;
         if boundary.suppression.enclosing == ContentMode::Verbatim {
             self.format_verbatim(property.span(ast), writer)?;
             return Ok(None);
@@ -942,6 +955,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         property: ObjectProperty,
         content: &ExpressionContent,
+        protected_gap: bool,
     ) -> Result<ObjectPropertyBoundary<'ast>, FormatError> {
         let value = property.value(self.ast);
         let value_start = value.span(self.ast).start;
@@ -983,6 +997,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             colon,
             inspection_end,
         );
+        let opening = opening.or_else(|| {
+            if protected_gap {
+                self.source_comment_frame(value)
+            } else {
+                None
+            }
+        });
         let mut boundary = ObjectPropertyBoundary {
             comments,
             opening,

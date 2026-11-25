@@ -1,0 +1,63 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+[(a) /* prettier-ignore */, b] = e;
+[a /* prettier-ignore */, ((b))] = e;
+[(a), // prettier-ignore
+, (b)] = e;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"always"}
+---------- Output ----------
+[
+  (a) /* prettier-ignore */,
+  b,
+] = e;
+[
+  a /* prettier-ignore */,
+  b,
+] = e;
+[
+  (a), // prettier-ignore
+,
+  b,
+] = e;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+[(a) /* prettier-ignore */, b] = e;
+[a /* prettier-ignore */, b] = e;
+[
+  (a), // prettier-ignore
+,
+  b,
+] = e;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+;[
+  (a) /* prettier-ignore */,
+  b,
+] = e
+;[
+  a /* prettier-ignore */,
+  b,
+] = e
+;[
+  (a), // prettier-ignore
+,
+  b,
+] = e
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+;[(a) /* prettier-ignore */, b] = e
+;[a /* prettier-ignore */, b] = e
+;[
+  (a), // prettier-ignore
+,
+  b,
+] = e

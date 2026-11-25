@@ -681,6 +681,44 @@
         "prettierNative": "[\n  first /* slot */,\n  ,\n  last,\n] = value;\n"
       }
     ],
+    "js/assignment-pattern/array-separator-ownership/parenthesized-ignore.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "[\n  (a) /* prettier-ignore */,\n  b,\n] = e;\n[\n  a /* prettier-ignore */,\n  b,\n] = e;\n[\n  (a), // prettier-ignore\n,\n  b,\n] = e;\n",
+        "prettierNative": "[\n  a /* prettier-ignore */,\n  b,\n] = e;\n[\n  a /* prettier-ignore */,\n  b,\n] = e;\n[\n  a, // prettier-ignore\n  ,\n  b,\n] = e;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "[(a) /* prettier-ignore */, b] = e;\n[a /* prettier-ignore */, b] = e;\n[\n  (a), // prettier-ignore\n,\n  b,\n] = e;\n",
+        "prettierNative": "[a /* prettier-ignore */, b] = e;\n[a /* prettier-ignore */, b] = e;\n[\n  a, // prettier-ignore\n  ,\n  b,\n] = e;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[\n  (a) /* prettier-ignore */,\n  b,\n] = e\n;[\n  a /* prettier-ignore */,\n  b,\n] = e\n;[\n  (a), // prettier-ignore\n,\n  b,\n] = e\n",
+        "prettierNative": ";[\n  a /* prettier-ignore */,\n  b,\n] = e\n;[\n  a /* prettier-ignore */,\n  b,\n] = e\n;[\n  a, // prettier-ignore\n  ,\n  b,\n] = e\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[(a) /* prettier-ignore */, b] = e\n;[a /* prettier-ignore */, b] = e\n;[\n  (a), // prettier-ignore\n,\n  b,\n] = e\n",
+        "prettierNative": ";[a /* prettier-ignore */, b] = e\n;[a /* prettier-ignore */, b] = e\n;[\n  a, // prettier-ignore\n  ,\n  b,\n] = e\n"
+      }
+    ],
     "js/assignment-pattern/ignored-child-own-tail.js": [
       {
         "options": {
@@ -5838,6 +5876,60 @@
         "prettierNative": "/*#__NO_SIDE_EFFECTS__*/ outer: function f() {\n  effect()\n}\n"
       }
     ],
+    "js/control-flow/label-comment-owners/ignore-prefix-block.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l /* outer */\n: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "/* outer */\nl: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l /* outer */\n: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "/* outer */\nl: /* body */ m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "l /* outer */\n: /* body */ m // inner\n: // prettier-ignore\nn : f  (x)\n",
+        "prettierNative": "/* outer */\nl: /* body */ m // inner\n: // prettier-ignore\nn : f  (x)\n"
+      }
+    ],
+    "js/control-flow/label-comment-owners/ignore-prefix.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l // outer\n: m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "// outer\nl: m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "l // outer\n: m // inner\n: // prettier-ignore\nn : f  (x);\n",
+        "prettierNative": "// outer\nl: m // inner\n: // prettier-ignore\nn : f  (x);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "l // outer\n: m // inner\n: // prettier-ignore\nn : f  (x)\n",
+        "prettierNative": "// outer\nl: m // inner\n: // prettier-ignore\nn : f  (x)\n"
+      }
+    ],
     "js/control-flow/label-comment-owners/inactive-annotations.js": [
       {
         "options": {
@@ -6101,6 +6193,59 @@
         },
         "swcPlugin": "do {\r\n  foo();\r\n} // marker\r\nwhile (a);\r\n",
         "prettierNative": "do {\r\n  foo();\r\n} while (a); // marker\r\n"
+      }
+    ],
+    "js/control-flow/while-do-jumps/do-retained-gap-pre-terminator.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (b);\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (c);\n",
+        "prettierNative": "do\n  a; // before\n  /* after */\nwhile (/* also before */ /* prettier-ignore */ b);\ndo\n  if (a) b; // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (\n  b\n);\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (\n  c\n);\n",
+        "prettierNative": "do\n  a; // before\n  /* after */\nwhile (\n  /* also before */ /* prettier-ignore */ b\n);\ndo\n  if (a) b; // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (b)\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (c)\n",
+        "prettierNative": "do\n  a // before\n  /* after */\nwhile (/* also before */ /* prettier-ignore */ b)\ndo\n  if (a) b // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "do\n  a // before\n  /* also before */; /* after */ while /* prettier-ignore */ (\n  b\n)\ndo\n  if (a)\n    b // before\n    // also before\n    ; while /* prettier-ignore */ (\n  c\n)\n",
+        "prettierNative": "do\n  a // before\n  /* after */\nwhile (\n  /* also before */ /* prettier-ignore */ b\n)\ndo\n  if (a) b // before\nwhile (\n  // also before\n  /* prettier-ignore */ c\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "do\n\ta // before\n\t/* also before */; /* after */ while /* prettier-ignore */ (\n\tb\n);\ndo\n\tif (a)\n\t\tb // before\n\t\t// also before\n\t\t; while /* prettier-ignore */ (\n\tc\n);\n",
+        "prettierNative": "do\n\ta; // before\n\t/* after */\nwhile (\n\t/* also before */ /* prettier-ignore */ b\n);\ndo\n\tif (a) b; // before\nwhile (\n\t// also before\n\t/* prettier-ignore */ c\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "do\r\n  a // before\r\n  /* also before */; /* after */ while /* prettier-ignore */ (\r\n  b\r\n);\r\ndo\r\n  if (a)\r\n    b // before\r\n    // also before\r\n    ; while /* prettier-ignore */ (c);\r\n",
+        "prettierNative": "do\r\n  a; // before\r\n  /* after */\r\nwhile (\r\n  /* also before */ /* prettier-ignore */ b\r\n);\r\ndo\r\n  if (a) b; // before\r\nwhile (\r\n  // also before\r\n  /* prettier-ignore */ c\r\n);\r\n"
       }
     ],
     "js/control-flow/while-do-jumps/do-source-line-gap.js": [
@@ -10382,6 +10527,130 @@
         },
         "swcPlugin": "first && [1,2] /* prettier-ignore */ && second;\n",
         "prettierNative": "first && [1, 2] /* prettier-ignore */ && second;\n"
+      }
+    ],
+    "js/expressions/binary/ignore-nested-operand-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "x =\n\t(\n\t\t/* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n\t\ty\n\t) * z;\n",
+        "prettierNative": "x =\n\t/* outer */ (// inner\n\t(x ? a : b) + // prettier-ignore\n\t\ty) *\n\tz;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x =\r\n  (\r\n    /* outer */ ( // inner\r\n x ? a : b) + // prettier-ignore\r\n    y\r\n  ) * z;\r\n",
+        "prettierNative": "x =\r\n  /* outer */ (// inner\r\n  (x ? a : b) + // prettier-ignore\r\n    y) *\r\n  z;\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "x =\n  (\n    /* outer */ ( // inner\n x ? a : b) + // prettier-ignore\n    y\n  ) * z;\n",
+        "prettierNative": "x =\n  /* outer */ (// inner\n  (x ? a : b) + // prettier-ignore\n    y) *\n  z;\n"
+      }
+    ],
+    "js/expressions/binary/ignore-nested-right-head.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  )\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "x =\n\tz *\n\t(\n\t\t/* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n\t\ty\n\t);\n",
+        "prettierNative": "x =\n\tz *\n\t/* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n\t\ty);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x =\r\n  z *\r\n  (\r\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\r\n    y\r\n  );\r\n",
+        "prettierNative": "x =\r\n  z *\r\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\r\n    y);\r\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "x =\n  z *\n  (\n    /* outer */ ( /* inner */ x ? a : b) + // prettier-ignore\n    y\n  );\n",
+        "prettierNative": "x =\n  z *\n  /* outer */ (/* inner */ (x ? a : b) + // prettier-ignore\n    y);\n"
       }
     ],
     "js/expressions/binary/ignore-operation-head.js": [
@@ -19557,6 +19826,17 @@
         "prettierNative": "// prettier-ignore\r\n(first+second, third);\r\n"
       }
     ],
+    "js/expressions/sequence/ignore-statement.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "// prettier-ignore\na  ,  b\n// prettier-ignore\n;(c  ,  d)\n",
+        "prettierNative": "// prettier-ignore\n;a  ,  b\n// prettier-ignore\n;(c  ,  d)\n"
+      }
+    ],
     "js/expressions/sequence/inline-line-source-owner/following-tail/input.js": [
       {
         "options": {
@@ -24907,6 +25187,16 @@
         },
         "swcPlugin": "const result = {\n  key: /* ordinary */ // @ts-ignore\n    /** @type {number} */ (\"wrong\"), };\n",
         "prettierNative": "const result = {\n  /* ordinary */ // @ts-ignore\n  key: /** @type {number} */ (\"wrong\"),\n};\n"
+      }
+    ],
+    "js/objects/property-packet-owners/protected/paren-cast-tail.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: /** @type {number} */ ((a /* inside */) /* middle */) /* outside */,\n  // @ts-ignore\n  y: 1, };\n",
+        "prettierNative": "x = {\n  k: /** @type {number} */ (\n    a /* inside */ /* middle */\n  ) /* outside */,\n  // @ts-ignore\n  y: 1,\n};\n"
       }
     ],
     "js/objects/relocated-colon-gap/occupied-line.js": [
@@ -30401,6 +30691,42 @@
         "prettierNative": "// @ts-expect-error\nvar first = unknownFirst,\n  second = unknownSecond\nunknownThird()\n"
       }
     ],
+    "js/statements/variables/protected/ignored-initializer-head.js": [
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b);\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)();\n}\n",
+        "prettierNative": "let x = // prettier-ignore\n  /* sequence */ (a,\n  b);\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b)\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)()\n}\n",
+        "prettierNative": "let x = // prettier-ignore\n  /* sequence */ (a,\n  b)\nlet y =\n  /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f =\n    /* prettier-ignore */ ( /* field */ a.b)()\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b);\nlet y = /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)();\n}\n",
+        "prettierNative": "let x = /* sequence */ (a, b); // prettier-ignore\nlet y = /* prettier-ignore */ ( // callee\n a.b)();\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "let x // prettier-ignore\n=\n  ( /* sequence */ a, b)\nlet y = /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)()\n}\n",
+        "prettierNative": "let x = /* sequence */ (a, b) // prettier-ignore\nlet y = /* prettier-ignore */ ( // callee\n a.b)()\nclass A {\n  f = /* prettier-ignore */ ( /* field */ a.b)()\n}\n"
+      }
+    ],
     "js/statements/variables/protected/source-packet.js": [
       {
         "options": {
@@ -33861,6 +34187,42 @@
         },
         "swcPlugin": "result = Factory\r\n\t.first<number>\r\n\t// prettier-ignore\r\n\t(\r\n\t\t{ one :1, two:2 },\r\n\t\t(entry) => {\r\n\t\t\tconst next =\r\n\t\t\t\tentry + 1;\r\n\t\t\treturn next;\r\n\t\t},\r\n\t)\r\n\t.second<string>(\r\n\t\tother,\r\n\t);\r\n",
         "prettierNative": "result =\r\n\tFactory.first<number>(\r\n\t\t// prettier-ignore\r\n\t\t{ one :1, two:2 },\r\n\t\t(entry) => {\r\n\t\t\tconst next =\r\n\t\t\t\tentry + 1;\r\n\t\t\treturn next;\r\n\t\t},\r\n\t).second<string>(\r\n\t\tother,\r\n\t);\r\n"
+      }
+    ],
+    "ts/call-type-arguments/call-opening-block-gap.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\n  a + b,\n);\nf<T  , U> /* gap */(  // prettier-ignore\n // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */( // prettier-ignore\n  () => {\n    return 1;\n  },\n);\nf?.<T> /* one */ /* two */( // prettier-ignore\n  a + b,\n  { value: 1 },\n);\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\n(a + b);\nf<T  , U> /* gap */ // prettier-ignore\n(\n  // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */ // prettier-ignore\n(() => {\n  return 1;\n});\nf?.<T> /* one */ /* two */ // prettier-ignore\n(a + b, { value: 1 });\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\n  a + b,\n);\nf<T  , U> /* gap */(  // prettier-ignore\n // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */( // prettier-ignore\n  () => {\n    return 1;\n  },\n);\nf?.<T> /* one */ /* two */( // prettier-ignore\n  a + b,\n  { value: 1 },\n);\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\n(a + b);\nf<T  , U> /* gap */ // prettier-ignore\n(\n  // prettier-ignore\n  a   +   b,\n  c + d,\n);\nnew F<T> /* gap */ // prettier-ignore\n(() => {\n  return 1;\n});\nf?.<T> /* one */ /* two */ // prettier-ignore\n(a + b, {\n  value: 1,\n});\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\n  a +\n    b,\n)\nf<T  , U> /* gap */(  // prettier-ignore\n // prettier-ignore\n  a   +   b,\n  c +\n    d,\n)\nnew F<T> /* gap */( // prettier-ignore\n  () => {\n    return 1\n  },\n)\nf?.<T> /* one */ /* two */( // prettier-ignore\n  a +\n    b,\n  {\n    value: 1,\n  },\n)\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\n(\n  a +\n    b,\n)\nf<T  , U> /* gap */ // prettier-ignore\n(\n  // prettier-ignore\n  a   +   b,\n  c +\n    d,\n)\nnew F<T> /* gap */ // prettier-ignore\n(\n  () => {\n    return 1\n  },\n)\nf?.<T> /* one */ /* two */ // prettier-ignore\n(\n  a +\n    b,\n  {\n    value: 1,\n  },\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "f<T  , U> /* gap */(  // prettier-ignore\r\n\ta + b,\r\n);\r\nf<T  , U> /* gap */(  // prettier-ignore\r\n // prettier-ignore\r\n\ta   +   b,\r\n\tc + d,\r\n);\r\nnew F<T> /* gap */( // prettier-ignore\r\n\t() => {\r\n\t\treturn 1;\r\n\t},\r\n);\r\nf?.<T> /* one */ /* two */( // prettier-ignore\r\n\ta + b,\r\n\t{ value: 1 },\r\n);\r\n",
+        "prettierNative": "f<T  , U> /* gap */ // prettier-ignore\r\n(a + b);\r\nf<T  , U> /* gap */ // prettier-ignore\r\n(\r\n\t// prettier-ignore\r\n\ta   +   b,\r\n\tc + d,\r\n);\r\nnew F<T> /* gap */ // prettier-ignore\r\n(() => {\r\n\treturn 1;\r\n});\r\nf?.<T> /* one */ /* two */ // prettier-ignore\r\n(a + b, {\r\n\tvalue: 1,\r\n});\r\n"
       }
     ],
     "ts/call-type-arguments/call-opening-owner.ts": [
@@ -42787,6 +43149,78 @@
         },
         "swcPlugin": "({\n\t// @ts-ignore\n\tk\n\n\t: /* a */ // l\n\n\t\t// B\n\t\t1,\n});\n",
         "prettierNative": "({\n\t// @ts-ignore\n\t/* a */ // l\n\n\tk:\n\t\t// B\n\t\t1,\n});\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/paren-line-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: (a // tail\n),\n  // @ts-expect-error\n  y: 1, };\n",
+        "prettierNative": "x = {\n  // tail\n  k: a,\n  // @ts-expect-error\n  y: 1,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: (a // tail\n),\n\t// @ts-expect-error\n\ty: 1, };\n",
+        "prettierNative": "x = {\n\t// tail\n\tk: a,\n\t// @ts-expect-error\n\ty: 1,\n};\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/paren-suppression-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: (/* prettier-ignore */ (a  +  b /* inside */) /* middle */) /* outside */,\n  // @ts-ignore\n  y: 1, };\n",
+        "prettierNative": "x = {\n  k: /* prettier-ignore */ a  +  b /* inside */ /* middle */ /* outside */,\n  // @ts-ignore\n  y: 1,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: (/* prettier-ignore */ (a  +  b /* inside */) /* middle */) /* outside */,\n\t// @ts-ignore\n\ty: 1, };\n",
+        "prettierNative": "x = {\n\tk: /* prettier-ignore */ a  +  b /* inside */ /* middle */ /* outside */,\n\t// @ts-ignore\n\ty: 1,\n};\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/paren-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: ((a /* inside */) /* outside */),\n  // @ts-ignore\n  y: 1, };\n",
+        "prettierNative": "x = {\n  k: a /* inside */ /* outside */,\n  // @ts-ignore\n  y: 1,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: ((a /* inside */) /* outside */),\n\t// @ts-ignore\n\ty: 1, };\n",
+        "prettierNative": "x = {\n\tk: a /* inside */ /* outside */,\n\t// @ts-ignore\n\ty: 1,\n};\n"
+      }
+    ],
+    "ts/objects/diagnostic-value-head/spread-paren-tail.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = {\n  k: 0,\n  // @ts-ignore\n  ...(y /* inside */) /* outside */, z, };\n",
+        "prettierNative": "x = {\n  k: 0,\n  // @ts-ignore\n  ...y /* inside */ /* outside */,\n  z,\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "x = {\n\tk: 0,\n\t// @ts-ignore\n\t...(y /* inside */) /* outside */, z, };\n",
+        "prettierNative": "x = {\n\tk: 0,\n\t// @ts-ignore\n\t...y /* inside */ /* outside */,\n\tz,\n};\n"
       }
     ],
     "ts/objects/property-head-fixedpoint/assignment.ts": [

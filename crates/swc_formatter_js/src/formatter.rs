@@ -46,12 +46,24 @@ pub(crate) struct Formatter<'ast, 'source> {
     enclosing_await: Option<AwaitExpression>,
     for_initializer_span: Option<Span>,
     comparison_lists: Vec<expressions::comparisons::ComparisonList>,
-    label_chain_head: Option<Span>,
+    label_chain_head: Option<LabelChainHead>,
     terminal_close_owner: diagnostics::TerminalCloseOwner,
     source_object_layout: SourceObjectLayout,
     signature_return_body: types::callable::SignatureReturnBody<'ast>,
     callable_type_continuation: Option<(Span, usize)>,
     recursion: &'ast RecursionState,
+}
+
+#[derive(Clone, Copy)]
+struct LabelChainHead {
+    span: Span,
+    retain_headers: bool,
+}
+
+impl LabelChainHead {
+    fn contains(self, start: u32) -> bool {
+        self.span.start <= start && start < self.span.end
+    }
 }
 
 #[derive(Clone, Copy)]

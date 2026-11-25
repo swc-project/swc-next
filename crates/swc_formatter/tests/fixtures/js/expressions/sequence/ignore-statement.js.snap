@@ -1,0 +1,71 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// prettier-ignore
+a  ,  b
+// prettier-ignore
+;(c  ,  d)
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":8}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+
+---------- Options ----------
+{"indentStyle":"space","indentWidth":1,"lineWidth":20}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+// prettier-ignore
+a  ,  b;
+// prettier-ignore
+(c  ,  d);

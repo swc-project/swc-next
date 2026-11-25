@@ -1,0 +1,76 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = (/* outer */ (( // inner
+ x ? a : b) + // prettier-ignore
+ y)) * z;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x =
+  (
+    /* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+    y
+  ) * z;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+x =
+  (
+    /* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+    y
+  ) * z
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+x =
+  (
+    /* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+    y
+  ) * z;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":10}
+---------- Output ----------
+x =
+  (
+    /* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+    y
+  ) * z;
+
+---------- Options ----------
+{"indentStyle":"tab","indentWidth":4,"lineWidth":20}
+---------- Output ----------
+x =
+	(
+		/* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+		y
+	) * z;
+
+---------- Options ----------
+{"indentStyle":"space","lineEnding":"crlf","lineWidth":80}
+---------- Output ----------
+x =
+  (
+    /* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+    y
+  ) * z;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+x =
+  (
+    /* outer */ ( // inner
+ x ? a : b) + // prettier-ignore
+    y
+  ) * z;

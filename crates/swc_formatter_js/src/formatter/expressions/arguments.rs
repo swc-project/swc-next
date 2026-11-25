@@ -2091,7 +2091,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 (prefix, mode)
             }
         };
-        let prefix =
+        let mut prefix =
             if first.is_none() && prefix.has_comments() && callee_mode == ContentMode::Formatted {
                 let comments = prefix_comments;
                 if !comments.is_empty()
@@ -2149,6 +2149,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             callee_mode = types.callee_mode;
+        }
+        if source_opening.is_some() {
+            // The retained opener starts at the source `(`. Its exterior
+            // prefix must be consumed before either argument layout emits it.
+            let exterior = match &mut prefix {
+                SourceArgumentPrefix::Direct(prefix) => Some(prefix),
+                SourceArgumentPrefix::Optional { after, .. } => Some(after),
+                SourceArgumentPrefix::Empty { .. } => None,
+            };
+            if let Some(prefix) = exterior {
+                *prefix = ArgumentPrefix::Outside(prefix.comments());
+            }
         }
         let content = Span::new(opening + 1, end - 1);
         let closing = self.terminal_close_boundary(content, || {

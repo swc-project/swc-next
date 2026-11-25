@@ -1431,11 +1431,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<AssignmentBoundary<'ast>, FormatError> {
         let left_end = left.end;
         let mut boundary = 'prepared: {
-            let value_end = rhs.expression.span(self.ast).end;
+            let value = rhs.expression.span(self.ast);
             let source = match initializer.tail {
-                InitializerTail::Value => AssignmentSourceEnd::Expression(value_end),
+                InitializerTail::Value => AssignmentSourceEnd::Expression(value.end),
                 InitializerTail::ThroughComment(end) => AssignmentSourceEnd::Expression(end),
-                InitializerTail::Bound => AssignmentSourceEnd::ValueWithBoundTail(value_end),
+                InitializerTail::Bound => AssignmentSourceEnd::ValueWithBoundTail(value.end),
             };
             let source_right_end = source.end();
             let value_tail_bound = matches!(source, AssignmentSourceEnd::ValueWithBoundTail(_));
@@ -1474,6 +1474,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             }
+            let verbatim_rhs = initializer.suppressed_before_equals
+                || context.is_verbatim()
+                || first_after_suppression
+                    .is_some_and(|index| remaining[index].span.end <= value.start);
             let overlaps_left = previous
                 .last()
                 .is_some_and(|comment| comment.span.end > left_end);
@@ -1486,7 +1490,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let clear_rhs_source = !has_source_packet
                 && context.content_mode == ContentMode::Formatted
                 && !self.diagnostic_range_is_sensitive(Span::new(left_end, source_right_end));
-            let projected = if clear_rhs_source {
+            let projected = if clear_rhs_source || verbatim_rhs {
+                // Projecting through a call or member head would include that
+                // descendant's comments in the immutable initializer's prefix.
                 None
             } else {
                 self.assignment_expression_head(
@@ -1530,8 +1536,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ContentMode::Formatted
             };
             // The verbatim RHS owns the comments inside its source opener.
-            let verbatim_opening = source_opening
-                .filter(|&opening| after_mode == ContentMode::Verbatim && opening < right_start);
+            let verbatim_opening = source_opening.filter(|&opening| {
+                (verbatim_rhs || after_mode == ContentMode::Verbatim) && opening < right_start
+            });
             let (right_start, comments) = if let Some(opening) = verbatim_opening {
                 let count = comments.partition_point(|comment| comment.span.end <= opening);
                 (opening, &comments[..count])
@@ -1589,7 +1596,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 before_operator: LineConstraint::Unconstrained,
                 after_operator: LineConstraint::Unconstrained,
                 own_line: false,
-                mode: ContentMode::Formatted,
+                mode: if verbatim_rhs {
+                    ContentMode::Verbatim
+                } else {
+                    ContentMode::Formatted
+                },
                 cast_leading: None,
                 enclosed_head_binding: None,
                 released_head: &[],
@@ -1743,7 +1754,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
             let (operator_line, leading) = after.split_at(line_count);
-            let right_mode = if promoted && before_mode == ContentMode::Verbatim {
+            let right_mode = if verbatim_rhs || promoted && before_mode == ContentMode::Verbatim {
                 ContentMode::Verbatim
             } else {
                 after_mode
@@ -2055,14 +2066,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.assignment_head_gaps(&boundary, &heads, content, head_mode, *head_context);
             boundary
         };
-        if initializer.suppressed_before_equals {
-            boundary.mode = ContentMode::Verbatim;
-            if let Some(comment) = boundary.before.last() {
-                boundary.before_operator =
-                    self.source_line_constraint(comment.span.end, operator_span.start);
-            }
-        } else if context.content_mode == ContentMode::Verbatim {
-            boundary.mode = ContentMode::Verbatim;
+        if initializer.suppressed_before_equals
+            && let Some(comment) = boundary.before.last()
+        {
+            boundary.before_operator =
+                self.source_line_constraint(comment.span.end, operator_span.start);
         }
         // A unary operand needs the final mode chosen by its actual initializer owner.
         if let ExprData::UnaryExpression(unary) = rhs.content.data

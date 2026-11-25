@@ -1466,6 +1466,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Some(true);
         }
         match data {
+            ExprData::SequenceExpression(_)
+                if matches!(position, ExpressionPosition::Statement(_)) =>
+            {
+                // A statement's source can contain an unparenthesized comma expression.
+                return Some(mode == ContentMode::Formatted);
+            }
             ExprData::SequenceExpression(_) => {
                 return Some(!matches!(
                     position,
@@ -2144,29 +2150,40 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             ),
             ArgumentData::SpreadElement(spread) => {
-                if mode == ContentMode::Verbatim {
-                    self.format_verbatim(spread.span(self.ast), writer)?;
-                    return Ok(None);
-                }
-                let argument = spread.argument(self.ast);
-                writer.text("...");
-                let comments = self.comments.between(Span::new(
-                    spread.span(self.ast).start + 3,
-                    argument.span(self.ast).start,
-                ))?;
-                let comments = self.comments.take(comments.len());
-                let mode = self.content_mode(comments);
-                self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
-                if let Some(last) = comments.last() {
-                    self.comment_gap_after(*last, argument.span(self.ast).start, writer);
-                }
-                self.format_expression(
-                    argument,
-                    ExpressionContext::at(ExpressionPosition::SpreadArgument)
-                        .with_content_mode(mode),
-                    writer,
-                )
+                self.format_spread_element(spread, mode, None, writer)
             }
+        }
+    }
+
+    fn format_spread_element(
+        &mut self,
+        spread: swc_next_ecma_ast::SpreadElement,
+        mode: ContentMode,
+        frame: Option<parentheses::SourceOpeningPacket<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        if mode == ContentMode::Verbatim {
+            self.format_verbatim(spread.span(self.ast), writer)?;
+            return Ok(None);
+        }
+        let argument = spread.argument(self.ast);
+        writer.text("...");
+        let comments = self.comments.between(Span::new(
+            spread.span(self.ast).start + 3,
+            argument.span(self.ast).start,
+        ))?;
+        let comments = self.comments.take(comments.len());
+        let mode = self.content_mode(comments);
+        self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+        if let Some(last) = comments.last() {
+            self.comment_gap_after(*last, argument.span(self.ast).start, writer);
+        }
+        let context =
+            ExpressionContext::at(ExpressionPosition::SpreadArgument).with_content_mode(mode);
+        if let Some(frame) = frame {
+            self.format_source_opening_packet(frame, context, writer)
+        } else {
+            self.format_expression(argument, context, writer)
         }
     }
 }

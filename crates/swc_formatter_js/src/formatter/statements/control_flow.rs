@@ -68,25 +68,26 @@ enum ControlledBodyEnd {
     Alternate(Span),
     LoopCondition(Span),
     Enclosing(u32),
+    RetainedGap(u32),
 }
 
 impl ControlledBodyEnd {
     fn keyword(self) -> Option<Span> {
         match self {
             Self::Alternate(keyword) | Self::LoopCondition(keyword) => Some(keyword),
-            Self::Enclosing(_) => None,
+            Self::Enclosing(_) | Self::RetainedGap(_) => None,
         }
     }
 
     fn limit(self) -> u32 {
         match self {
             Self::Alternate(keyword) | Self::LoopCondition(keyword) => keyword.start,
-            Self::Enclosing(end) => end,
+            Self::Enclosing(end) | Self::RetainedGap(end) => end,
         }
     }
 
     fn has_following(self) -> bool {
-        !matches!(self, Self::Enclosing(_))
+        self.keyword().is_some()
     }
 }
 
@@ -720,10 +721,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         shape: ControlledBodyShape,
     ) -> Option<ControlledBodyTail<'ast>> {
         let limit = match end {
-            ControlledBodyEnd::Alternate(keyword) | ControlledBodyEnd::LoopCondition(keyword) => {
-                keyword.start
-            }
             ControlledBodyEnd::Enclosing(_) => self.ast.source().len() as u32,
+            _ => end.limit(),
         };
         let comments = self.comments.in_range(Span::new(content_end, limit));
         let mut previous = content_end;

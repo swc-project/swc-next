@@ -3,7 +3,7 @@
 use swc_next_ecma_ast::{Comment, DoWhileStatement, GetSpan, Span, Stmt, StmtData, WhileStatement};
 
 use super::super::{
-    EmptyBlock, Formatter, PrintedStatement, StatementBoundary, StatementItem,
+    EmptyBlock, Formatter, PrintedStatement, StatementBoundary, StatementContent, StatementItem,
     StatementPunctuation, StatementTailRelation,
 };
 use super::{
@@ -95,8 +95,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             .into());
         }
-        let end = if boundary.source.is_some() {
-            ControlledBodyEnd::Enclosing(body_span.end)
+        let end = if let Some(source) = boundary.source {
+            ControlledBodyEnd::RetainedGap(source.start)
         } else {
             ControlledBodyEnd::LoopCondition(keyword)
         };
@@ -110,7 +110,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
             .with_empty_block(EmptyBlock::Compact);
         if boundary.source.is_some() {
-            if self.source_line_constraint(body_span.end, keyword.start) == LineConstraint::SameLine
+            if let Some(terminator) = self.statement_source_terminator(body_span)
+                && let StatementContent::Semicolon(content_end) =
+                    self.statement_content(StatementItem::Statement(statement))
+                && !self
+                    .comments
+                    .in_range(Span::new(content_end, terminator.start()))
+                    .is_empty()
+            {
+                // The retained while gap starts after the body terminator.
+                // Let the terminator claim its entire preceding comment run.
+                body = body.with_enclosing_boundary(
+                    StatementPunctuation::Source(terminator),
+                    super::super::ContinuationBoundary::End,
+                );
+            } else if self.source_line_constraint(body_span.end, keyword.start)
+                == LineConstraint::SameLine
             {
                 // The retained gap cannot add an ASI newline before its `while`.
                 body = body.with_enclosing_boundary(

@@ -1,0 +1,22 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x = { k: 0,
+// @ts-ignore
+...(y /* inside */) /* outside */, z };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x = {
+  k: 0,
+  // @ts-ignore
+  ...(y /* inside */) /* outside */, z, };
+
+---------- Options ----------
+{"indentStyle":"tab","lineWidth":80}
+---------- Output ----------
+x = {
+	k: 0,
+	// @ts-ignore
+	...(y /* inside */) /* outside */, z, };
