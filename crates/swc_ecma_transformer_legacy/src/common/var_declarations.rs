@@ -43,6 +43,22 @@ impl VarDeclarationsStore {
     }
 }
 
+/// SWC composes the lowering hook with VarDeclarations in a single traversal.
+/// <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/lib.rs#L90>.
+pub(crate) fn hook_pass_with_var_declarations<'ast, 'r>(
+    hook: impl TraverseMut<'ast, TraverseCtx<'r>>,
+    ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'r>>,
+) {
+    let program = ctx.ast.root_program();
+    let _ = program.traverse_mut_with(
+        &mut VarDeclarations {
+            hook,
+            scope_arrow_exprs: true,
+        },
+        ctx,
+    );
+}
+
 /// Inserts queued declarations while the selected transform visits the same AST.
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/common/var_declarations.rs#L49>.
 pub(crate) struct VarDeclarations<H> {

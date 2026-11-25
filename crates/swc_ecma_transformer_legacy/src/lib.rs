@@ -69,26 +69,11 @@
 //! };
 //! ```
 
-use swc_next_ecma_ast::{
-    AstCtx, Diagnostic, Program, Span, TraverseMut, TraverseMutCtx, TraverseMutWith,
-};
+use swc_next_ecma_ast::{AstCtx, Diagnostic, TraverseMutCtx};
 
 use self::{
-    common::{TraverseCtx, resolver::context::Resolver, var_declarations::VarDeclarations},
-    es2016::exponentiation_operator::ExponentiationOperatorPass,
-    es2017::async_to_generator,
-    es2018::object_rest_spread::ObjectRestSpreadPass,
-    es2019::optional_catch_binding,
-    es2020::{export_namespace_from, nullish_coalescing::NullishCoalescingPass},
-    es2021::logical_assignment_operators::LogicalAssignmentOperatorsPass,
-    es2022::{
-        class_fields_use_set::class_fields_use_set, class_properties::class_properties,
-        class_static_block, optional_chaining_impl::optional_chaining_impl,
-        private_property_in_object::PrivatePropertyInObjectPass,
-    },
-    jsx::JsxRuntime,
-    modules::{ModuleType, ModulesOptions},
-    typescript::TsImportExportAssignConfig,
+    common::{TraverseCtx, resolver::context::Resolver},
+    modules::ModulesOptions,
 };
 
 pub mod env;
@@ -179,112 +164,43 @@ impl Transformer {
         let ast = unsafe { ast.ast_mut() };
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
-        if let Some(mut typescript) = options.typescript {
-            if options.modules.r#type != ModuleType::Preserve && ast.is_module() {
-                typescript.import_export_assign_config = TsImportExportAssignConfig::Preserve;
-            }
+        if let Some(typescript) = options.typescript {
             diagnostics.extend(typescript::typescript(
                 ast,
-                &typescript,
+                typescript,
                 options.jsx.is_some(),
+                options.modules.r#type,
                 &mut resolver,
             ));
         }
         if let Some(jsx) = &options.jsx {
-            diagnostics.extend(jsx::jsx(
+            diagnostics.extend(jsx::transform(
                 ast,
                 jsx,
                 options.filename.as_deref(),
                 &mut resolver,
             ));
-            if jsx.runtime != Some(JsxRuntime::Preserve)
-                && jsx.development == Some(true)
-                && jsx.refresh.is_some()
-            {
-                let mut diagnostic =
-                    Diagnostic::error("Legacy transform has not been ported yet", Span::new(0, 0));
-                diagnostic.help = Some("react_refresh".into());
-                diagnostics.push(diagnostic);
-            }
         }
+
         let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
-        let program = context.ast.root_program();
-        if let Some(options) = options.env.es2022.class_fields_use_set {
-            class_fields_use_set(context.ast, context.state.resolver, options);
-        }
-        if options.env.es2022.static_blocks {
-            class_static_block::pass(context.ast, &mut context.state.static_blocks);
-        }
-        if let Some(options) = options.env.es2022.class_properties {
-            diagnostics.extend(class_properties(context.ast, &mut context.state, options));
-        }
-        if options.env.es2022.private_in_object {
-            let _ = program.traverse_mut_with(
-                &mut VarDeclarations {
-                    hook: PrivatePropertyInObjectPass::new(),
-                    scope_arrow_exprs: false,
-                },
-                &mut context,
-            );
-        }
-        if options.env.es2021.logical_assignments {
-            hook_pass_with_var_declarations(program, LogicalAssignmentOperatorsPass, &mut context);
-        }
-        if let Some(options) = options.env.es2020.optional_chaining {
-            optional_chaining_impl(context.ast, context.state.resolver, options);
-        }
-        if options.env.es2020.export_namespace_from {
-            export_namespace_from::pass(context.ast, context.state.resolver);
-        }
-        if let Some(options) = options.env.es2020.nullish_coalescing {
-            hook_pass_with_var_declarations(program, NullishCoalescingPass(options), &mut context);
-        }
-        if options.env.es2019.optional_catch_binding {
-            optional_catch_binding::pass(context.ast, context.state.resolver);
-        }
-        if let Some(options) = options.env.es2018.object_rest_spread {
-            hook_pass_with_var_declarations(
-                program,
-                ObjectRestSpreadPass::new(options),
-                &mut context,
-            );
-        }
-        let es2017 = options.env.es2017;
-        if let Some(options) = es2017
-            .async_to_generator
-            .or(es2017.async_generator_functions)
-        {
-            async_to_generator::pass(&mut context, es2017.async_to_generator.is_some(), options);
-        }
-        if options.env.es2016.exponentiation {
-            hook_pass_with_var_declarations(program, ExponentiationOperatorPass, &mut context);
-        }
-        regexp::pass(context.ast, context.state.resolver, options.env.regexp);
-        modules::finish(
+        diagnostics.extend(es2022::transform(&mut context, options.env.es2022));
+        es2021::transform(&mut context, options.env.es2021);
+        es2020::transform(&mut context, options.env.es2020);
+        es2019::transform(context.ast, context.state.resolver, options.env.es2019);
+        es2018::transform(&mut context, options.env.es2018);
+        es2017::transform(&mut context, options.env.es2017);
+        es2016::transform(&mut context, options.env.es2016);
+        regexp::transform(context.ast, context.state.resolver, options.env.regexp);
+        modules::transform(
             context.ast,
             &mut context.state,
             options.modules.r#type,
             options.filename.as_deref(),
             options.env.module_features,
         );
+
         // SWC runs hygiene once, after all transform passes, before its fixer.
         resolver.hygiene(ast);
         TransformerReturn { diagnostics }
     }
-}
-
-/// SWC composes the lowering hook with VarDeclarations in a single traversal.
-/// <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/lib.rs#L90>.
-fn hook_pass_with_var_declarations<'ast, 'r>(
-    program: Program,
-    hook: impl TraverseMut<'ast, TraverseCtx<'r>>,
-    ctx: &mut TraverseMutCtx<'_, 'ast, TraverseCtx<'r>>,
-) {
-    let _ = program.traverse_mut_with(
-        &mut VarDeclarations {
-            hook,
-            scope_arrow_exprs: true,
-        },
-        ctx,
-    );
 }

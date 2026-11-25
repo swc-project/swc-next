@@ -4,9 +4,6 @@ use swc_next_ecma_ast::*;
 /// Next represents SWC's export-namespace specifier as `ExportAllDeclaration`.
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/es2020/export_namespace_from.rs#L19>.
 pub(crate) fn pass(ast: &mut Ast<'_>, resolver: &mut Resolver) {
-    if !ast.is_module() {
-        return;
-    }
     let program = ast.root_program();
     ExportNamespaceFromPass { ast, resolver }.transform_export_namespace_from(program);
 }

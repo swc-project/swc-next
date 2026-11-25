@@ -42,7 +42,7 @@ impl RegExpOptions {
     }
 }
 
-pub(crate) fn pass(ast: &mut Ast<'_>, resolver: &mut Resolver, options: RegExpOptions) {
+pub(crate) fn transform(ast: &mut Ast<'_>, resolver: &mut Resolver, options: RegExpOptions) {
     if options.is_enabled() {
         ast.root_program().visit_mut_with(&mut RegexpPass {
             ast,

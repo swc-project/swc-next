@@ -41,7 +41,7 @@ pub enum ModuleType {
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc/src/config/mod.rs#L764>.
-pub(crate) fn finish(
+pub(crate) fn transform(
     ast: &mut Ast<'_>,
     ctx: &mut TraverseCtx<'_>,
     format: ModuleType,

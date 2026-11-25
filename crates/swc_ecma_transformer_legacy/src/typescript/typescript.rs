@@ -1,18 +1,22 @@
-use super::{TypeScriptOptions, semantic, transform};
+use super::{TsImportExportAssignConfig, TypeScriptOptions, semantic, transform};
 use std::collections::HashSet;
 use swc_next_ecma_ast::*;
 
-use crate::common::resolver::context::Resolver;
+use crate::{common::resolver::context::Resolver, modules::ModuleType};
 
 /// SWC's TypeScript pipeline before namespace/enum binding changes in #12455.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L43>.
 pub(crate) fn typescript(
     ast: &mut Ast<'_>,
-    options: &TypeScriptOptions,
+    mut options: TypeScriptOptions,
     tsx: bool,
+    module_type: ModuleType,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
-    let pass = TypeScript { config: options };
+    if module_type != ModuleType::Preserve && ast.is_module() {
+        options.import_export_assign_config = TsImportExportAssignConfig::Preserve;
+    }
+    let pass = TypeScript { config: &options };
     if tsx {
         TypeScriptReact { typescript: pass }.process(ast, resolver)
     } else {

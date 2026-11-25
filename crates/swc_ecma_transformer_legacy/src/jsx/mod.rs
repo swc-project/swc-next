@@ -73,9 +73,7 @@ pub struct Options {
     pub refresh: Option<ReactRefreshOptions>,
 }
 
-/// SWC JSX hook construction: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L212>.
-/// SWC React hook composition: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/lib.rs#L79>.
-pub(crate) fn jsx(
+pub(crate) fn transform(
     ast: &mut Ast<'_>,
     options: &JsxOptions,
     filename: Option<&str>,
@@ -84,6 +82,25 @@ pub(crate) fn jsx(
     if options.runtime == Some(JsxRuntime::Preserve) {
         return Vec::new();
     }
+
+    let mut diagnostics = jsx(ast, options, filename, resolver);
+    if options.development == Some(true) && options.refresh.is_some() {
+        let mut diagnostic =
+            Diagnostic::error("Legacy transform has not been ported yet", DUMMY_SP);
+        diagnostic.help = Some("react_refresh".into());
+        diagnostics.push(diagnostic);
+    }
+    diagnostics
+}
+
+/// SWC JSX hook construction: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L212>.
+/// SWC React hook composition: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/lib.rs#L79>.
+fn jsx(
+    ast: &mut Ast<'_>,
+    options: &JsxOptions,
+    filename: Option<&str>,
+    resolver: &mut Resolver,
+) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     let pragma = options.pragma.as_deref().unwrap_or("React.createElement");
     let pragma_frag = options.pragma_frag.as_deref().unwrap_or("React.Fragment");

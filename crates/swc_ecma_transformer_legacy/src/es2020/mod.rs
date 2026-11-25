@@ -1,6 +1,15 @@
 //! ES2020 transform options.
 
-pub(crate) mod nullish_coalescing;
+use swc_next_ecma_ast::TraverseMutCtx;
+
+use crate::{
+    common::{TraverseCtx, var_declarations::hook_pass_with_var_declarations},
+    es2022::optional_chaining_impl::optional_chaining_impl,
+};
+
+use self::nullish_coalescing::NullishCoalescingPass;
+
+mod nullish_coalescing;
 
 pub use crate::es2022::optional_chaining_impl::Config as OptionalChainingOptions;
 pub use nullish_coalescing::Config as NullishCoalescingOptions;
@@ -16,4 +25,16 @@ pub struct ES2020Options {
     pub optional_chaining: Option<OptionalChainingOptions>,
 }
 
-pub(crate) mod export_namespace_from;
+mod export_namespace_from;
+
+pub(crate) fn transform(ctx: &mut TraverseMutCtx<'_, '_, TraverseCtx<'_>>, options: ES2020Options) {
+    if let Some(config) = options.optional_chaining {
+        optional_chaining_impl(ctx.ast, ctx.state.resolver, config);
+    }
+    if options.export_namespace_from && ctx.ast.is_module() {
+        export_namespace_from::pass(ctx.ast, ctx.state.resolver);
+    }
+    if let Some(config) = options.nullish_coalescing {
+        hook_pass_with_var_declarations(NullishCoalescingPass(config), ctx);
+    }
+}
