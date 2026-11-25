@@ -172,11 +172,19 @@ impl Transformer {
         if let Some(decorators) = options.decorators {
             decorators::transform(context.ast, &mut context.state, decorators);
         }
-        if let Some(typescript) = options.typescript {
+        if let Some(mut typescript) = options.typescript {
+            let jsx_enabled = match options.jsx.as_ref() {
+                Some(jsx) => jsx.runtime != Some(jsx::JsxRuntime::Preserve),
+                None => false,
+            };
+            if jsx_enabled && let Some(jsx) = &options.jsx {
+                typescript.jsx.pragma = jsx.pragma.clone();
+                typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
+            }
             diagnostics.extend(typescript::typescript(
                 context.ast,
                 typescript,
-                options.jsx.is_some(),
+                jsx_enabled,
                 options.modules.r#type,
                 context.state.resolver,
             ));

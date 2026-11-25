@@ -15,7 +15,8 @@ use testsuite::{
     },
     runner::{
         Runner, codegen::CodegenRunner, minifier::MinifierRunner, parser::ParserRunner,
-        semantic::SemanticRunner, transform::TransformerRunner,
+        semantic::SemanticRunner,
+        transform::{TransformerV1Runner, TransformerV2Runner},
     },
 };
 
@@ -24,6 +25,8 @@ enum RunnerName {
     Parser,
     Codegen,
     Transform,
+    TransformV1,
+    TransformV2,
     Semantic,
     Minifier,
 }
@@ -84,15 +87,27 @@ fn main() {
     let res = match args.runner {
         RunnerName::Parser => run_conformance::<ParserRunner>(args.case, &args.filter),
         RunnerName::Codegen => run_conformance::<CodegenRunner>(args.case, &args.filter),
-        RunnerName::Transform => match args.case {
-            CaseSet::Babel => run_filtered::<TransformerRunner, BabelTransformCase>(&args.filter),
+        RunnerName::Transform | RunnerName::TransformV1 => match args.case {
+            CaseSet::Babel => run_filtered::<TransformerV1Runner, BabelTransformCase>(&args.filter),
             CaseSet::TypeScript => TypeScriptTransformCase::read_all(
                 args.typescript_mode.map(TypeScriptTransformMode::from),
             )
-            .and_then(|cases| run_filtered_cases::<TransformerRunner, _>(&args.filter, cases)),
-            CaseSet::Swc => run_filtered::<TransformerRunner, SwcTransformCase>(&args.filter),
+            .and_then(|cases| run_filtered_cases::<TransformerV1Runner, _>(&args.filter, cases)),
+            CaseSet::Swc => run_filtered::<TransformerV1Runner, SwcTransformCase>(&args.filter),
             _ => Err(
                 "`transform` runner requires `--case babel`, `--case typescript` or `--case swc`"
+                    .into(),
+            ),
+        },
+        RunnerName::TransformV2 => match args.case {
+            CaseSet::Babel => run_filtered::<TransformerV2Runner, BabelTransformCase>(&args.filter),
+            CaseSet::TypeScript => TypeScriptTransformCase::read_all(
+                args.typescript_mode.map(TypeScriptTransformMode::from),
+            )
+            .and_then(|cases| run_filtered_cases::<TransformerV2Runner, _>(&args.filter, cases)),
+            CaseSet::Swc => run_filtered::<TransformerV2Runner, SwcTransformCase>(&args.filter),
+            _ => Err(
+                "`transform-v2` runner requires `--case babel`, `--case typescript` or `--case swc`"
                     .into(),
             ),
         },

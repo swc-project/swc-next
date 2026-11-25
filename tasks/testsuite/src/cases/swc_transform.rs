@@ -5,7 +5,6 @@ use std::{
 
 use jwalk::WalkDir;
 use rayon::prelude::*;
-use swc_core::base::config::Config;
 use swc_next::js::JsTransformApiOptions;
 use swc_next_ecma_ast::{Lang, SourceType};
 
@@ -19,7 +18,7 @@ pub struct SwcTransformCase {
     name: String,
     input: String,
     output: String,
-    options: Option<Config>,
+    options: Option<options::SwcCaseConfig>,
     unsupported_snapshot: bool,
 }
 
@@ -107,11 +106,13 @@ impl Case for SwcTransformCase {
     fn source_type(&self) -> SourceType {
         self.options
             .as_ref()
-            .map_or(SourceType::Module, options::source_type)
+            .map_or(SourceType::Module, |case| options::source_type(&case.config))
     }
 
     fn lang(&self) -> Lang {
-        self.options.as_ref().map_or(Lang::Js, options::lang)
+        self.options
+            .as_ref()
+            .map_or(Lang::Js, |case| options::lang(&case.config))
     }
 
     fn expects_error(&self) -> bool {

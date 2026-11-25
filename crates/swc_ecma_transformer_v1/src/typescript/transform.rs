@@ -848,16 +848,14 @@ impl Transform<'_, '_> {
             };
             let parameter = property.parameter(self.ast);
             parameter.set_decorators(self.ast, property.decorators(self.ast));
-            let binding = parameter
-                .pattern(self.ast)
-                .as_binding_identifier(self.ast)
-                .expect("parameter properties have identifier patterns");
-            properties.push(self.binding_id(binding));
-            let name = self.ast.get_utf8(binding.name(self.ast)).to_owned();
-            let object = self.ast.expr_this_expression(DUMMY_SP);
-            let left = utils::member(self.ast, object, &name);
-            let right = self.resolver.reference(self.ast, binding);
-            initializers.push(utils::assign(self.ast, left, right));
+            if let Some(binding) = parameter.pattern(self.ast).as_binding_identifier(self.ast) {
+                properties.push(self.binding_id(binding));
+                let name = self.ast.get_utf8(binding.name(self.ast)).to_owned();
+                let object = self.ast.expr_this_expression(DUMMY_SP);
+                let left = utils::member(self.ast, object, &name);
+                let right = self.resolver.reference(self.ast, binding);
+                initializers.push(utils::assign(self.ast, left, right));
+            }
             parameters.items(self.ast).replace_slot(
                 self.ast,
                 slot,

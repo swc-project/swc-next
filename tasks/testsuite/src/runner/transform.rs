@@ -1,6 +1,9 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use swc_next::js::{CommentsOption, JsTransformApiOptions, transformer::transform_js};
+use swc_next::js::{
+    CommentsOption, JsOutput, JsTransformApiOptions,
+    transformer::{transform_js, transform_js_v2},
+};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Lang, Severity};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
@@ -8,51 +11,72 @@ use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOp
 
 use crate::{cases::TransformCase, runner::Runner, suite::TestResult, util::workspace_root};
 
-pub struct TransformerRunner;
+pub struct TransformerV1Runner;
+pub struct TransformerV2Runner;
 
-impl<C: TransformCase> Runner<C> for TransformerRunner {
-    const NAME: &'static str = "transform";
+pub type TransformerRunner = TransformerV1Runner;
+
+impl<C: TransformCase> Runner<C> for TransformerV1Runner {
+    const NAME: &'static str = "transform_v1";
 
     fn run(case: &C) -> TestResult {
-        let root = workspace_root().unwrap();
-        let path = case.path().strip_prefix(root).unwrap().to_path_buf();
-        if !case.supports_options() {
-            return TestResult::Skipped { path };
-        }
-        match catch_unwind(AssertUnwindSafe(|| run_case(case))) {
-            Ok(Ok(true)) => TestResult::Passed {
-                path,
-                negative: false,
-            },
-            Ok(Ok(false)) => TestResult::Skipped { path },
-            Ok(Err(error)) => {
-                let error = match case.options_label() {
-                    Some(options) => format!("[{options}]: {error}"),
-                    None => error,
-                };
-                let error = match case.virtual_file_name() {
-                    Some(name) => format!("virtual: {name} - {error}"),
-                    None => error,
-                };
-                TestResult::Failed {
-                    path,
-                    error,
-                    negative: false,
-                }
-            }
-            Err(_) => TestResult::Panic {
-                path,
-                negative: false,
-            },
-        }
+        run_with(case, transform_js::<true>)
     }
 }
 
-fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
+impl<C: TransformCase> Runner<C> for TransformerV2Runner {
+    const NAME: &'static str = "transform_v2";
+
+    fn run(case: &C) -> TestResult {
+        run_with(case, transform_js_v2::<true>)
+    }
+}
+
+fn run_with<C: TransformCase>(
+    case: &C,
+    transform: fn(&str, JsTransformApiOptions) -> JsOutput,
+) -> TestResult {
+    let root = workspace_root().unwrap();
+    let path = case.path().strip_prefix(root).unwrap().to_path_buf();
+    if !case.supports_options() {
+        return TestResult::Skipped { path };
+    }
+    match catch_unwind(AssertUnwindSafe(|| run_case(case, transform))) {
+        Ok(Ok(true)) => TestResult::Passed {
+            path,
+            negative: false,
+        },
+        Ok(Ok(false)) => TestResult::Skipped { path },
+        Ok(Err(error)) => {
+            let error = match case.options_label() {
+                Some(options) => format!("[{options}]: {error}"),
+                None => error,
+            };
+            let error = match case.virtual_file_name() {
+                Some(name) => format!("virtual: {name} - {error}"),
+                None => error,
+            };
+            TestResult::Failed {
+                path,
+                error,
+                negative: false,
+            }
+        }
+        Err(_) => TestResult::Panic {
+            path,
+            negative: false,
+        },
+    }
+}
+
+fn run_case<C: TransformCase>(
+    case: &C,
+    transform: fn(&str, JsTransformApiOptions) -> JsOutput,
+) -> Result<bool, String> {
     let mut options = case.options();
     let parser = options.parser.unwrap_or_default();
     let lang: Lang = parser.lang.map(Into::into).unwrap_or_default();
-    let output = transform_js::<true>(case.code(), options.clone());
+    let output = transform(case.code(), options.clone());
     if let Err(error) = check_diagnostics(&output.diagnostics) {
         return if case.expected_output().is_some() {
             Err(error)
@@ -89,7 +113,7 @@ fn run_case<C: TransformCase>(case: &C) -> Result<bool, String> {
             Lang::Js
         };
         options.parser.get_or_insert_with(Default::default).lang = Some(output_lang.into());
-        let retransformed = transform_js::<true>(&output.code, options);
+        let retransformed = transform(&output.code, options);
         if check_diagnostics(&retransformed.diagnostics).is_err() {
             return Ok(false);
         }
