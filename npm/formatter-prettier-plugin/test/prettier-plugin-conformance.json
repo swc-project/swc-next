@@ -29088,6 +29088,42 @@
         "prettierNative": "for (// Header\n/* Binding */ const value of values) {\n\trun(value);\n}\n"
       }
     ],
+    "js/statements/loops/for-using-escaped-binding.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 10,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "for (using /* resource */ o\\u0066 of of);\n",
+        "prettierNative": "for (using /* resource */ of of of);\n"
+      }
+    ],
     "js/statements/loops/while-condition-comment-owners.js": [
       {
         "options": {
@@ -39249,6 +39285,78 @@
         "prettierNative": "result = <\r\n\tstring | number /* prettier-ignore */\r\n>f(1);\r\n"
       }
     ],
+    "ts/expression-operators/asserts-ignored-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y;\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y;\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "x as /* prettier-ignore */ (asserts) satisfies Y;\r\n",
+        "prettierNative": "x as /* prettier-ignore */ asserts satisfies Y;\r\n"
+      }
+    ],
+    "ts/expression-operators/asserts-type-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "value satisfies (B & keyof asserts) as asserts;\n",
+        "prettierNative": "value satisfies B & keyof asserts as asserts;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "value satisfies (B &\n  keyof asserts) as asserts;\n",
+        "prettierNative": "value satisfies B &\n  keyof asserts as asserts;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "value satisfies (B &\n  keyof asserts) as asserts\n",
+        "prettierNative": "value satisfies B &\n  keyof asserts as asserts\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "value satisfies (B &\r\n\tkeyof asserts) as asserts;\r\n",
+        "prettierNative": "value satisfies B &\r\n\tkeyof asserts as asserts;\r\n"
+      }
+    ],
     "ts/expression-operators/non-null-operand-comments/line.ts": [
       {
         "options": {
@@ -39523,6 +39631,53 @@
         },
         "swcPlugin": "interface First {\r\n\tvalue: string;\r\n}\r\nclass Subject implements\r\n// @ts-ignore\r\nFirst, MissingFirst,\r\n\tMissingSecond {}\r\nconst outsideSentinel: number = \"outside\";\r\n",
         "prettierNative": "interface First {\r\n\tvalue: string;\r\n}\r\nclass Subject\r\n\t// @ts-ignore\r\n\timplements First, MissingFirst, MissingSecond {}\r\nconst outsideSentinel: number = \"outside\";\r\n"
+      }
+    ],
+    "ts/heritage-first-item/generic-function-interface.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface C extends Base< <T>() => T>, I</* boundary */ <T>() => T> {}\n",
+        "prettierNative": "interface C extends Base<<T>() => T>, I</* boundary */ <T>() => T> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 100,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "interface C extends Base< <T>() => T>, I</* boundary */ <T>() => T> {}\r\n",
+        "prettierNative": "interface C extends Base<<T>() => T>, I</* boundary */ <T>() => T> {}\r\n"
+      }
+    ],
+    "ts/heritage-first-item/generic-function-superclass.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C extends Base< <T>() => T> implements I< <T>() => T> {}\n",
+        "prettierNative": "class C extends Base<<T>() => T> implements I<<T>() => T> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C\n  extends Base<\n    <T>() => T\n  >\n  implements\n    I<\n      <T>() => T\n    > {}\n",
+        "prettierNative": "class C\n  extends Base<\n    <T>() => T\n  >\n  implements\n    I<<T>() => T> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 100,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "class C extends Base< <T>() => T> implements I< <T>() => T> {}\r\n",
+        "prettierNative": "class C extends Base<<T>() => T> implements I<<T>() => T> {}\r\n"
       }
     ],
     "ts/heritage-first-item/heritage-ignore-bridge/after-keyword-head/input.ts": [
@@ -44845,6 +45000,226 @@
         "prettierNative": "const result = factor * callee<Type> + suffix;\n"
       }
     ],
+    "ts/type-argument-expression-boundaries/comparison-lists/array.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  i < n,\n  j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const ok = [\n  i < n,\n  j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  i < n,\n  j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "const ok = [\n\ti < n,\n\tj.k\n\t\t> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n\ti < n,\n\tj.k >\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/arrow-arguments.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "foo(\n  () => i < n,\n  () =>\n    j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n",
+        "prettierNative": "foo(\n  () => i < n,\n  () =>\n    j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "foo(\n  () => i < n,\n  () =>\n    j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n)\n",
+        "prettierNative": "foo(\n  () => i < n,\n  () =>\n    j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n)\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "foo(\n  () => i < n,\n  () =>\n    j.k\n    > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n",
+        "prettierNative": "foo(\n  () => i < n,\n  () =>\n    j.k >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "foo(\n\t() => i < n,\n\t() =>\n\t\tj.k\n\t\t> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n",
+        "prettierNative": "foo(\n\t() => i < n,\n\t() =>\n\t\tj.k >\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n);\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/for-sequence.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  i < n,\n    j.k\n      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n",
+        "prettierNative": "for (\n  i < n,\n    j.k >\n      aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (\n  i < n,\n    j.k\n      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n",
+        "prettierNative": "for (\n  i < n,\n    j.k >\n      aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  i < n,\n    j.k\n      > aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n",
+        "prettierNative": "for (\n  i < n,\n    j.k >\n      aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n  running;\n  step()\n) {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "for (\n\ti < n,\n\t\tj.k\n\t\t\t> aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n\trunning;\n\tstep()\n) {}\n",
+        "prettierNative": "for (\n\ti < n,\n\t\tj.k >\n\t\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere;\n\trunning;\n\tstep()\n) {}\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/ignored-greater-operand.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  (i < n),\n  /* prettier-ignore */ j.k >\n  value,\n];\n",
+        "prettierNative": "[i < n, /* prettier-ignore */ j.k >\n  value];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[\n  (i < n),\n  /* prettier-ignore */ j.k >\n  value,\n]\n",
+        "prettierNative": ";[i < n, /* prettier-ignore */ j.k >\n  value]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  (i < n),\n  /* prettier-ignore */ j.k >\n  value,\n];\n",
+        "prettierNative": "[\n  i < n,\n  /* prettier-ignore */ j.k >\n  value,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "[\n\t(i < n),\n\t/* prettier-ignore */ j.k >\n  value,\n];\n",
+        "prettierNative": "[i < n, /* prettier-ignore */ j.k >\n  value];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/inline-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  i < n,\n  j.k\n    > /* rhs */ value,\n];\n",
+        "prettierNative": "[\n  i < n,\n  j.k >\n    /* rhs */ value,\n];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/parenthesized-greater-head.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[(i < n), j.k > (left && right).value];\n",
+        "prettierNative": "[i < n, j.k > (left && right).value];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[(i < n), j.k > (left && right).value]\n",
+        "prettierNative": ";[i < n, j.k > (left && right).value]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "[\n  (i < n),\n  j.k >\n    (left && right)\n      .value,\n];\n",
+        "prettierNative": "[\n  i < n,\n  j.k >\n    (left && right)\n      .value,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "[(i < n), j.k > (left && right).value];\n",
+        "prettierNative": "[i < n, j.k > (left && right).value];\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/comparison-lists/source-line-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  (i < n),\n  j.k // boundary\n    >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k > // boundary\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const ok = [\n  (i < n),\n  j.k // boundary\n    >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k > // boundary\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n]\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const ok = [\n  (i < n),\n  j.k // boundary\n    >\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n  i < n,\n  j.k > // boundary\n    aVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab"
+        },
+        "swcPlugin": "const ok = [\n\t(i < n),\n\tj.k // boundary\n\t\t>\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n",
+        "prettierNative": "const ok = [\n\ti < n,\n\tj.k > // boundary\n\t\taVeryLongIdentifierNameThatForcesALineBreakAfterTheOperatorSomewhereHere,\n];\n"
+      }
+    ],
     "ts/type-argument-expression-boundaries/lexical-tail.ts": [
       {
         "options": {
@@ -45754,6 +46129,42 @@
         "prettierNative": "type T = (AlphaLongType &\n  BetaLongType)[];\n  // c\n"
       }
     ],
+    "ts/type-conditional/asserts-check.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Result<T> = (T | asserts) extends (() => new () => infer U extends string)\n  ? U\n  : never;\n",
+        "prettierNative": "type Result<T> = T | asserts extends () => new () => infer U extends string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Result<T> = (\n  T | asserts\n) extends (() => new () => infer U extends\n  string)\n  ? U\n  : never;\n",
+        "prettierNative": "type Result<T> =\n  | T\n  | asserts extends () => new () => infer U extends\n  string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type Result<\n  T,\n> =\n  (\n    | T\n    | asserts\n  ) extends (() => new () => infer U extends\n    string)\n    ? U\n    : never\n",
+        "prettierNative": "type Result<\n  T,\n> =\n\n    | T\n    | asserts extends () => new () => infer U extends\n    string\n    ? U\n    : never\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type Result<T> = (\r\n\tT | asserts\r\n) extends (() => new () => infer U extends\r\n\tstring)\r\n\t? U\r\n\t: never;\r\n",
+        "prettierNative": "type Result<T> =\r\n\t| T\r\n\t| asserts extends () => new () => infer U extends\r\n\tstring\r\n\t? U\r\n\t: never;\r\n"
+      }
+    ],
     "ts/type-conditional/branch-mixed-head.ts": [
       {
         "options": {
@@ -45798,6 +46209,42 @@
         },
         "swcPlugin": "type Outcome<T> =\r\n\tT extends string ?\r\n/* prettier-ignore */\r\n1  | 2\r\n\t\t: 3;\r\n",
         "prettierNative": "type Outcome<T> =\r\n\tT extends string\r\n\t\t? /* prettier-ignore */\r\n\t\t\t1  | 2\r\n\t\t: 3;\r\n"
+      }
+    ],
+    "ts/type-conditional/escaped-asserts-check.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X = (assert\\u0073) extends B ? 1 : 2;\n",
+        "prettierNative": "type X = asserts extends B ? 1 : 2;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X =\n  (assert\\u0073) extends B\n    ? 1\n    : 2;\n",
+        "prettierNative": "type X =\n  asserts extends B\n    ? 1\n    : 2;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type X =\n  (assert\\u0073) extends B\n    ? 1\n    : 2\n",
+        "prettierNative": "type X =\n  asserts extends B\n    ? 1\n    : 2\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type X =\r\n\t(assert\\u0073) extends B\r\n\t\t? 1\r\n\t\t: 2;\r\n",
+        "prettierNative": "type X =\r\n\tasserts extends B\r\n\t\t? 1\r\n\t\t: 2;\r\n"
       }
     ],
     "ts/type-conditional/extends-whole-ignore.ts": [
@@ -46936,6 +47383,78 @@
         "prettierNativeError": "'with' expected. (15:33)"
       }
     ],
+    "ts/type-infer/conditional-return-constrained-infer.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> = T extends (() => A extends B ? C : infer U extends string)\n  ? U\n  : never;\n",
+        "prettierNative": "type X<T> = T extends () => A extends B ? C : infer U extends string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> =\n  T extends (() => A extends B\n    ? C\n    : infer U extends\n        string)\n    ? U\n    : never;\n",
+        "prettierNative": "type X<T> =\n  T extends () => A extends B\n    ? C\n    : infer U extends\n        string\n    ? U\n    : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type X<\n  T,\n> =\n  T extends (() => A extends B\n    ? C\n    : infer U extends\n        string)\n    ? U\n    : never\n",
+        "prettierNative": "type X<\n  T,\n> =\n  T extends () => A extends B\n    ? C\n    : infer U extends\n        string\n    ? U\n    : never\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type X<T> =\r\n\tT extends (() => A extends B\r\n\t\t? C\r\n\t\t: infer U extends\r\n\t\t\t\tstring)\r\n\t\t? U\r\n\t\t: never;\r\n",
+        "prettierNative": "type X<T> =\r\n\tT extends () => A extends B\r\n\t\t? C\r\n\t\t: infer U extends\r\n\t\t\t\tstring\r\n\t\t? U\r\n\t\t: never;\r\n"
+      }
+    ],
+    "ts/type-infer/curried-constrained-infer.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> = T extends (() => new () => (x: any) => x is infer U extends string)\n  ? U\n  : never;\n",
+        "prettierNative": "type X<T> = T extends () => new () => (x: any) => x is infer U extends string\n  ? U\n  : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type X<T> =\n  T extends (() => new () => (\n    x: any,\n  ) => x is infer U extends\n    string)\n    ? U\n    : never;\n",
+        "prettierNative": "type X<T> =\n  T extends () => new () => (\n    x: any,\n  ) => x is infer U extends\n    string\n    ? U\n    : never;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type X<\n  T,\n> =\n  T extends (() => new () => (\n    x: any,\n  ) => x is infer U extends\n    string)\n    ? U\n    : never\n",
+        "prettierNative": "type X<\n  T,\n> =\n  T extends () => new () => (\n    x: any,\n  ) => x is infer U extends\n    string\n    ? U\n    : never\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type X<T> =\r\n\tT extends (() => new () => (\r\n\t\tx: any,\r\n\t) => x is infer U extends\r\n\t\tstring)\r\n\t\t? U\r\n\t\t: never;\r\n",
+        "prettierNative": "type X<T> =\r\n\tT extends () => new () => (\r\n\t\tx: any,\r\n\t) => x is infer U extends\r\n\t\tstring\r\n\t\t? U\r\n\t\t: never;\r\n"
+      }
+    ],
     "ts/type-interface/body-diagnostic.ts": [
       {
         "options": {
@@ -47351,6 +47870,42 @@
         },
         "swcPlugin": "const result = value satisfies /* head */ // operand\n  Shape;\n",
         "prettierNative": "const result = value /* head */ satisfies // operand\nShape;\n"
+      }
+    ],
+    "ts/type-mapped/asserts-name-constraint.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Keys<T> = { [K in (() => keyof asserts) as T]: K };\n",
+        "prettierNative": "type Keys<T> = { [K in () => keyof asserts as T]: K };\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type Keys<T> = {\n  [\n    K in (() => keyof asserts) as T\n  ]: K;\n};\n",
+        "prettierNative": "type Keys<T> = {\n  [\n    K in () => keyof asserts as T\n  ]: K;\n};\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type Keys<\n  T,\n> =\n  {\n    [\n      K in (() => keyof asserts) as T\n    ]: K\n  }\n",
+        "prettierNative": "type Keys<\n  T,\n> =\n  {\n    [\n      K in () => keyof asserts as T\n    ]: K\n  }\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "type Keys<T> = {\r\n\t[\r\n\t\tK in (() => keyof asserts) as T\r\n\t]: K;\r\n};\r\n",
+        "prettierNative": "type Keys<T> = {\r\n\t[\r\n\t\tK in () => keyof asserts as T\r\n\t]: K;\r\n};\r\n"
       }
     ],
     "ts/type-member-boundaries/default-before-accessor.ts": [

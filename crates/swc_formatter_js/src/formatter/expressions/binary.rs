@@ -5,6 +5,7 @@ use swc_next_ecma_ast::{
     Precedence, Span,
 };
 
+use super::comparisons::ComparisonOperatorGap;
 use super::parentheses::{
     ExpressionContent, GeneratedEnclosureOwner, PreparedGeneratedEnclosure, SourceParentheses,
 };
@@ -1431,7 +1432,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .map_or_else(|| self.content_mode(after), |source| source.right_mode),
             });
         }
+        let comparison_gap = self.comparison_list_operator_gap(entry.binary);
+        let break_before =
+            !inline && matches!(comparison_gap, Some(ComparisonOperatorGap::BreakBefore));
         if comments.is_empty() {
+            if break_before {
+                writer.line();
+                writer.text(operator);
+                return Ok(OperandBoundary::Inline);
+            }
             writer.space();
             writer.text(operator);
             return Ok(if inline {
@@ -1486,7 +1495,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let comments = self.comments.take(comments.len());
         let before_operator = &comments[..before_count];
-        let retains_operator_gap = before_operator
+        let retains_operator_gap = matches!(
+            comparison_gap,
+            Some(ComparisonOperatorGap::RetainCommentBoundary)
+        ) || before_operator
             .iter()
             .position(|comment| comment.kind == CommentKind::Line)
             .is_some_and(|line| {
@@ -1536,13 +1548,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_comment_run(trailing, trailing_layout, writer)?;
         if let Some(&last) = trailing.last().filter(|_| retains_operator_gap) {
             self.comment_gap_after(last, operator_start, writer);
+        } else if break_before {
+            writer.line();
         } else {
             writer.space();
         }
         writer.text(operator);
         let leading_before = leading.partition_point(|comment| comment.span.end <= operator_start);
         let (before, after) = leading.split_at(leading_before);
-        let layout = if !inline {
+        let layout = if !inline && !break_before {
             OperandLayout::Break
         } else if self.leading_comments_break(before, operator_start)
             || self.leading_comments_break(after, right_start)

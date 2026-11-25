@@ -24,7 +24,7 @@ use crate::formatter::types::generics::TypeAnglePacket;
 use crate::formatter::types::{
     BinaryTypeHead, PreparedDelimitedType, PreparedDelimitedTypeHead, PreparedPrecedingTypePacket,
     PreparedType, RecordedTypeHead, SourceTypeOperator, SuppressedTypeHead, SuppressedTypeHeadRole,
-    TypeContext, TypeLayout, TypeOperatorSlot,
+    TypeArgumentOwner, TypeContext, TypeLayout, TypeOperatorSlot,
 };
 use crate::{
     FormatError,
@@ -52,6 +52,7 @@ pub(in crate::formatter) struct ExpressionTypeArguments<'ast> {
     pub(super) mode: ContentMode,
     pub(super) access: AccessKind,
     has_comments: bool,
+    owner: TypeArgumentOwner,
     prefix: ExpressionTypeArgumentPrefix<'ast>,
 }
 
@@ -208,6 +209,7 @@ struct BinaryTypeBoundary<'ast> {
 struct PreparedBinaryTypeExpression<'ast> {
     boundary: BinaryTypeBoundary<'ast>,
     annotation: PreparedType,
+    type_context: TypeContext,
     tail_owner: TailOwner,
 }
 
@@ -318,6 +320,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    pub(in crate::formatter) fn prepare_heritage_type_arguments(
+        &self,
+        expression: Expr,
+        node: TsTypeParameterInstantiation,
+    ) -> Result<ExpressionTypeArguments<'ast>, FormatError> {
+        let mut arguments =
+            self.prepare_expression_type_arguments(expression, node, AccessKind::Ordinary)?;
+        arguments.owner = TypeArgumentOwner::Heritage;
+        Ok(arguments)
+    }
+
     pub(in crate::formatter) fn prepare_expression_type_arguments(
         &self,
         expression: Expr,
@@ -375,6 +388,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             mode,
             access,
             has_comments: !comments.is_empty(),
+            owner: TypeArgumentOwner::Ordinary,
             prefix,
         })
     }
@@ -454,7 +468,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             }
         }
-        self.format_type_arguments(arguments.node, arguments.mode, writer)
+        self.format_type_arguments_with_owner(
+            arguments.node,
+            arguments.mode,
+            arguments.owner,
+            writer,
+        )
     }
 
     pub(super) fn format_instantiation(
@@ -601,6 +620,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(PreparedBinaryTypeExpression {
             boundary,
             annotation,
+            type_context: TypeContext::TypeExpressionRhs {
+                before_keyword: matches!(context.position, ExpressionPosition::TypeBinaryOperand),
+            },
             tail_owner,
         })
     }
@@ -615,6 +637,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_binary_type_right_output(
             source.boundary,
             source.annotation,
+            source.type_context,
             source.tail_owner == TailOwner::ParentOperation,
             writer,
         )
@@ -956,6 +979,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &mut self,
         boundary: BinaryTypeBoundary<'ast>,
         node: PreparedType,
+        context: TypeContext,
         continuation: bool,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
@@ -970,25 +994,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(boundary.operator.token());
                 writer.space();
                 if continuation {
-                    self.format_binary_type_rhs_before_continuation(node, &after, head, writer)
-                } else {
-                    self.format_binary_type_rhs_head_output(
-                        node,
-                        TypeContext::TypeExpressionRhs,
-                        &after,
-                        head,
-                        writer,
+                    self.format_binary_type_rhs_before_continuation(
+                        node, context, &after, head, writer,
                     )
+                } else {
+                    self.format_binary_type_rhs_head_output(node, context, &after, head, writer)
                 }
             }
-            BinaryTypeLayout::Source { source, spacing } => self
-                .format_source_type_operator_rhs_output(
-                    source,
-                    spacing,
-                    node,
-                    TypeContext::TypeExpressionRhs,
-                    writer,
-                ),
+            BinaryTypeLayout::Source { source, spacing } => {
+                self.format_source_type_operator_rhs_output(source, spacing, node, context, writer)
+            }
             BinaryTypeLayout::SourceRhs {
                 prefix,
                 spacing,
@@ -999,15 +1014,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_source_gap(prefix, writer)?;
                 writer.space();
                 if continuation {
-                    self.format_binary_type_rhs_before_continuation(node, &after, head, writer)
-                } else {
-                    self.format_binary_type_rhs_head_output(
-                        node,
-                        TypeContext::TypeExpressionRhs,
-                        &after,
-                        head,
-                        writer,
+                    self.format_binary_type_rhs_before_continuation(
+                        node, context, &after, head, writer,
                     )
+                } else {
+                    self.format_binary_type_rhs_head_output(node, context, &after, head, writer)
                 }
             }
             BinaryTypeLayout::Suppressed { before, head } => {
@@ -1018,7 +1029,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_suppressed_type_content_output(
                     node,
                     &head,
-                    TypeContext::TypeExpressionRhs,
+                    context,
                     TypeLayout::OpeningProvided,
                     writer,
                 )
@@ -1039,15 +1050,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.text(boundary.operator.token());
                 writer.text(" ");
                 if continuation {
-                    self.format_binary_type_rhs_before_continuation(node, &after, head, writer)
-                } else {
-                    self.format_binary_type_rhs_head_output(
-                        node,
-                        TypeContext::TypeExpressionRhs,
-                        &after,
-                        head,
-                        writer,
+                    self.format_binary_type_rhs_before_continuation(
+                        node, context, &after, head, writer,
                     )
+                } else {
+                    self.format_binary_type_rhs_head_output(node, context, &after, head, writer)
                 }
             }
         }

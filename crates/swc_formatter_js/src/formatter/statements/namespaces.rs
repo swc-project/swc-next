@@ -202,7 +202,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let ty = self.prepare_type(TsType::TsTypeLiteral(attributes.node), attributes.mode);
             self.format_prepared_type_with_layout(
                 ty,
-                TypeContext::TypeExpressionRhs,
+                TypeContext::TypeExpressionRhs {
+                    before_keyword: false,
+                },
                 TypeLayout::Root,
                 writer,
             )?;

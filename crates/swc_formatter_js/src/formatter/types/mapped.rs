@@ -252,6 +252,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             &in_boundary,
                             MappedSeparator::In,
                             constraint,
+                            if remap.is_some() {
+                                TypeContext::BeforeKeyword
+                            } else {
+                                TypeContext::Root
+                            },
                             writer,
                         )?;
                         self.format_expression_tail(tail, writer)?;
@@ -260,6 +265,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 &remap.boundary,
                                 MappedSeparator::As,
                                 remap.node,
+                                TypeContext::Root,
                                 writer,
                             )?;
                             self.format_expression_tail(tail, writer)?;
@@ -824,6 +830,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: &MappedBoundary<'ast>,
         separator: MappedSeparator,
         node: PreparedType,
+        context: TypeContext,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         match &boundary.layout {
@@ -834,7 +841,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return self.format_suppressed_type_content(
                     node,
                     head,
-                    TypeContext::Root,
+                    context,
                     boundary.following_layout(),
                     writer,
                 );
@@ -850,7 +857,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         formatter
                             .format_prepared_type_after_comments(
                                 node,
-                                TypeContext::Root,
+                                context,
                                 &preceding.after,
                                 layout,
                                 writer,
@@ -871,7 +878,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = node.node.span(self.ast);
         let layout = self.continuation_type_layout(span, boundary.following_layout());
         self.format_type_body_before_continuation(span, writer, |formatter, writer| {
-            formatter.format_prepared_type_body(node, TypeContext::Root, layout, writer)
+            formatter.format_prepared_type_body(node, context, layout, writer)
         })
         .map(|output| output.pending)
     }

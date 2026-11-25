@@ -8,7 +8,7 @@ use super::Formatter;
 use super::comments::{CommentBinding, CommentBoundary, CommentGap, CommentRunLayout};
 use super::diagnostics::{FlatSeparator, LineConstraint};
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, ItemBoundary};
-use super::expressions::{AccessKind, ExpressionContext, ExpressionPosition, TailOwner};
+use super::expressions::{ExpressionContext, ExpressionPosition, TailOwner};
 use super::suppression::{ContentMode, SuppressionPosition};
 use crate::{FormatError, document::Writer};
 
@@ -462,11 +462,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_verbatim(span, writer)?;
                 None
             } else if let Some(arguments) = node.arguments {
-                let arguments = self.prepare_expression_type_arguments(
-                    node.expression,
-                    arguments,
-                    AccessKind::Ordinary,
-                )?;
+                let arguments = self.prepare_heritage_type_arguments(node.expression, arguments)?;
                 let context = ExpressionContext::at(ExpressionPosition::Nested)
                     .with_content_mode(arguments.callee_mode)
                     .with_tail_owner(TailOwner::ParentOperation);

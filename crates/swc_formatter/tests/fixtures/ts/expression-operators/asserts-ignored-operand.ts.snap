@@ -1,0 +1,24 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+x as /* prettier-ignore */ (asserts) satisfies Y;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+x as /* prettier-ignore */ (asserts) satisfies Y;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+x as /* prettier-ignore */ (asserts) satisfies Y;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+x as /* prettier-ignore */ (asserts) satisfies Y
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+x as /* prettier-ignore */ (asserts) satisfies Y;

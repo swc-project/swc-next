@@ -265,6 +265,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn format_array_contents(
         &mut self,
+        source: PreparedArray<'ast>,
+        group: Option<GroupId>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<bool, FormatError> {
+        let ast = self.ast;
+        let items = source.array.elements(ast).iter().map(|id| {
+            let argument: Option<Argument> = ast.get_node_in_sub_range(id);
+            argument.and_then(|argument| super::comparisons::comparison_argument(ast, argument))
+        });
+        self.with_comparison_list(items, source.content.end, |formatter| {
+            formatter.format_array_contents_body(source, group, writer)
+        })
+    }
+
+    fn format_array_contents_body(
+        &mut self,
         mut source: PreparedArray<'ast>,
         group: Option<GroupId>,
         writer: &mut Writer<'ast>,

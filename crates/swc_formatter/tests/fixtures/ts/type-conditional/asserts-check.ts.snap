@@ -1,0 +1,45 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Result<T> = ((T | asserts)) extends () => new () => (infer U extends string) ? U : never;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Result<T> = (T | asserts) extends (() => new () => infer U extends string)
+  ? U
+  : never;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Result<T> = (
+  T | asserts
+) extends (() => new () => infer U extends
+  string)
+  ? U
+  : never;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Result<
+  T,
+> =
+  (
+    | T
+    | asserts
+  ) extends (() => new () => infer U extends
+    string)
+    ? U
+    : never
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type Result<T> = (
+	T | asserts
+) extends (() => new () => infer U extends
+	string)
+	? U
+	: never;

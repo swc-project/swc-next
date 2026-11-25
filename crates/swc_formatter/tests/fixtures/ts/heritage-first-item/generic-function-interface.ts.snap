@@ -1,0 +1,28 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+interface C extends Base< <T>() => T>, I< /* boundary */ <T>() => T> {}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+interface C extends Base< <T>() => T>, I</* boundary */ <T>() => T> {}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+interface C
+  extends
+    Base<
+      <T>() => T
+    >,
+    I<
+      /* boundary */ <
+        T,
+      >() => T
+    > {}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":100}
+---------- Output ----------
+interface C extends Base< <T>() => T>, I</* boundary */ <T>() => T> {}

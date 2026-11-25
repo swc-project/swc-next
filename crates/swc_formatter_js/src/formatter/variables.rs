@@ -52,6 +52,7 @@ pub(super) struct VariableDeclaratorOutput<'ast> {
 
 struct PreparedVariableDeclarator {
     node: VariableDeclarator,
+    kind: VariableKind,
     mode: ContentMode,
 }
 
@@ -278,6 +279,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let output = self.format_variable_declarator(
                         PreparedVariableDeclarator {
                             node: declarator,
+                            kind,
                             mode: item.mode,
                         },
                         context,
@@ -360,6 +362,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<VariableDeclaratorOutput<'ast>, FormatError> {
         let PreparedVariableDeclarator {
             node: declarator,
+            kind,
             mode,
         } = prepared;
         let ast = self.ast;
@@ -393,6 +396,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
         let left = declarator.id(ast);
         let Some(right) = declarator.init(ast) else {
+            if kind == VariableKind::Using
+                && matches!(context, VariableContext::Iteration)
+                && let BindingPatternData::BindingIdentifier(identifier) =
+                    ast.binding_pattern_data(left)
+                && ast.get_utf8(identifier.name(ast)) == "of"
+            {
+                // An unescaped `using of` starts an expression-based for-of head.
+                writer.text(r"o\u0066");
+                return Ok(VariableDeclaratorOutput::formatted(None));
+            }
             return self
                 .format_declaration_binding(left, ContentMode::Formatted, writer)
                 .map(VariableDeclaratorOutput::formatted);

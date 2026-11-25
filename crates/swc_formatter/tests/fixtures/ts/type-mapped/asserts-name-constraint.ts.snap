@@ -1,0 +1,39 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type Keys<T> = { [K in (() => keyof (asserts)) as T]: K };
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type Keys<T> = { [K in (() => keyof asserts) as T]: K };
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+type Keys<T> = {
+  [
+    K in (() => keyof asserts) as T
+  ]: K;
+};
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+type Keys<
+  T,
+> =
+  {
+    [
+      K in (() => keyof asserts) as T
+    ]: K
+  }
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+type Keys<T> = {
+	[
+		K in (() => keyof asserts) as T
+	]: K;
+};
