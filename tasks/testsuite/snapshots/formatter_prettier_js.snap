@@ -3,14 +3,14 @@ formatter * prettier 3.10.1 * js
 Fixture revision: deda65fd47c285b974e2a4397f26a33cfc1746b8
 Fixture files: 859
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1021/1094 (93.33%)
-Snapshot matched: 1021/1094
+Passed: 1024/1094 (93.60%)
+Snapshot matched: 1024/1094
 AST parity: 1094/1094
 AST mismatched: 0/1094
 AST format errors: 0/1094
-Mismatched: 73/1094
+Mismatched: 70/1094
 Known mismatches: 33/1094
-Unclassified mismatches: 40/1094
+Unclassified mismatches: 37/1094
 Format errors: 0/1094
 Unparsable output: 0/1094
 Panicked: 0/1094
@@ -233,10 +233,7 @@ Unsupported option sets: 16
 - js/comments/while-like/switch.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/decorators/export-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/explicit-resource-management/for-await-using-of-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/explicit-resource-management/for-using-of-escaped-of-binding.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/explicit-resource-management/valid-await-using-comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/explicit-resource-management/valid-for-await-using-binding-escaped-of-of.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- js/explicit-resource-management/valid-for-using-binding-escaped-of-of.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/for-of-statement/comments-before-keyword.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/for-of-statement/comments.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - js/ignore/semi/asi.js: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent

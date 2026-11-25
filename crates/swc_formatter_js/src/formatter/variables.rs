@@ -403,7 +403,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 && ast.get_utf8(identifier.name(ast)) == "of"
             {
                 // An unescaped `using of` starts an expression-based for-of head.
-                writer.text(r"o\u0066");
+                writer.text(r"o\u{66}");
                 return Ok(VariableDeclaratorOutput::formatted(None));
             }
             return self

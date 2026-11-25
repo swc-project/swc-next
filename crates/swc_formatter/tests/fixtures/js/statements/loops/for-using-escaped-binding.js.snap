@@ -6,19 +6,19 @@ for (using /* resource */ \u{6f}f of of);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-for (using /* resource */ o\u0066 of of);
+for (using /* resource */ o\u{66} of of);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-for (using /* resource */ o\u0066 of of);
+for (using /* resource */ o\u{66} of of);
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":10}
 ---------- Output ----------
-for (using /* resource */ o\u0066 of of);
+for (using /* resource */ o\u{66} of of);
 
 ---------- Options ----------
 {"indentStyle":"tab","indentWidth":4,"lineWidth":80}
 ---------- Output ----------
-for (using /* resource */ o\u0066 of of);
+for (using /* resource */ o\u{66} of of);
