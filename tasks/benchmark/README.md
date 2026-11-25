@@ -15,7 +15,8 @@ components.
 The [CodSpeed workflow](../../.github/workflows/codspeed.yml) measures the
 `parser`, `visit`, and `semantic` benchmarks on CodSpeed Macro Runners for every
 push to `main`. It runs on an AMD Ryzen 9950X (x86_64) runner and on an Arm
-Cortex-A72 (arm64) runner. Pull requests run only when they have the `Codspeed`
+Cortex-A72 (arm64) runner. A manual dispatch measures the selected branch. Pull
+requests run only when they have the `Codspeed`
 label, including when the label is added. CodSpeed must be enabled for the
 repository, and the organization's runner group must allow this public
 repository to use Macro Runners.
