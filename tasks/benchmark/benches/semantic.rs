@@ -2,6 +2,7 @@
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use std::{
+    env::consts::ARCH,
     hint::black_box,
     time::{Duration, Instant},
 };
@@ -27,7 +28,7 @@ fn bench_semantic(c: &mut Criterion) {
     ];
     let mut group = c.benchmark_group("semantic");
     for (name, source, lang) in bench_cases {
-        group.bench_function(format!("{name}/semantic/legacy"), |b| {
+        group.bench_function(format!("{name}/semantic/legacy/{ARCH}"), |b| {
             // Give each iteration its own allocator, and parse and drop outside the measured
             // section, so memory does not accumulate across iterations.
             b.iter_custom(|iters| {

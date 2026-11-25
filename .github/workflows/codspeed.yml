@@ -13,6 +13,7 @@ on:
       - 'tasks/benchmark/**'
   pull_request:
     types: [opened, reopened, synchronize, labeled]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,13 +24,23 @@ concurrency:
 
 jobs:
   benchmarks:
-    name: Measure walltime
+    name: Measure walltime (${{ matrix.arch }})
     if: >-
-      github.event_name == 'push' ||
+      github.event_name != 'pull_request' ||
       (contains(github.event.pull_request.labels.*.name, 'Codspeed') &&
       (github.event.action != 'labeled' || github.event.label.name == 'Codspeed'))
-    runs-on: codspeed-macro-arm64-graviton-ubuntu-22-04
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
+    # Keep each architecture on its own machine. Results are comparable only
+    # when they come from the same machine.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: codspeed-macro-x64-ryzen-9950x-ubuntu-24-04
+          - arch: arm64
+            runner: codspeed-macro-arm64-graviton-ubuntu-22-04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:

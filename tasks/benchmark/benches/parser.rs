@@ -1,6 +1,8 @@
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+use std::env::consts::ARCH;
+
 use criterion::{Bencher, Criterion, criterion_group, criterion_main};
 use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::Lang;
@@ -70,7 +72,7 @@ fn bench_files(c: &mut Criterion) {
     ];
 
     for (name, source, lang) in bench_cases {
-        c.bench_function(&format!("{name}/parser/new"), |b| {
+        c.bench_function(&format!("{name}/parser/new/{ARCH}"), |b| {
             bench_new(b, source, lang)
         });
     }
