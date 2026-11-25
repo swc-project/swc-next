@@ -12,7 +12,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{AstCtx, Diagnostic, Severity};
 use swc_next_ecma_codegen::generate;
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_transformer_legacy::Transformer;
+use swc_next_ecma_transformer_v1::Transformer;
 
 #[path = "conformance/options.rs"]
 mod options;
@@ -160,7 +160,7 @@ fn run_suite() {
         }
     }
     let mut snapshot = format!(
-        "transform_legacy * swc\n========================\nTotal: {}\nPassed: {passed}\nFailed: {}\nPanicked: {}\nSkipped: {skipped}\n",
+        "transform_v1 * swc\n========================\nTotal: {}\nPassed: {passed}\nFailed: {}\nPanicked: {}\nSkipped: {skipped}\n",
         cases.len(),
         failed.len(),
         panics.len(),

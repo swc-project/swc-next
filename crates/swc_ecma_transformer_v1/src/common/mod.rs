@@ -1,4 +1,4 @@
-//! Shared infrastructure for the legacy compatibility passes.
+//! Shared infrastructure for the v1 transformer passes.
 
 pub(crate) mod build;
 pub(crate) mod constructor;

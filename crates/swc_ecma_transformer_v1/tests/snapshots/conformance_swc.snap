@@ -1,7 +1,7 @@
 ---
-source: crates/swc_ecma_transformer_legacy/tests/conformance.rs
+source: crates/swc_ecma_transformer_v1/tests/conformance.rs
 ---
-transform_legacy * swc
+transform_v1 * swc
 ========================
 Total: 2089
 Passed: 949

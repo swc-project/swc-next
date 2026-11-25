@@ -12,7 +12,7 @@ use swc_core::{
 use swc_next_ecma_ast::{Lang, SourceType};
 use swc_next_ecma_codegen::Options as GeneratorOptions;
 use swc_next_ecma_parser::Options as ParserOptions;
-use swc_next_ecma_transformer_legacy::{
+use swc_next_ecma_transformer_v1::{
     TransformerOptions,
     env::{EnvOptions, ModuleFeatures},
     es2016::ES2016Options,

@@ -1,4 +1,4 @@
-# Legacy SWC transformer ports
+# SWC transformer v1
 
 - Match SWC's core behavior and defaults for the options in scope. Keep
   upstream function, type, and field names where they have direct counterparts.

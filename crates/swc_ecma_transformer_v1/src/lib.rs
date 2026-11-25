@@ -1,4 +1,4 @@
-//! Legacy SWC JavaScript transforms for the SWC Next AST.
+//! SWC JavaScript transform passes ported to the SWC Next AST.
 //!
 //! Options follow SWC Next's per-edition and language grouping, with the fields
 //! and defaults of legacy SWC's transform configurations. [`Transformer::transform`]
@@ -12,7 +12,7 @@
 //! defaults. Per-transform SWC flags remain local to their transform options.
 //!
 //! ```
-//! use swc_next_ecma_transformer_legacy::{
+//! use swc_next_ecma_transformer_v1::{
 //!     TransformerOptions,
 //!     env::EnvOptions,
 //!     es2016::ES2016Options,
@@ -98,7 +98,7 @@ pub enum BoolOr<T> {
     Options(T),
 }
 
-/// Selects legacy SWC transforms using SWC Next's option grouping.
+/// Selects ported SWC transforms using SWC Next's option grouping.
 ///
 /// All transforms are disabled by default. Edition groups select individual
 /// passes. Use [`env::EnvConfig`] to select transforms for a target.
@@ -122,7 +122,7 @@ pub struct TransformerReturn {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Entry point for legacy SWC transforms on the SWC Next AST.
+/// Entry point for ported SWC transforms on the SWC Next AST.
 pub struct Transformer;
 
 impl Transformer {
@@ -137,7 +137,7 @@ impl Transformer {
     /// ```
     /// use swc_next_allocator::Allocator;
     /// use swc_next_ecma_parser::{NoTokenParserConfig, Options, Parser};
-    /// use swc_next_ecma_transformer_legacy::{Transformer, TransformerOptions};
+    /// use swc_next_ecma_transformer_v1::{Transformer, TransformerOptions};
     ///
     /// let allocator = Allocator::new();
     /// let parsed = Parser::init(

@@ -237,7 +237,7 @@ behavior.
 ## Existing SWC Next coverage
 
 These are existing source counterparts in this workspace. The module row
-records implementations in the legacy transformer crate.
+records implementations in the v1 transformer crate.
 
 | Legacy feature | Existing SWC Next source | Status for this inventory |
 | --- | --- | --- |
@@ -248,7 +248,7 @@ records implementations in the legacy transformer crate.
 | Identifier/scope management | `swc_ecma_semantic`, transformer `context/` and `uid.rs` | Different AST/semantic model; adapt legacy context-dependent algorithms |
 | Runtime helpers | `packages/helpers` and transformer helper injection | Existing helper system; audit helpers needed by each port |
 | Simplification / DCE / mangling | `swc_ecma_minifier` | Related optimizer exists; no parity claim for legacy optimization passes |
-| CommonJS, AMD, UMD, and SystemJS | `swc_ecma_transformer_legacy/src/modules/` | Default module passes selected through `TransformerOptions::modules` |
+| CommonJS, AMD, UMD, and SystemJS | `swc_ecma_transformer_v1/src/modules/` | Default module passes selected through `TransformerOptions::modules` |
 | Other compatibility and proposal transforms | No corresponding transform exposed in current `TransformerOptions` | Pending migration assessment |
 
 The new crate currently has no dependency on legacy SWC, no AST conversion

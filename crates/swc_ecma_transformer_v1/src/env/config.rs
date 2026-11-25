@@ -17,7 +17,7 @@ use super::{EnvOptions, Target, TargetError, compat::Feature};
 /// ES2016–ES2022/RegExp passes, not a complete compiler or polyfill preset.
 ///
 /// ```
-/// use swc_next_ecma_transformer_legacy::env::{EnvConfig, EsVersion, Target};
+/// use swc_next_ecma_transformer_v1::env::{EnvConfig, EsVersion, Target};
 /// let config = EnvConfig {
 ///     target: Some(Target::EsVersion(EsVersion::Es2018)),
 ///     ..Default::default()
