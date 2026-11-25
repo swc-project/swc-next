@@ -1,6 +1,6 @@
 //! Cached display widths and layout classification for borrowed text.
 
-use crate::measure_text_width;
+use crate::{measure_text_width, single_width_ascii};
 
 use rustc_hash::FxHashMap;
 
@@ -38,7 +38,7 @@ impl Width {
         };
         Self {
             kind,
-            value: u16::try_from(measure_text_width(source)).unwrap_or(u16::MAX),
+            value: u16::try_from(unicode_width::UnicodeWidthStr::width(source)).unwrap_or(u16::MAX),
         }
     }
 }
@@ -46,7 +46,7 @@ impl Width {
 impl<'a> Text<'a> {
     #[inline]
     pub(super) fn new(source: &'a str) -> Self {
-        let width = if source.bytes().all(|byte| (0x20..=0x7f).contains(&byte)) {
+        let width = if single_width_ascii(source) {
             Width {
                 kind: WidthKind::Ascii,
                 value: 0,

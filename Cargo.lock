@@ -3970,6 +3970,7 @@ dependencies = [
  "memchr",
  "rustc-hash",
  "swc_next_allocator",
+ "swc_next_simd",
  "unicode-width 0.2.3",
 ]
 

@@ -43,6 +43,17 @@ enum Part<'a> {
     Text(&'a str),
 }
 
+impl Part<'_> {
+    fn emit(self, output: &mut String) {
+        match self {
+            Self::Empty => {}
+            Self::Spaces(n) => append_whitespace(output, IndentStyle::Space, n),
+            Self::Tabs(n) => append_whitespace(output, IndentStyle::Tab, n),
+            Self::Text(text) => output.push_str(text),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 struct Prefix<'a> {
     previous: usize,
@@ -54,6 +65,8 @@ pub(super) struct Rich<'a> {
     roots: Vec<State>,
     prefix: Vec<Prefix<'a>>,
     scratch: Vec<Part<'a>>,
+    last_prefix: usize,
+    prefix_text: String,
 }
 
 impl Default for Rich<'_> {
@@ -66,6 +79,8 @@ impl Default for Rich<'_> {
                 part: Part::Empty,
             }],
             scratch: Vec::new(),
+            last_prefix: 0,
+            prefix_text: String::new(),
         }
     }
 }
@@ -225,20 +240,26 @@ impl<'a> Rich<'a> {
 
     pub(super) fn emit(&mut self, state: State, output: &mut String) {
         let queue = self.queue[state.queue];
-        self.scratch.clear();
-        let mut at = queue.prefix;
-        while at != 0 {
-            let node = self.prefix[at];
-            self.scratch.push(node.part);
-            at = node.previous;
-        }
-        for part in self.scratch.iter().rev() {
-            match *part {
-                Part::Empty => {}
-                Part::Spaces(n) => append_whitespace(output, IndentStyle::Space, n),
-                Part::Tabs(n) => append_whitespace(output, IndentStyle::Tab, n),
-                Part::Text(text) => output.push_str(text),
+        let prefix = self.prefix[queue.prefix];
+        if prefix.previous == 0 {
+            prefix.part.emit(output);
+        } else {
+            // Prefix nodes are immutable. Lines at the same indentation share the spelling.
+            if self.last_prefix != queue.prefix {
+                self.prefix_text.clear();
+                self.scratch.clear();
+                let mut at = queue.prefix;
+                while at != 0 {
+                    let node = self.prefix[at];
+                    self.scratch.push(node.part);
+                    at = node.previous;
+                }
+                for part in self.scratch.iter().rev() {
+                    part.emit(&mut self.prefix_text);
+                }
+                self.last_prefix = queue.prefix;
             }
+            output.push_str(&self.prefix_text);
         }
         append_whitespace(output, IndentStyle::Space, queue.spaces);
     }

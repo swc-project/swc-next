@@ -76,6 +76,7 @@ impl<'a> Writer<'a> {
     /// Internal newlines do not reset the layout column or expand groups; LF is
     /// converted to the selected output line ending. Use [`Self::literal_text`]
     /// when source lines should instead behave as explicit literal lines.
+    #[inline]
     pub fn text<'text>(&mut self, text: impl Into<Cow<'text, str>>)
     where
         'text: 'a,
