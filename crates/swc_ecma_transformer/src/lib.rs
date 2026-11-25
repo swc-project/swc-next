@@ -23,14 +23,12 @@ pub mod es2019;
 pub mod es2022;
 pub mod jsx;
 pub mod normalize;
-pub mod proposal;
 pub mod typescript;
 
 #[derive(Default)]
 pub struct TransformerOptions {
     pub filename: Option<String>,
     pub assumptions: Assumptions,
-    pub proposal: proposal::ProposalOptions,
 
     // Transform Options
     pub es2019: es2019::ES2019Options,
@@ -132,7 +130,7 @@ impl ECMAScriptTransformer {
         let state = TransformerState::new(ScopeModel::new(semantic));
         let mut transformer = Self {
             es2019: es2019::ES2019::new(options.es2019),
-            es2022: es2022::ES2022::new(options.es2022, options.proposal),
+            es2022: es2022::ES2022::new(options.es2022),
             jsx_display_name: jsx::DisplayName::new(options, options.filename.clone()),
         };
         // SAFETY: The pipeline reanalyzes after each JSX and TypeScript pass,

@@ -2,7 +2,7 @@ mod static_blocks;
 
 use swc_next_ecma_ast::{Class, ClassBody, Expr, TraverseAction};
 
-use crate::{context::TransformCtx, proposal::ProposalOptions};
+use crate::context::TransformCtx;
 
 pub struct ES2022 {
     static_blocks: Option<static_blocks::StaticBlocks>,
@@ -14,11 +14,11 @@ pub struct ES2022Options {
 }
 
 impl ES2022 {
-    pub(crate) fn new(options: ES2022Options, proposal: ProposalOptions) -> Self {
+    pub(crate) fn new(options: ES2022Options) -> Self {
         Self {
             static_blocks: options
                 .static_blocks
-                .then(|| static_blocks::StaticBlocks::new(proposal.prevent_extensions)),
+                .then(static_blocks::StaticBlocks::default),
         }
     }
 

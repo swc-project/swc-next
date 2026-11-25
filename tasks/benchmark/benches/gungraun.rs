@@ -21,7 +21,6 @@ use swc_next_ecma_transformer::{
     es2022::ES2022Options,
     jsx::{JsxOptions, ReactRefreshOptions},
     normalize::Normalizer,
-    proposal::ProposalOptions,
     typescript::TypeScriptOptions,
 };
 use swc_next_formatter::js::{FormatOptions, format_ast};
@@ -220,9 +219,6 @@ fn setup_transform(source: &'static str, filename: &str) -> TransformInput {
         },
         es2022: ES2022Options {
             static_blocks: true,
-        },
-        proposal: ProposalOptions {
-            prevent_extensions: true,
         },
         ..TransformerOptions::default()
     };

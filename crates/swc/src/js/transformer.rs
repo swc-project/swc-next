@@ -10,7 +10,6 @@ use swc_next_ecma_transformer::{
     assumptions::Assumptions,
     jsx::{JsxOptions, JsxRuntime as TransformJsxRuntime, ReactRefreshOptions},
     normalize::Normalizer,
-    proposal::ProposalOptions,
     typescript::{JsxImportOptions, TypeScriptOptions},
 };
 
@@ -42,8 +41,6 @@ pub struct JsTransformerConfig {
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
     pub assumptions: Option<JsAssumptions>,
-    /// Proposal transform options.
-    pub proposal: Option<JsProposalConfig>,
     // pub decorators: Option<JsDecorators>,
     // pub module: Option<JsModuleOptions>, // Defaults to the preserve format.
     // pub define: Option<BTreeMap<String, String>>, // Global expression replacements.
@@ -71,34 +68,7 @@ impl JsTransformerConfig {
                 .unwrap_or(defaults.assumptions),
             typescript: enabled_options(self.typescript),
             jsx: enabled_options(self.jsx),
-            proposal: self.proposal.map(Into::into).unwrap_or(defaults.proposal),
             ..defaults
-        }
-    }
-}
-
-/// Proposal transform options.
-#[cfg_attr(feature = "serde", derive(serde::Deserialize))]
-#[cfg_attr(
-    feature = "serde",
-    serde(default, rename_all = "camelCase", deny_unknown_fields)
-)]
-#[derive(Clone, Copy, Debug, Default)]
-pub struct JsProposalConfig {
-    /// Preserve class static block behavior when a block makes the class
-    /// object non-extensible with `Object.preventExtensions`, `Object.seal`,
-    /// or `Object.freeze`.
-    ///
-    /// Applies when class static block lowering is enabled.
-    ///
-    /// @default false
-    pub prevent_extensions: Option<bool>,
-}
-
-impl From<JsProposalConfig> for ProposalOptions {
-    fn from(options: JsProposalConfig) -> Self {
-        Self {
-            prevent_extensions: options.prevent_extensions.unwrap_or_default(),
         }
     }
 }

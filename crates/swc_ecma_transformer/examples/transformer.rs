@@ -15,7 +15,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    proposal::ProposalOptions, typescript::TypeScriptOptions,
+    typescript::TypeScriptOptions,
 };
 
 #[derive(Parser)]
@@ -49,9 +49,6 @@ fn main() -> Result<(), String> {
     let options = TransformerOptions {
         es2022: ES2022Options {
             static_blocks: true,
-        },
-        proposal: ProposalOptions {
-            prevent_extensions: true,
         },
         typescript: lang.is_typescript().then_some(TypeScriptOptions {
             verbatim_module_syntax: true,

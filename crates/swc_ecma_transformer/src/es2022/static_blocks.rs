@@ -1,7 +1,8 @@
 //! ES2022 static blocks transform.
 //!
-//! Retains the original private-field and non-extensible-class closure lowering.
-//! Synchronizes scopes through TransformCtx and reads class information locally.
+//! Fold blocks into static field initializers or defer them through a closure to
+//! avoid adding synthetic fields after static initialization makes the class
+//! non-extensible.
 use swc_next_ecma_ast::{
     Accessibility, ArrowFunctionBody, ArrowFunctionExpression, AssignmentOperator,
     AssignmentTarget, Ast, AstWtf8, Class, ClassBody, ClassElement, ClassType, DUMMY_SP, Expr,
@@ -15,19 +16,12 @@ use crate::{
 };
 use swc_next_ecma_semantic::scope::{ScopeFlags, ScopeKind};
 
+#[derive(Default)]
 pub(crate) struct StaticBlocks {
-    prevent_extensions: bool,
     class_calls: Vec<(NodeId, Expr)>,
 }
 
 impl StaticBlocks {
-    pub(crate) fn new(prevent_extensions: bool) -> Self {
-        Self {
-            prevent_extensions,
-            class_calls: Vec::new(),
-        }
-    }
-
     pub(super) fn enter_class_body(&mut self, body: ClassBody, ctx: &mut TransformCtx<'_, '_>) {
         let class = match ctx
             .ast()
@@ -53,7 +47,7 @@ impl StaticBlocks {
                     _ => None,
                 })
                 == Some(true);
-        if !self.prevent_extensions || in_formal_parameters {
+        if in_formal_parameters {
             transform_class_as_private_fields(body, &mut private_names, ctx);
             return;
         }

@@ -9,7 +9,7 @@ use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser
 use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
 use swc_next_ecma_transformer::{
     Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    proposal::ProposalOptions, typescript::TypeScriptOptions,
+    typescript::TypeScriptOptions,
 };
 
 #[derive(Default, Deserialize)]
@@ -135,9 +135,6 @@ pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
             TransformerOptions {
                 typescript: typescript.then(TypeScriptOptions::default),
                 es2022: ES2022Options { static_blocks },
-                proposal: ProposalOptions {
-                    prevent_extensions: true,
-                },
                 ..TransformerOptions::default()
             },
         );
