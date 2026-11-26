@@ -7,6 +7,22 @@ import type {
   SourceRange,
 } from "./types";
 
+const TARGETS = [
+  "esnext",
+  "es2022",
+  "es2021",
+  "es2020",
+  "es2019",
+  "es2018",
+  "es2017",
+  "es2016",
+  "es2015",
+] as const;
+
+const MODULES = ["preserve", "commonjs", "amd", "umd", "systemjs"] as const;
+const JSX_RUNTIMES = ["automatic", "classic"] as const;
+const DECORATOR_VERSIONS = ["2023-11", "legacy"] as const;
+
 export const defaultState: PlaygroundState = {
   source: `// Explore the SWC Next compiler.\n// Change an option and see what happens.\n\ninterface Greeting {\n  message: string;\n}\n\nclass Hello implements Greeting {\n  message = "Hello, SWC Next!";\n\n  static {\n    console.log("Ready to compile.");\n  }\n\n  greet(name: string): string {\n    return \`\${this.message} Welcome, \${name}.\`;\n  }\n}\n\nexport const hello = new Hello();\n`,
   options: {
@@ -16,8 +32,41 @@ export const defaultState: PlaygroundState = {
       preserveParens: true,
       semanticErrors: true,
     },
-    transformer: { ts: true, es2022: { classStaticBlock: true } },
-    generator: { minify: false, asciiOnly: false, inlineScript: false },
+    transformer: {
+      target: "es2021",
+      module: "preserve",
+      typescript: {
+        enabled: true,
+        verbatimModuleSyntax: false,
+      },
+      jsx: {
+        enabled: true,
+        runtime: "automatic",
+        development: false,
+        sourceSelf: false,
+      },
+      decorators: {
+        enabled: false,
+        version: "2023-11",
+        metadata: false,
+      },
+      assumptions: {
+        constantSuper: false,
+        ignoreFunctionLength: false,
+        noDocumentAll: false,
+        objectRestNoSymbols: false,
+        privateFieldsAsProperties: false,
+        pureGetters: false,
+        setPublicClassFields: false,
+        setSpreadProperties: false,
+      },
+    },
+    generator: {
+      minify: false,
+      asciiOnly: false,
+      inlineScript: false,
+      comments: true,
+    },
   },
 };
 
@@ -28,23 +77,43 @@ export function loadState(): PlaygroundState {
     );
     if (saved && typeof saved.source === "string" && saved.options) {
       const { parser, transformer, generator } = saved.options;
+      const assumptions = transformer?.assumptions;
       const validBooleans = [
         parser?.preserveParens,
         parser?.semanticErrors,
-        transformer?.ts,
-        transformer?.es2022?.classStaticBlock,
+        transformer?.typescript?.enabled,
+        transformer?.typescript?.verbatimModuleSyntax,
+        transformer?.jsx?.enabled,
+        transformer?.jsx?.development,
+        transformer?.jsx?.sourceSelf,
+        transformer?.decorators?.enabled,
+        transformer?.decorators?.metadata,
+        assumptions?.constantSuper,
+        assumptions?.ignoreFunctionLength,
+        assumptions?.noDocumentAll,
+        assumptions?.objectRestNoSymbols,
+        assumptions?.privateFieldsAsProperties,
+        assumptions?.pureGetters,
+        assumptions?.setPublicClassFields,
+        assumptions?.setSpreadProperties,
         generator?.minify,
         generator?.asciiOnly,
         generator?.inlineScript,
+        generator?.comments,
       ].every((value) => typeof value === "boolean");
       if (
         validBooleans &&
         ["js", "jsx", "ts", "tsx", "dts"].includes(parser.lang) &&
         ["module", "script", "commonjs", "unambiguous"].includes(
           parser.sourceType,
-        )
-      )
+        ) &&
+        TARGETS.includes(transformer.target) &&
+        MODULES.includes(transformer.module) &&
+        JSX_RUNTIMES.includes(transformer.jsx.runtime) &&
+        DECORATOR_VERSIONS.includes(transformer.decorators.version)
+      ) {
         return saved;
+      }
     }
   } catch {
     /* Storage can be unavailable or contain an older state. */

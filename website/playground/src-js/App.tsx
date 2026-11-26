@@ -93,13 +93,19 @@ export default function App() {
     ? "typescript"
     : "javascript";
   const outputLanguage =
-    options.transformer.ts && editorLanguage === "typescript"
+    options.transformer.typescript.enabled && editorLanguage === "typescript"
       ? "javascript"
       : editorLanguage;
+  const jsxPreserved =
+    language.endsWith("x") && !options.transformer.jsx.enabled;
   const outputFilename =
     outputLanguage === "typescript"
-      ? filename.replace("input.", "output.")
-      : language.endsWith("x")
+      ? language === "dts"
+        ? "output.d.ts"
+        : jsxPreserved
+          ? "output.tsx"
+          : "output.ts"
+      : jsxPreserved
         ? "output.jsx"
         : "output.js";
   const outputAvailable =

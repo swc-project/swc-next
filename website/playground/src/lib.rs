@@ -1,153 +1,34 @@
-use serde::Deserialize;
-use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{
-    Lang, Severity, SourceType,
-    ffi::ast::{buffer_size, serialize_into},
+use swc_next::js::{
+    parser::{JsParserConfig as ParserConfig, bridge::parse_to_buffer},
+    transformer::bridge::transform_to_buffer,
 };
-use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
-use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze, check_syntax};
-use swc_next_ecma_transformer::{
-    Transformer, TransformerOptions, es2022::ES2022Options, normalize::Normalizer,
-    typescript::TypeScriptOptions,
-};
+#[cfg(target_family = "wasm")]
+use swc_next_bridge::bridge;
 
-#[derive(Default, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct Options {
-    parser: ParserConfig,
-    transformer: TransformerConfig,
-    generator: GeneratorConfig,
+/// # Safety
+/// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
+#[cfg_attr(
+    target_family = "wasm",
+    bridge(ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options: number")
+)]
+pub unsafe fn parse_sync(
+    source: &[u8],
+    source_utf16_len: u32,
+    options: Option<ParserConfig>,
+) -> Vec<u8> {
+    unsafe { parse_to_buffer(source, source_utf16_len, options) }
 }
 
-#[derive(Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct ParserConfig {
-    lang: String,
-    source_type: String,
-    preserve_parens: bool,
-    semantic_errors: bool,
-}
-
-impl Default for ParserConfig {
-    fn default() -> Self {
-        Self {
-            lang: "js".into(),
-            source_type: "module".into(),
-            preserve_parens: true,
-            semantic_errors: false,
-        }
-    }
-}
-
-impl ParserConfig {
-    fn options(&self) -> Result<ParserOptions, String> {
-        let lang = match self.lang.as_str() {
-            "js" => Lang::Js,
-            "jsx" => Lang::Jsx,
-            "ts" => Lang::Ts,
-            "tsx" => Lang::Tsx,
-            "dts" => Lang::Dts,
-            _ => return Err(format!("Unknown parser language: {}", self.lang)),
-        };
-        let source_type = match self.source_type.as_str() {
-            "module" => SourceType::Module,
-            "script" => SourceType::Script,
-            "commonjs" => SourceType::CommonJs,
-            "unambiguous" => SourceType::Unambiguous,
-            _ => return Err(format!("Unknown source type: {}", self.source_type)),
-        };
-        Ok(ParserOptions {
-            lang,
-            source_type,
-            preserve_parens: self.preserve_parens,
-            ..ParserOptions::default()
-        })
-    }
-}
-
-#[derive(Default, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct TransformerConfig {
-    ts: bool,
-    es2022: ES2022Config,
-}
-
-#[derive(Default, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct ES2022Config {
-    class_static_block: bool,
-}
-
-#[derive(Default, Deserialize)]
-#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
-struct GeneratorConfig {
-    minify: bool,
-    ascii_only: bool,
-    inline_script: bool,
-}
-
-/// Run the playground pipeline. The result contains a little-endian AST byte
-/// length, the original parser AST and diagnostics padded to four bytes, and
-/// UTF-8 generated code. AST spans refer to the original source in UTF-16 units.
-#[cfg_attr(target_family = "wasm", swc_next_bridge::bridge)]
-pub fn run(source: String, options: String) -> Result<Vec<u8>, String> {
-    let options: Options = serde_json::from_str(&options).map_err(|error| error.to_string())?;
-    let parser = options.parser.options()?;
-    let allocator = Allocator::default();
-    let parsed = Parser::init(&allocator, &source, parser, NoTokenParserConfig).parse();
-    let mut ast = parsed.ast;
-    let mut diagnostics = parsed.diagnostics;
-    let typescript = options.transformer.ts && parser.lang.is_typescript();
-    let static_blocks = options.transformer.es2022.class_static_block;
-    let transform = typescript || static_blocks;
-
-    // Transforms require valid scopes even when optional semantic checks are off.
-    if options.parser.semantic_errors || transform {
-        diagnostics.extend(check_syntax(&ast, SyntaxChecks::all()));
-    }
-    let has_errors = diagnostics
-        .iter()
-        .any(|item| item.severity == Severity::Error);
-    let ast_length = buffer_size(&ast, &diagnostics);
-    let aligned_length = (ast_length + 3) & !3;
-    let mut result = vec![0; 4 + aligned_length];
-    result[..4].copy_from_slice(&(ast_length as u32).to_le_bytes());
-    serialize_into(
-        &ast,
-        &diagnostics,
-        &mut result[4..4 + ast_length],
-        source.encode_utf16().count(),
-    );
-
-    if has_errors {
-        return Ok(result);
-    }
-    if transform {
-        if typescript {
-            Normalizer::normalize_runtime(&mut ast);
-        } else {
-            Normalizer::normalize(&mut ast);
-        }
-        let semantic = analyze(&mut ast, AnalyzeOptions::default()).semantic;
-        Transformer::transform(
-            semantic,
-            TransformerOptions {
-                typescript: typescript.then(TypeScriptOptions::default),
-                es2022: ES2022Options { static_blocks },
-                ..TransformerOptions::default()
-            },
-        );
-    }
-    let output = generate(
-        &ast,
-        GeneratorOptions {
-            minify: options.generator.minify,
-            ascii_only: options.generator.ascii_only,
-            inline_script: options.generator.inline_script,
-            ..GeneratorOptions::default()
-        },
-    );
-    result.extend_from_slice(output.code.as_bytes());
-    Ok(result)
+/// # Safety
+/// `source` must be valid UTF-8 and `source_utf16_len` must match its UTF-16 length.
+#[cfg_attr(
+    target_family = "wasm",
+    bridge(ts_args_type = "source: Uint8Array, sourceUtf16Len: number, options: Uint8Array")
+)]
+pub unsafe fn transform_sync(
+    source: &[u8],
+    source_utf16_len: u32,
+    options: &[u8],
+) -> Result<Vec<u8>, String> {
+    unsafe { transform_to_buffer(source, source_utf16_len, options) }
 }
