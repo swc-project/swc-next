@@ -857,26 +857,21 @@ fn html_can_start_line(fragment: &str) -> bool {
 }
 
 fn requires_prefix_word(word: &str) -> bool {
-    if word.starts_with('[') {
-        return starts_footnote_definition(word);
-    }
-    if word.starts_with(['>', '<']) || matches!(word, "-" | "+" | "*") {
-        return true;
-    }
-    if word.bytes().all(|byte| byte == b'#') && word.len() <= 6 {
-        return true;
-    }
-    if word.starts_with("```")
-        || word.starts_with("~~~")
-        || word
+    match word.as_bytes().first() {
+        Some(b'<' | b'>') => true,
+        Some(b'[') => starts_footnote_definition(word),
+        Some(b'#') => word.len() <= 6 && word.bytes().all(|byte| byte == b'#'),
+        Some(b'+') => word.len() == 1,
+        Some(b'`') => word.starts_with("```"),
+        Some(b'~') => word.starts_with("~~~"),
+        Some(b'=' | b'-' | b'*' | b'_') => word
             .bytes()
-            .all(|byte| matches!(byte, b'=' | b'-' | b'*' | b'_'))
-    {
-        return true;
+            .all(|byte| matches!(byte, b'=' | b'-' | b'*' | b'_')),
+        Some(b'0'..=b'9') => word.strip_suffix(['.', ')']).is_some_and(|digits| {
+            digits.len() <= 9 && digits.bytes().all(|byte| byte.is_ascii_digit())
+        }),
+        _ => false,
     }
-    word.strip_suffix(['.', ')']).is_some_and(|digits| {
-        !digits.is_empty() && digits.len() <= 9 && digits.bytes().all(|byte| byte.is_ascii_digit())
-    })
 }
 
 fn has_ambiguous_cjk_boundary(previous: &str, next: &str) -> bool {
