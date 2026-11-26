@@ -1,12 +1,10 @@
 //! Immutable source-line coverage for line-scoped lint directives.
 
-use swc_next_ecma_ast::{Ast, Comment, Span};
+use swc_next_ecma_ast::{Comment, Span};
 
 use super::Formatter;
 use super::diagnostics::LineConstraint;
-use super::suppression::{
-    CommentDirective, LintLineDirective, comment_directive_value, is_suppression_value,
-};
+use super::suppression::{CommentDirective, LintLineDirective, classify_lint_comment};
 
 const LINE_TERMINATORS: [char; 4] = ['\n', '\r', '\u{2028}', '\u{2029}'];
 
@@ -91,43 +89,61 @@ pub(super) struct LintLineCoverage {
     has_next_line_directives: bool,
 }
 
+/// Lexical markers found by the file's comment pass, before line coverage.
+#[derive(Default)]
+pub(super) struct LintCommentMarkers {
+    suppression_markers: Vec<Span>,
+    directives: Vec<DirectiveMarker>,
+}
+
+impl LintCommentMarkers {
+    pub(super) fn record(&mut self, comment: Comment, value: &str) {
+        let (suppression, directive) = classify_lint_comment(value, comment.kind);
+        if suppression {
+            self.suppression_markers.push(comment.span);
+        }
+        if let Some(kind) = directive {
+            self.directives.push(DirectiveMarker {
+                span: comment.span,
+                kind,
+            });
+        }
+    }
+}
+
 impl LintLineCoverage {
-    pub(super) fn new(ast: &Ast<'_>) -> Self {
-        let source = ast.source();
-        let mut suppression_markers = Vec::new();
-        let mut directives = Vec::new();
+    pub(super) fn new(source: &str, markers: LintCommentMarkers) -> Self {
+        let LintCommentMarkers {
+            suppression_markers,
+            directives,
+        } = markers;
         let mut line_markers = Vec::new();
         let mut lines = Vec::new();
         let mut line: Option<SourceLine> = None;
         let mut same_line = false;
         let mut next_line = false;
         let mut has_next_line_directives = false;
-        for &comment in ast.comments() {
-            let value = ast.get_utf8(comment.value(source.as_bytes()));
-            if is_suppression_value(value) {
-                suppression_markers.push(comment.span);
-            }
-            let Some(directive) = comment_directive_value(value, comment.kind) else {
-                continue;
-            };
-            let index = directives.len() as u32;
-            directives.push(DirectiveMarker {
-                span: comment.span,
+        for (
+            index,
+            &DirectiveMarker {
+                span,
                 kind: directive,
-            });
+            },
+        ) in directives.iter().enumerate()
+        {
             let CommentDirective::LintLine(kind) = directive else {
                 continue;
             };
             // A same-line directive is invalid in a multiline block. A
             // next-line directive instead uses the comment's ending line.
             if matches!(kind, LintLineDirective::SameLine)
-                && source[comment.span.start as usize..comment.span.end as usize]
+                && source[span.start as usize..span.end as usize]
                     .contains(['\r', '\n', '\u{2028}', '\u{2029}'])
             {
                 continue;
             }
-            line_markers.push(index);
-            let offset = comment.span.end as usize;
+            line_markers.push(index as u32);
+            let offset = span.end as usize;
             // Reuse each line for all of its markers; later searches cannot
             // revisit the preceding line even when a comment spans lines.
             if line.is_none_or(|line| offset > line.end) {
@@ -320,7 +336,7 @@ mod tests {
     use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options, Parser};
 
     use super::LintLineCoverage;
-    use crate::formatter::comments::CommentCursor;
+    use crate::formatter::comments::{CommentCursor, FileCommentAnalysis};
 
     fn coverage(source: &str) -> (&str, LintLineCoverage) {
         let allocator = Allocator::new();
@@ -332,7 +348,10 @@ mod tests {
         let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
         // SAFETY: All inspected comments come from this unmodified parsed AST.
-        (source, LintLineCoverage::new(unsafe { parsed.ast.ast() }))
+        (
+            source,
+            FileCommentAnalysis::new(unsafe { parsed.ast.ast() }).lint_lines,
+        )
     }
 
     fn text_span(source: &str, text: &str) -> Span {
@@ -354,7 +373,7 @@ mod tests {
         let ast = unsafe { parsed.ast.ast() };
         let span = ast.comments()[0].span;
         let mut cursor = CommentCursor::new(ast.comments());
-        let coverage = LintLineCoverage::new(ast);
+        let coverage = FileCommentAnalysis::new(ast).lint_lines;
 
         assert!(coverage.has_line_directive_in(span));
         cursor.take(1);

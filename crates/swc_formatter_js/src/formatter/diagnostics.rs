@@ -100,7 +100,7 @@ impl LineConstraint {
 }
 
 impl DiagnosticLines {
-    pub(super) fn new(source: &str, comments: &[Comment]) -> Self {
+    pub(super) fn new(source: &str, comments: &[Comment], directive_ends: Vec<u32>) -> Self {
         // Keep the immutable raw identity. Only an explicitly removed complete
         // statement envelope may transfer it to its selected actual closer.
         let document_closing = source
@@ -109,11 +109,6 @@ impl DiagnosticLines {
             .next_back()
             .filter(|&(_, character)| matches!(character, ')' | ']' | '}'))
             .map(|(position, _)| position as u32);
-        let directive_ends = comments
-            .iter()
-            .filter(|&&comment| is_diagnostic_directive(source, comment))
-            .map(|comment| comment.span.end)
-            .collect::<Vec<_>>();
         let mut lines = Vec::new();
         if directive_ends.is_empty() {
             return Self {
@@ -288,9 +283,8 @@ fn covered_line_tokens(
     (suffix as u32, opening_tokens.filter(|_| only_opening))
 }
 
-fn is_diagnostic_directive(source: &str, comment: Comment) -> bool {
-    let source = &source[comment.span.start as usize..comment.span.end as usize];
-    let marker = match comment.kind {
+pub(super) fn is_diagnostic_directive(source: &str, kind: CommentKind) -> bool {
+    let marker = match kind {
         CommentKind::Line => source
             .strip_prefix("///")
             .or_else(|| source.strip_prefix("//"))

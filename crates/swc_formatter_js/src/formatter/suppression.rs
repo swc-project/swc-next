@@ -60,13 +60,18 @@ pub(super) fn is_suppression_comment(ast: &Ast<'_>, comment: Comment) -> bool {
     is_suppression_value(value)
 }
 
-pub(super) fn is_suppression_value(value: &str) -> bool {
-    let whitespace = |character| is_source_whitespace(character) && character != '\u{85}';
-    let value = value.trim_start_matches(whitespace);
-    value.starts_with('p')
-        && value
-            .strip_prefix("prettier-ignore")
-            .is_some_and(|suffix| suffix.chars().all(whitespace))
+fn is_suppression_value(value: &str) -> bool {
+    is_suppression_marker(value.trim_start_matches(is_ignore_whitespace))
+}
+
+fn is_ignore_whitespace(character: char) -> bool {
+    is_source_whitespace(character) && character != '\u{85}'
+}
+
+fn is_suppression_marker(marker: &str) -> bool {
+    marker
+        .strip_prefix("prettier-ignore")
+        .is_some_and(|suffix| suffix.chars().all(is_ignore_whitespace))
 }
 
 #[derive(Clone, Copy)]
@@ -82,13 +87,28 @@ pub(super) enum CommentDirective {
     Coverage,
 }
 
-pub(super) fn comment_directive_value(value: &str, kind: CommentKind) -> Option<CommentDirective> {
+pub(super) fn classify_lint_comment(
+    value: &str,
+    kind: CommentKind,
+) -> (bool, Option<CommentDirective>) {
     if kind == CommentKind::Block && is_coverage_directive(value) {
-        return Some(CommentDirective::Coverage);
+        return (false, Some(CommentDirective::Coverage));
     }
-    let value = value
-        .trim_start_matches(is_source_whitespace)
-        .strip_prefix("eslint-")?;
+    let marker = value.trim_start_matches(is_source_whitespace);
+    match marker.as_bytes().first() {
+        // Preserve the ignore recognizer's narrower whitespace rule.
+        Some(b'p') => (
+            is_suppression_marker(marker)
+                && !value[..value.len() - marker.len()].contains('\u{85}'),
+            None,
+        ),
+        Some(b'e') => (false, eslint_directive(marker)),
+        _ => (false, None),
+    }
+}
+
+fn eslint_directive(marker: &str) -> Option<CommentDirective> {
+    let value = marker.strip_prefix("eslint-")?;
     let (rest, directive) = if let Some(rest) = value.strip_prefix("disable") {
         if let Some(rest) = rest.strip_prefix("-next-line") {
             (

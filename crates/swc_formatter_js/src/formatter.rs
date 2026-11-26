@@ -25,7 +25,7 @@ use std::cell::Cell;
 
 use swc_next_ecma_ast::{Ast, AwaitExpression, GetSpan, NodeId, Program, Span, StmtData};
 
-use self::comments::CommentCursor;
+use self::comments::{CommentCursor, FileCommentAnalysis};
 use self::statements::{StatementItem, StatementSequenceKind};
 use crate::{FormatError, FormatOptions, document::Writer};
 
@@ -148,22 +148,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         options: FormatOptions,
         allocator: &'ast swc_next_allocator::Allocator,
     ) -> Self {
-        let lint_lines = lint_lines::LintLineCoverage::new(ast);
+        let FileCommentAnalysis {
+            lint_lines,
+            diagnostic_lines,
+            has_type_casts,
+            has_target_annotations,
+            has_file_directives,
+        } = FileCommentAnalysis::new(ast);
         let has_suppression = lint_lines.has_suppressions();
         let mut formatter = Self {
             ast,
             allocator,
             options,
             comments: CommentCursor::new(ast.comments()),
-            diagnostic_lines: diagnostics::DiagnosticLines::new(ast.source(), ast.comments()),
+            diagnostic_lines,
             lint_lines,
             external_opening_owners: Vec::new(),
             jsx_verbatim_attributes: std::cell::OnceCell::new(),
             has_suppression,
-            has_target_annotations: false,
-            has_type_casts: false,
+            has_target_annotations,
+            has_type_casts,
             has_jsdoc_enclosures: std::cell::OnceCell::new(),
-            has_file_directives: false,
+            has_file_directives,
             enclosing_await: None,
             for_initializer_span: None,
             comparison_lists: Vec::new(),
@@ -179,21 +185,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }),
             }),
         };
-        for &comment in ast.comments() {
-            if !formatter.has_type_casts {
-                formatter.has_type_casts = formatter.comment_is_type_cast(comment);
-            }
-            if !formatter.has_target_annotations {
-                formatter.has_target_annotations =
-                    formatter.has_type_casts || formatter.comment_is_optimizer_annotation(comment);
-            }
-            if !formatter.has_file_directives {
-                formatter.has_file_directives = formatter.comment_is_file_directive(comment);
-            }
-            if formatter.has_type_casts && formatter.has_file_directives {
-                break;
-            }
-        }
         formatter.external_opening_owners = formatter.prepare_external_opening_owners();
         formatter
     }
