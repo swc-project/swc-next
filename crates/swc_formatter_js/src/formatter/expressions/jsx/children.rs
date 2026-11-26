@@ -169,17 +169,18 @@ impl JsxChildrenStream {
         let mut meaningful = text_span.start == text_span.end;
         for (chunk, source) in chunks {
             match chunk {
-                JsxTextChunk::Word(word) => {
-                    let mut characters = word.chars();
-                    let first = characters.next();
-                    let last = characters.next_back();
+                JsxTextChunk::Word {
+                    text,
+                    starts_with_space,
+                    ends_with_space,
+                } => {
                     let edge = JsxContentEdge::Word {
-                        single_character: last.is_none(),
-                        starts_with_space: first.is_some_and(is_jsx_line_edge_space),
-                        ends_with_space: last.or(first).is_some_and(is_jsx_line_edge_space),
+                        single_character: text.chars().nth(1).is_none(),
+                        starts_with_space,
+                        ends_with_space,
                     };
                     self.before(edge, source, formatter, writer);
-                    let (entry, ()) = writer.fill_entry_with_handle(|writer| writer.text(word));
+                    let (entry, ()) = writer.fill_entry_with_handle(|writer| writer.text(text));
                     self.after(edge, source, entry);
                     self.contains_text = true;
                     meaningful = true;
@@ -565,8 +566,15 @@ struct JsxTextChunks<'ast> {
 }
 
 enum JsxTextChunk<'ast> {
-    Word(&'ast str),
-    Whitespace { line_breaks: u8, spaces: usize },
+    Word {
+        text: &'ast str,
+        starts_with_space: bool,
+        ends_with_space: bool,
+    },
+    Whitespace {
+        line_breaks: u8,
+        spaces: usize,
+    },
 }
 
 struct JsxTextGap {
@@ -635,16 +643,23 @@ impl<'ast> Iterator for JsxTextChunks<'ast> {
         }
         let bytes = self.remaining.as_bytes();
         let mut end = 0;
+        let mut ends_with_space = false;
         while let Some(&byte) = bytes.get(end) {
             if !is_jsx_whitespace(byte) {
-                if byte.is_ascii() || self.preserves_whitespace {
-                    self.preserves_whitespace |= matches!(byte, b'\x0b' | b'\x0c');
+                if byte == b'&'
+                    && let Some(length) = jsx_numeric_space_prefix(&bytes[end..])
+                {
+                    ends_with_space = true;
+                    end += length;
+                } else if byte.is_ascii() {
+                    ends_with_space = matches!(byte, b'\x0b' | b'\x0c');
                     end += 1;
                 } else {
                     let character = self.remaining[end..].chars().next().unwrap();
-                    self.preserves_whitespace = is_jsx_line_edge_space(character);
+                    ends_with_space = is_jsx_line_edge_space(character);
                     end += character.len_utf8();
                 }
+                self.preserves_whitespace |= ends_with_space;
                 continue;
             }
             let gap = JsxTextGap::scan(&bytes[end..]);
@@ -652,16 +667,11 @@ impl<'ast> Iterator for JsxTextChunks<'ast> {
             // spaces and tabs. Give the fill one entry for the whole word.
             if gap.line_breaks == 0
                 && (gap.has_tab
-                    || self.remaining[..end]
-                        .chars()
-                        .next_back()
-                        .is_some_and(is_jsx_line_edge_space)
-                    || self.remaining[end + gap.len..]
-                        .chars()
-                        .next()
-                        .is_some_and(is_jsx_line_edge_space))
+                    || ends_with_space
+                    || jsx_text_starts_with_edge_space(&self.remaining[end + gap.len..]))
             {
                 self.preserves_whitespace = true;
+                ends_with_space = true;
                 end += gap.len;
                 continue;
             }
@@ -676,7 +686,14 @@ impl<'ast> Iterator for JsxTextChunks<'ast> {
         }
         // A boundary is an ASCII formatting character, so it cannot split UTF-8.
         let (word, source) = self.advance(end);
-        Some((JsxTextChunk::Word(word), source))
+        Some((
+            JsxTextChunk::Word {
+                text: word,
+                starts_with_space: jsx_text_starts_with_edge_space(word),
+                ends_with_space,
+            },
+            source,
+        ))
     }
 }
 
@@ -688,8 +705,39 @@ fn is_jsx_line_edge_space(character: char) -> bool {
     character.is_whitespace() || matches!(character, '\u{200b}' | '\u{feff}')
 }
 
+fn jsx_text_starts_with_edge_space(text: &str) -> bool {
+    text.chars().next().is_some_and(is_jsx_line_edge_space)
+        || jsx_numeric_space_prefix(text.as_bytes()).is_some()
+}
+
+// JSX transforms can decode these references before trimming physical lines.
+fn jsx_numeric_space_prefix(text: &[u8]) -> Option<usize> {
+    let digits = text.strip_prefix(b"&#")?;
+    let (digits, radix) = if let Some(digits) = digits
+        .strip_prefix(b"x")
+        .or_else(|| digits.strip_prefix(b"X"))
+    {
+        (digits, 16)
+    } else {
+        (digits, 10)
+    };
+    let mut value = 0;
+    for (index, &byte) in digits.iter().enumerate() {
+        if byte == b';' && matches!(value, 9 | 32) {
+            return Some(text.len() - digits.len() + index + 1);
+        }
+        value = value * radix + char::from(byte).to_digit(radix)?;
+        if value > 32 {
+            break;
+        }
+    }
+    None
+}
+
 fn jsx_text_may_need_edge_protection(text: &str) -> bool {
-    !text.is_ascii() || memchr::memchr3(b'\t', b'\x0b', b'\x0c', text.as_bytes()).is_some()
+    !text.is_ascii()
+        || text.contains("&#")
+        || memchr::memchr3(b'\t', b'\x0b', b'\x0c', text.as_bytes()).is_some()
 }
 
 /// Child eligibility and its eventual printer share the actual prepared core.
@@ -783,10 +831,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .is_some_and(|(edge, ..)| edge.ends_with_space())
                         || prepared_text.peek().is_some_and(|(chunk, source)| {
                             source.start == child.span(ast).end
-                                && matches!(chunk, JsxTextChunk::Word(word) if word
-                                    .chars()
-                                    .next()
-                                    .is_some_and(is_jsx_line_edge_space))
+                                && matches!(
+                                    chunk,
+                                    JsxTextChunk::Word {
+                                        starts_with_space: true,
+                                        ..
+                                    }
+                                )
                         });
                     if *spaces == 1 && !touches_text_space {
                         stream.separator(

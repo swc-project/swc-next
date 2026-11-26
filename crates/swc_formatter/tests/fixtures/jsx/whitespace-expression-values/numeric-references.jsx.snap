@@ -1,0 +1,58 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+<A>x &#32;</A>;
+
+<A>
+  x &#32;
+</A>;
+
+<A>&#x9; x</A>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+<A>x &#32;</A>;
+
+<A>
+  x &#32;
+</A>;
+
+<A>&#x9; x</A>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+<A>x &#32;</A>;
+
+<A>
+  x &#32;
+</A>;
+
+<A>&#x9; x</A>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":12}
+---------- Output ----------
+<A>
+  x &#32;</A>;
+
+<A>
+  x &#32;
+</A>;
+
+<A>&#x9; x
+</A>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":12,"quoteStyle":"single"}
+---------- Output ----------
+<A>
+  x &#32;</A>;
+
+<A>
+  x &#32;
+</A>;
+
+<A>&#x9; x
+</A>;
