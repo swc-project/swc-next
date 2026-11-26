@@ -448,7 +448,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             (arguments, prefix)
         });
         let attributes = node.attributes(ast);
-        let closing = node.span(ast).end - if node.self_closing(ast) { 2 } else { 1 };
+        let greater_than = node.span(ast).end - 1;
+        let closing = if !node.self_closing(ast) {
+            greater_than
+        } else if ast.source().as_bytes()[greater_than as usize - 1] == b'/' {
+            greater_than - 1
+        } else {
+            let start = attributes.last().map_or_else(
+                || {
+                    arguments
+                        .as_ref()
+                        .map_or(name_span.end, |(node, _)| node.span(ast).end)
+                },
+                |id| ast.get_node_in_sub_range(id).span(ast).end,
+            );
+            let gap = Span::new(start, greater_than);
+            self.find_token(gap, self.comments.in_range(gap), "/")
+                .ok_or_else(|| self.unsupported("JSX self-closing slash", node))?
+        };
         let mut attribute_nodes = attributes.iter().map(|id| {
             let attribute = ast.get_node_in_sub_range(id);
             let data = ast.jsx_attribute_item_data(attribute);
@@ -525,7 +542,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer.line();
                         }
                     });
-                writer.text("/>");
+                self.format_jsx_opening_end(closing, greater_than, writer)?;
             } else {
                 boundary
                     .gap()
@@ -665,10 +682,32 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.soft_line();
             }
         });
-        writer.text(if node.self_closing(ast) { "/>" } else { ">" });
+        self.format_jsx_opening_end(closing, greater_than, writer)?;
         Ok(JsxOpeningLayout {
             multiple_attributes: attributes.len() > 1,
         })
+    }
+
+    fn format_jsx_opening_end(
+        &mut self,
+        closing: u32,
+        greater_than: u32,
+        writer: &mut Writer<'ast>,
+    ) -> Result<(), FormatError> {
+        if closing == greater_than {
+            writer.text(">");
+        } else if self
+            .comments
+            .in_range(Span::new(closing + 1, greater_than))
+            .is_empty()
+        {
+            writer.text("/>");
+        } else {
+            writer.text("/");
+            self.format_source_token_gap(closing + 1, greater_than, false, writer)?;
+            writer.text(">");
+        }
+        Ok(())
     }
 
     /// Blocks followed by a source line break trail the previous attribute.

@@ -251,11 +251,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.indent(write_items)?
             };
             if !hugged {
-                self.line_constraint(end, content.end).write(
-                    writer,
-                    FlatSeparator::Empty,
-                    Writer::soft_line,
-                );
+                self.format_import_arguments_closing_gap(end, content.end, trailing, writer);
             }
             writer.text(")");
             Ok(())
@@ -365,11 +361,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if let Some(trailing) = trailing {
                 writer.indent(|writer| self.format_comment_boundary(trailing, writer))?;
             }
-            self.line_constraint(end, content.end).write(
-                writer,
-                FlatSeparator::Empty,
-                Writer::soft_line,
-            );
+            self.format_import_arguments_closing_gap(end, content.end, trailing, writer);
             Ok::<_, FormatError>(())
         })?;
         let normal = match value {
@@ -397,5 +389,25 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.write_fragment(fallback);
         }
         Ok(())
+    }
+
+    fn format_import_arguments_closing_gap(
+        &self,
+        end: u32,
+        closing: u32,
+        trailing: Option<&CommentBoundary<'ast>>,
+        writer: &mut Writer<'ast>,
+    ) {
+        if let Some(trailing) = trailing {
+            trailing
+                .gap()
+                .write(writer, FlatSeparator::Empty, Writer::soft_line);
+        } else {
+            self.line_constraint(end, closing).write(
+                writer,
+                FlatSeparator::Empty,
+                Writer::soft_line,
+            );
+        }
     }
 }

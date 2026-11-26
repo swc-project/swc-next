@@ -40840,6 +40840,24 @@
         "prettierNative": ";/* prettier-ignore */ (<T>  ( value )) <<\n  right\n"
       }
     ],
+    "ts/import-type-boundary/qualifier-after-line-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type T = import(\n  \"mod\" // note\n).A;\n",
+        "prettierNative": "type T = import(\"mod\").// note\nA;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type T = import(\n  \"mod\" // note\n).A;\n",
+        "prettierNative": "type T =\n  import(\"mod\").// note\n  A;\n"
+      }
+    ],
     "ts/index-signature-layout/prefix-comment/input.ts": [
       {
         "options": {
@@ -41543,6 +41561,33 @@
         },
         "swcPlugin": "let v = a ? (\n  <B />\n) /* @ts-ignore */\n: (h(qqq));\n",
         "prettierNative": "let v = a ? (\n  <B /> /* @ts-ignore */\n) : (\n  h(qqq)\n);\n"
+      }
+    ],
+    "ts/jsx/container-owners/self-closing-tail.tsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<Box\n  x=\"a\"\n/ // note\n>;\n",
+        "prettierNative": "<Box\n  x=\"a\" // note\n/>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<Box\n  x=\"a\"\n/ // note\n>;\n",
+        "prettierNative": "<Box\n  x=\"a\" // note\n/>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";<Box\n  x=\"a\"\n/ // note\n>\n",
+        "prettierNative": ";<Box\n  x=\"a\" // note\n/>\n"
       }
     ],
     "ts/jsx/container-owners/spread-diagnostic-original.tsx": [
@@ -42465,6 +42510,16 @@
         },
         "swcPlugin": "export /* note */ as\n/* prettier-ignore */\nnamespace n\\u0061me\n",
         "prettierNative": "export as namespace /* note */ /* prettier-ignore */\nn\\u0061me\n"
+      }
+    ],
+    "ts/modules/attribute-line-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export { a } from \"x\" with // note\n{ type: \"json\" };\n",
+        "prettierNative": "export { a } from \"x\" with { type: \"json\" }; // note\n"
       }
     ],
     "ts/modules/import-phase-directive/input.ts": [
@@ -45596,6 +45651,25 @@
         },
         "swcPlugin": "type T = [\n  A, /* prettier-ignore */ B // @ts-ignore\n  , /* d */]\n",
         "prettierNative": "type T = [\n  A,\n  /* prettier-ignore */ B, // @ts-ignore\n  /* d */\n]\n"
+      }
+    ],
+    "ts/type-alias-boundaries/line-before-equals.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type T =\n// note\n'a'|'b' /* prettier-ignore */;\n",
+        "prettierNative": "type T =\n  // note\n  'a'|'b' /* prettier-ignore */;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type T =\n// note\n'a'|'b' /* prettier-ignore */;\n",
+        "prettierNative": "type T =\n  // note\n  'a'|'b' /* prettier-ignore */\n"
       }
     ],
     "ts/type-alias-boundary/alias-array-block.ts": [

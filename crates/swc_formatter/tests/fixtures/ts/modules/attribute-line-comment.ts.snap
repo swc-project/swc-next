@@ -1,0 +1,11 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export {a} from 'x' with // note
+{type:'json'};
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export { a } from "x" with // note
+{ type: "json" };

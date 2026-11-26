@@ -1,0 +1,23 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// @ts-ignore
+export default <Box/ >;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// @ts-ignore
+export default <Box />;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":40}
+---------- Output ----------
+// @ts-ignore
+export default <Box />;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+// @ts-ignore
+export default <Box />
