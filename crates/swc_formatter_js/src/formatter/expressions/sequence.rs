@@ -938,14 +938,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         tail: Option<ExpressionTail<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        if let Some(tail) = tail {
+        let item_end = boundary.source_end;
+        if let Some(tail) = &tail {
             boundary.source_end = tail.source_end;
         }
         if matches!(
             self.prepare_sequence_comments(boundary)?,
             SequenceComments::SourceGap
         ) {
-            let gap = Span::new(boundary.source_end, boundary.next_start);
+            self.format_expression_tail(tail, writer)?;
+            let gap = Span::new(item_end, boundary.next_start);
             boundary.separator = self
                 .format_delimited_source_gap(gap, DelimitedFollowing::Node, writer)?
                 .following;

@@ -468,6 +468,18 @@ fn comment_token_boundaries() {
             assert_order(&output, &["// @ts-expect-error", "= [missing]"]);
         }
     }
+
+    let script = ParserOptions {
+        source_type: SourceType::Script,
+        ..parser
+    };
+    let input = "function f() { return a.b\n--> (1 + 2)\n().join(); }";
+    let output = format_checked(input, script, always);
+    assert!(
+        output
+            .lines()
+            .any(|line| line.trim_start().starts_with("-->"))
+    );
 }
 
 #[test]

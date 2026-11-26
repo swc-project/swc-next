@@ -523,7 +523,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ExpressionContext::at(ExpressionPosition::Decorator).with_content_mode(mode),
                     writer,
                 )?;
-                self.format_expression_tail(tail, writer)?;
+                let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
                 let comments = self.comments.between(Span::new(span.end, following))?;
                 let (trailing, leading) = next
                     .and_then(|node| {
@@ -539,7 +539,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .first()
                     .map_or(following, |comment| comment.span.start);
                 let boundary = self.prepare_comment_boundary(trailing, span.end, leading_start);
-                self.format_comment_boundary(&boundary, writer)?;
+                self.format_comment_boundary_after(&boundary, adjacency, writer)?;
                 boundary
                     .gap()
                     .write(writer, FlatSeparator::Space, |writer| {

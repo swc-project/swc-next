@@ -293,6 +293,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 format(writer)?;
             }
+            writer.line_suffix_boundary();
             writer.text("}");
             writer.literal_text(next.raw);
             current = next;

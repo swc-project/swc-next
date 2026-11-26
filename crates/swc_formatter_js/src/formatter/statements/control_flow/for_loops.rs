@@ -1120,9 +1120,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<HeaderGapOutput<'ast>, FormatError> {
         debug_assert!(!gap.source || operator_tail.is_none());
         if gap.source {
-            self.format_expression_tail(pending, writer)?;
-            let source =
-                self.format_delimited_source_gap(gap.span, DelimitedFollowing::Node, writer)?;
+            let adjacency = self.format_expression_tail_adjacency(pending, writer)?;
+            let mut source = self.prepare_delimited_source_gap(gap.span, DelimitedFollowing::Node);
+            if adjacency.ends_in_line_comment() && !source.leading_line && !gap.comments.is_empty()
+            {
+                self.start_source_gap_on_new_line(&mut source, writer);
+            }
+            let source = self.format_prepared_delimited_source_gap(source, writer)?;
             return Ok(HeaderGapOutput::Source {
                 following: source.following,
                 comment_end: gap

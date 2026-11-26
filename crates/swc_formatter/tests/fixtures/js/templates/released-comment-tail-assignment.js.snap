@@ -5,6 +5,10 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 const text = `${left = (right
 // tail
 )}`;
+
+const s = `a${t = // note
+1 + 2}
+`;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
@@ -12,6 +16,10 @@ const text = `${
   (left = right)
   // tail
 }`;
+
+const s = `a${(t = // note
+  1 + 2)}
+`;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20,"semicolons":"as-needed","trailingCommas":"none"}
@@ -21,6 +29,10 @@ const text = `${
   // tail
 }`
 
+const s = `a${(t = // note
+  1 + 2)}
+`
+
 ---------- Options ----------
 {"indentStyle":"space","lineEnding":"crlf","lineWidth":40}
 ---------- Output ----------
@@ -28,3 +40,7 @@ const text = `${
   (left = right)
   // tail
 }`;
+
+const s = `a${(t = // note
+  1 + 2)}
+`;

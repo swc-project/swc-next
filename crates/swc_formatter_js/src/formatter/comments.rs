@@ -873,15 +873,26 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(())
     }
 
+    fn comment_requires_line_start(&self, comment: Comment) -> bool {
+        comment.kind == CommentKind::Line && self.source(comment.span).starts_with("-->")
+    }
+
     fn format_comment_line_suffix_with_opening(
         &self,
         comment: Comment,
         opening: CommentOpening,
         writer: &mut Writer<'ast>,
     ) {
-        opening.line_suffix(writer, |writer| {
-            writer.text(self.source(comment.span).trim_end());
-        });
+        let text = self.source(comment.span).trim_end();
+        if self.comment_requires_line_start(comment) {
+            writer.line_suffix(|writer| {
+                writer.hard_line_without_break_parent();
+                writer.text(text);
+            });
+            writer.break_parent();
+        } else {
+            opening.line_suffix(writer, |writer| writer.text(text));
+        }
     }
 
     pub(super) fn prepare_comment_boundary(
@@ -1436,6 +1447,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         boundary: Span,
         target: Option<Span>,
     ) -> CommentBinding {
+        if comments
+            .iter()
+            .any(|&comment| self.comment_requires_line_start(comment))
+        {
+            return CommentBinding::SourceBound;
+        }
         let binding = self.comment_run_binding(comments.iter().copied(), |comment| {
             let semantics = self.comment_semantics(comment);
             if semantics.is_ordinary() {

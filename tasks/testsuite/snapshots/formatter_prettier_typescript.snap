@@ -3,13 +3,13 @@ formatter * prettier 3.10.1 * typescript
 Fixture revision: deda65fd47c285b974e2a4397f26a33cfc1746b8
 Fixture files: 688
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 751/782 (96.04%)
-Snapshot matched: 751/782
+Passed: 750/782 (95.91%)
+Snapshot matched: 750/782
 AST parity: 782/782
 AST mismatched: 0/782
 AST format errors: 0/782
-Mismatched: 30/782
-Known mismatches: 14/782
+Mismatched: 31/782
+Known mismatches: 15/782
 Unclassified mismatches: 16/782
 Format errors: 0/782
 Unparsable output: 1/782
@@ -31,6 +31,10 @@ Unsupported option sets: 4
 - typescript/instantiation-expression/before-operator.ts: the formatter drops required parentheses around instantiation expressions before binary operators
 
 # Known divergences
+
+## Keep closing-tag line comments inside JSX
+
+- jsx/comments/in-end-tag.js (bracketSameLine: true)
 
 ## Keep ignore markers on their original verbatim target
 

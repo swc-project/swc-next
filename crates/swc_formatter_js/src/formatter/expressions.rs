@@ -1863,16 +1863,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let _scope = self.recursion_scope(expression)?;
         match data {
             ExprData::JsxElement(node) => {
-                return self
-                    .format_jsx_expression(
-                        node.span(self.ast),
-                        context,
-                        writer,
-                        |formatter, writer| {
-                            formatter.format_jsx_element(node, TailOwner::ParentOperation, writer)
-                        },
-                    )
-                    .map(ExpressionOutput::closed);
+                self.format_jsx_expression(
+                    node.span(self.ast),
+                    context,
+                    writer,
+                    |formatter, writer| formatter.format_jsx_element(node, writer),
+                )?;
             }
             ExprData::JsxFragment(node) => {
                 self.format_jsx_expression(

@@ -3,13 +3,13 @@ formatter * prettier 3.10.1 * js
 Fixture revision: deda65fd47c285b974e2a4397f26a33cfc1746b8
 Fixture files: 859
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 1024/1094 (93.60%)
-Snapshot matched: 1024/1094
+Passed: 1023/1094 (93.51%)
+Snapshot matched: 1023/1094
 AST parity: 1094/1094
 AST mismatched: 0/1094
 AST format errors: 0/1094
-Mismatched: 70/1094
-Known mismatches: 33/1094
+Mismatched: 71/1094
+Known mismatches: 34/1094
 Unclassified mismatches: 37/1094
 Format errors: 0/1094
 Unparsable output: 0/1094
@@ -159,6 +159,10 @@ Unsupported option sets: 16
 - js/comments-closure-typecast/comment-in-the-middle.js (default options)
 - js/comments-closure-typecast/no-semi/not-on-same-line.js (semi: false)
 - js/comments-closure-typecast/no-semi/with-other-comments.js (semi: false)
+
+## Keep closing-tag line comments inside JSX
+
+- jsx/comments/in-end-tag.js (bracketSameLine: true)
 
 ## Keep comments before their array elision comma
 
