@@ -7,8 +7,8 @@ use std::{
 use swc_next_formatter_core::Writer;
 use swc_next_markdown_parser::{
     Block, BlockKind, Definition, Inline, InlineKind, Link, LinkTarget, ReferenceKind, SourceLine,
-    Span, can_continue_link_definition, is_table_delimiter_row, parse, starts_display_math,
-    starts_footnote_definition,
+    Span, can_continue_link_definition, is_table_delimiter_row, liquid_block_delimiter, parse,
+    starts_display_math, starts_footnote_definition,
 };
 use swc_next_simd::{cmp::SimdPartialEq, u8x16};
 
@@ -54,6 +54,27 @@ impl Word {
             LinePrefix::Escape => Cow::Owned(format!("\\{value}")),
             LinePrefix::Indent => Cow::Owned(format!("    {value}")),
         }
+    }
+
+    fn liquid_needs_following_word(self, buffer: &str) -> bool {
+        let text = self.text(buffer).trim_end();
+        if !text.ends_with('}') {
+            return false;
+        }
+        let standalone =
+            |tag: &str| liquid_block_delimiter(tag).is_some_and(|end| tag.ends_with(end));
+        if (self.before == Separation::None || self.before >= Separation::HardLine)
+            && self.prefix == LinePrefix::None
+            && standalone(text)
+        {
+            return true;
+        }
+        // A verbatim inline can itself put a Liquid opener at the start of its last line.
+        text.rsplit_once(['\r', '\n']).is_some_and(|(_, line)| {
+            let content = line.trim_start_matches([' ', '\t']);
+            // A tab in a container can consume fewer than four columns.
+            line.len() - content.len() < 4 && standalone(content)
+        })
     }
 }
 
@@ -282,6 +303,8 @@ impl<'a> Prose<'a> {
             return;
         }
         let mut count = 1;
+        // A group can grow as words join. Inspect only its last original word for Liquid.
+        let mut previous_word = self.words[0];
         let mut join_through = if wrap == ProseWrap::Always {
             self.anchor_math_opener(0)
         } else {
@@ -301,10 +324,10 @@ impl<'a> Prose<'a> {
                 word.before = Separation::Space;
                 word.prefix = LinePrefix::None;
             }
-            let previous = self.words[count - 1];
-            let left = previous.text(&self.buffer);
+            let previous_group = self.words[count - 1];
+            let left = previous_group.text(&self.buffer);
             let cjk = || has_ambiguous_cjk_boundary(left, value);
-            let adjacent_html = previous.html_only && word.html_only;
+            let adjacent_html = previous_group.html_only && word.html_only;
             word.before = match word.before {
                 Separation::SourceLine if wrap == ProseWrap::Preserve || adjacent_html || cjk() => {
                     Separation::HardLine
@@ -329,6 +352,7 @@ impl<'a> Prose<'a> {
                     || index <= join_through
                     || cjk()
                     || ends_with_unescaped_backslash(left)
+                    || previous_word.liquid_needs_following_word(&self.buffer)
                     || self.starts_table_delimiter(index)
                     || requires_prefix_word(value)
                         && !(adjacent_html && html_can_start_line(value)))
@@ -346,6 +370,7 @@ impl<'a> Prose<'a> {
                 self.words[count] = word;
                 count += 1;
             }
+            previous_word = word;
         }
         self.words.truncate(count);
     }
@@ -879,6 +904,10 @@ fn requires_prefix_word(word: &str) -> bool {
         Some(b'<' | b'>') => true,
         Some(b'[') => starts_footnote_definition(word),
         Some(b'$') => starts_display_math(word),
+        Some(b'{') => {
+            let first_line = word.split(['\r', '\n']).next().unwrap_or(word);
+            liquid_block_delimiter(first_line).is_some()
+        }
         Some(b'#') => word.len() <= 6 && word.bytes().all(|byte| byte == b'#'),
         Some(b'+') => word.len() == 1,
         Some(b'`') => word.starts_with("```"),
