@@ -233,7 +233,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if line_tail {
                 writer.hard_line();
             } else if closing_line {
-                writer.soft_line();
+                self.expression_closing_constraint(conditional.span(self.ast).end)
+                    .write(writer, FlatSeparator::Empty, Writer::soft_line);
             }
             writer.text(")");
             Ok(None)

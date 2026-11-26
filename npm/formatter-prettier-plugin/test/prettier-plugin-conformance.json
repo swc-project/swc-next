@@ -39851,6 +39851,60 @@
         "prettierNative": "function f(\n  // @ts-expect-error\n  a: A<B<C> | null> = d,\n) {}\n"
       }
     ],
+    "ts/diagnostic-operand-boundary/await-receiver.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "async function f() {\n  (\n    await // @ts-expect-error\n    source).value;\n}\n",
+        "prettierNative": "async function f() {\n  (\n    await // @ts-expect-error\n    source\n  ).value;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "async function f() {\n  (\n    await // @ts-expect-error\n    source).value;\n}\n",
+        "prettierNative": "async function f() {\n  (\n    await // @ts-expect-error\n    source\n  ).value;\n}\n"
+      }
+    ],
+    "ts/diagnostic-operand-boundary/cast-receiver.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  (\n    source as // @ts-ignore\n    number).value;\n}\n",
+        "prettierNative": "function f() {\n  (\n    source as number // @ts-ignore\n  ).value;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  (\n    source as // @ts-ignore\n    number).value;\n}\n",
+        "prettierNative": "function f() {\n  (\n    source as number // @ts-ignore\n  ).value;\n}\n"
+      }
+    ],
+    "ts/diagnostic-operand-boundary/conditional-callee.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    c\n      ? a\n      : // @ts-ignore\n        a)(a.p);\n}\n",
+        "prettierNative": "function f() {\n  return (\n    c\n      ? a // @ts-ignore\n      : a\n  )(a.p);\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    c\n      ? a\n      : // @ts-ignore\n        a)(a.p);\n}\n",
+        "prettierNative": "function f() {\n  return (\n    c\n      ? a // @ts-ignore\n      : a\n  )(a.p);\n}\n"
+      }
+    ],
     "ts/diagnostic-operand-boundary/input.ts": [
       {
         "options": {

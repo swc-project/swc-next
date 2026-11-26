@@ -506,6 +506,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// A generated expression frame takes its closing gap from the source pair
+    /// when that gap borders a diagnostic-sensitive line.
+    pub(super) fn expression_closing_constraint(&self, end: u32) -> LineConstraint {
+        if !self.diagnostic_line_is_sensitive(end) {
+            return LineConstraint::Unconstrained;
+        }
+        let source = &self.ast.source()[end as usize..];
+        let following = source.trim_start_matches(is_source_whitespace);
+        if following.starts_with(')') {
+            self.source_line_constraint(end, end + (source.len() - following.len()) as u32)
+        } else {
+            LineConstraint::Unconstrained
+        }
+    }
+
     pub(super) fn line_constraint_after_comments(
         &self,
         comments: &[Comment],
