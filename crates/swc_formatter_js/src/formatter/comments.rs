@@ -1,11 +1,145 @@
 //! Bounded, source-order comment consumption and basic comment layout.
 
-use swc_next_ecma_ast::{Comment, CommentKind, Span};
+use swc_next_ecma_ast::{Ast, Comment, CommentKind, Span};
 
 use super::Formatter;
-use super::diagnostics::{FlatSeparator, LineConstraint};
+use super::diagnostics::{DiagnosticLines, FlatSeparator, LineConstraint, is_diagnostic_directive};
+use super::lint_lines::{LintCommentMarkers, LintLineCoverage};
 use super::source::{is_source_whitespace, lines, split_line};
 use crate::{FormatError, document::Writer};
+
+/// Line coverage and annotation flags derived from the file's comments.
+pub(super) struct FileCommentAnalysis {
+    pub(super) lint_lines: LintLineCoverage,
+    pub(super) diagnostic_lines: DiagnosticLines,
+    pub(super) has_type_casts: bool,
+    pub(super) has_target_annotations: bool,
+    pub(super) has_file_directives: bool,
+}
+
+impl FileCommentAnalysis {
+    pub(super) fn new(ast: &Ast<'_>) -> Self {
+        let source = ast.source();
+        let comments = ast.comments();
+        let mut diagnostic_ends = Vec::new();
+        let mut has_type_casts = false;
+        let mut has_target_annotations = false;
+        let mut has_file_directives = false;
+        let mut lint_markers = LintCommentMarkers::default();
+        for &comment in comments {
+            let span = comment.span;
+            let raw = &source[span.start as usize..span.end as usize];
+            if is_diagnostic_directive(raw, comment.kind) {
+                diagnostic_ends.push(span.end);
+            }
+            has_type_casts = has_type_casts || comment_is_type_cast(raw);
+            has_target_annotations =
+                has_target_annotations || has_type_casts || comment_is_optimizer_annotation(raw);
+            has_file_directives =
+                has_file_directives || comment_is_file_directive(raw, comment.kind);
+
+            let value = ast.get_utf8(comment.value(source.as_bytes()));
+            lint_markers.record(comment, value);
+        }
+        let lint_lines = LintLineCoverage::new(source, lint_markers);
+        let diagnostic_lines = DiagnosticLines::new(source, comments, diagnostic_ends);
+        Self {
+            lint_lines,
+            diagnostic_lines,
+            has_type_casts,
+            has_target_annotations,
+            has_file_directives,
+        }
+    }
+}
+
+fn line_comment_directive_marker(raw: &str) -> Option<&str> {
+    let whitespace = |character| is_source_whitespace(character) && character != '\u{85}';
+    let marker = raw
+        .strip_prefix("///")
+        .or_else(|| raw.strip_prefix("//"))?
+        .trim_start_matches(whitespace);
+    Some(marker)
+}
+
+fn checking_mode_tag(marker: &str) -> Option<bool> {
+    let tag = marker
+        .split(|character| {
+            character == ':' || is_source_whitespace(character) && character != '\u{85}'
+        })
+        .next()
+        .unwrap_or(marker);
+    if tag.eq_ignore_ascii_case("@ts-check") {
+        Some(true)
+    } else if tag.eq_ignore_ascii_case("@ts-nocheck") {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+fn comment_is_file_directive(raw: &str, kind: CommentKind) -> bool {
+    if !raw.contains('@') && !raw.starts_with("///") {
+        return false;
+    }
+    match kind {
+        CommentKind::Line => {
+            let marker = line_comment_directive_marker(raw).unwrap_or("");
+            if checking_mode_tag(marker).is_some() {
+                return true;
+            }
+            raw.starts_with("///")
+                && ["<reference", "<amd-module", "<amd-dependency"]
+                    .iter()
+                    .any(|tag| {
+                        marker
+                            .strip_prefix(tag)
+                            .is_some_and(|rest| rest.starts_with([' ', '\t', '/', '>']))
+                    })
+        }
+        CommentKind::Block => memchr::memchr_iter(b'@', raw.as_bytes()).any(|offset| {
+            let tag = &raw[offset + 1..];
+            ["jsx", "jsxfrag", "jsximportsource", "jsxruntime"]
+                .iter()
+                .any(|name| {
+                    tag.get(..name.len())
+                        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(name))
+                        && tag[name.len()..]
+                            .chars()
+                            .next()
+                            .is_none_or(super::source::is_source_whitespace)
+                })
+        }),
+    }
+}
+
+fn comment_is_optimizer_annotation(raw: &str) -> bool {
+    memchr::memchr2_iter(b'@', b'#', raw.as_bytes()).any(|offset| {
+        let tag = &raw[offset + 1..];
+        tag.starts_with("__PURE__") || tag.starts_with("__NO_SIDE_EFFECTS__")
+    })
+}
+
+fn comment_is_type_cast(raw: &str) -> bool {
+    if !raw.starts_with("/**") {
+        return false;
+    }
+    for (offset, _) in raw.match_indices('@') {
+        let tag = &raw[offset..];
+        let after = tag
+            .strip_prefix("@type")
+            .or_else(|| tag.strip_prefix("@satisfies"));
+        if after.is_some_and(|after| {
+            after
+                .as_bytes()
+                .first()
+                .is_none_or(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_')
+        }) {
+            return true;
+        }
+    }
+    false
+}
 
 pub(super) enum PreparedBoundaryComments<'ast> {
     Preserved(CommentGap),
@@ -1346,81 +1480,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
-    fn line_comment_directive_marker(&self, comment: Comment) -> Option<&'ast str> {
+    pub(super) fn comment_checking_mode(&self, comment: Comment) -> Option<bool> {
         if comment.kind != CommentKind::Line {
             return None;
         }
-        let raw = self.source(comment.span);
-        let whitespace = |character| is_source_whitespace(character) && character != '\u{85}';
-        let marker = raw
-            .strip_prefix("///")
-            .or_else(|| raw.strip_prefix("//"))?
-            .trim_start_matches(whitespace);
-        Some(marker)
-    }
-
-    pub(super) fn comment_checking_mode(&self, comment: Comment) -> Option<bool> {
-        Self::checking_mode_tag(self.line_comment_directive_marker(comment)?)
-    }
-
-    fn checking_mode_tag(marker: &str) -> Option<bool> {
-        let tag = marker
-            .split(|character| {
-                character == ':' || is_source_whitespace(character) && character != '\u{85}'
-            })
-            .next()
-            .unwrap_or(marker);
-        if tag.eq_ignore_ascii_case("@ts-check") {
-            Some(true)
-        } else if tag.eq_ignore_ascii_case("@ts-nocheck") {
-            Some(false)
-        } else {
-            None
-        }
+        checking_mode_tag(line_comment_directive_marker(self.source(comment.span))?)
     }
 
     pub(super) fn comment_is_file_directive(&self, comment: Comment) -> bool {
-        let raw = self.source(comment.span);
-        if !raw.contains('@') && !raw.starts_with("///") {
-            return false;
-        }
-        match comment.kind {
-            CommentKind::Line => {
-                let marker = self.line_comment_directive_marker(comment).unwrap_or("");
-                if Self::checking_mode_tag(marker).is_some() {
-                    return true;
-                }
-                raw.starts_with("///")
-                    && ["<reference", "<amd-module", "<amd-dependency"]
-                        .iter()
-                        .any(|tag| {
-                            marker
-                                .strip_prefix(tag)
-                                .is_some_and(|rest| rest.starts_with([' ', '\t', '/', '>']))
-                        })
-            }
-            CommentKind::Block => memchr::memchr_iter(b'@', raw.as_bytes()).any(|offset| {
-                let tag = &raw[offset + 1..];
-                ["jsx", "jsxfrag", "jsximportsource", "jsxruntime"]
-                    .iter()
-                    .any(|name| {
-                        tag.get(..name.len())
-                            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(name))
-                            && tag[name.len()..]
-                                .chars()
-                                .next()
-                                .is_none_or(super::source::is_source_whitespace)
-                    })
-            }),
-        }
+        comment_is_file_directive(self.source(comment.span), comment.kind)
     }
 
     pub(super) fn comment_is_optimizer_annotation(&self, comment: Comment) -> bool {
-        let raw = self.source(comment.span);
-        memchr::memchr2_iter(b'@', b'#', raw.as_bytes()).any(|offset| {
-            let tag = &raw[offset + 1..];
-            tag.starts_with("__PURE__") || tag.starts_with("__NO_SIDE_EFFECTS__")
-        })
+        comment_is_optimizer_annotation(self.source(comment.span))
     }
 
     pub(super) fn comment_has_target_annotation(&self, comment: Comment) -> bool {
@@ -1586,25 +1658,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn comment_is_type_cast(&self, comment: Comment) -> bool {
-        let raw = self.source(comment.span);
-        if !raw.starts_with("/**") {
-            return false;
-        }
-        for (offset, _) in raw.match_indices('@') {
-            let tag = &raw[offset..];
-            let after = tag
-                .strip_prefix("@type")
-                .or_else(|| tag.strip_prefix("@satisfies"));
-            if after.is_some_and(|after| {
-                after
-                    .as_bytes()
-                    .first()
-                    .is_none_or(|byte| !byte.is_ascii_alphanumeric() && *byte != b'_')
-            }) {
-                return true;
-            }
-        }
-        false
+        comment_is_type_cast(self.source(comment.span))
     }
 
     fn prepare_comment(&self, comment: Comment) -> Result<PreparedComment<'ast>, FormatError> {
