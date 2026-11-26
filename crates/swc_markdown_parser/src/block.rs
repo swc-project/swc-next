@@ -1018,6 +1018,12 @@ fn math_open(text: &str) -> Option<usize> {
     (width >= 2 && !text[width..].contains('$')).then_some(width)
 }
 
+/// Whether the first physical line starts with a display math opener.
+pub fn starts_display_math(text: &str) -> bool {
+    text.starts_with('$')
+        && math_open(text.split(['\r', '\n']).next().unwrap_or_default()).is_some()
+}
+
 /// Whether the line content begins with a footnote definition marker such as `[^label]:`.
 pub fn starts_footnote_definition(text: &str) -> bool {
     footnote_label(text).is_some()

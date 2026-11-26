@@ -170,6 +170,21 @@ fn prose_wrap_boundaries() {
     let source = "hello [^n] note\n";
     assert_eq!(wrap(source), "hello\n[^n]\nnote\n");
 
+    let source = "hello $$ world\n";
+    assert_eq!(wrap(source), "hello $$\nworld\n");
+
+    let source = "$$$meta long $ tail\n";
+    assert_eq!(wrap(source), "$$$meta long $\ntail\n");
+
+    let source = "hi\\\n$$ long $\n";
+    assert_eq!(wrap(source), source);
+
+    let source = "hello $$x$$ world\n";
+    assert_eq!(wrap(source), "hello\n$$x$$\nworld\n");
+
+    let source = "hello $$x\nb$$ tail\n";
+    assert_eq!(wrap(source), "hello $$x\nb$$\ntail\n");
+
     let source = "hello |---|\n";
     assert_eq!(wrap(source), source);
 

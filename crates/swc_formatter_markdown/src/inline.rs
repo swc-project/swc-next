@@ -7,7 +7,8 @@ use std::{
 use swc_next_formatter_core::Writer;
 use swc_next_markdown_parser::{
     Block, BlockKind, Definition, Inline, InlineKind, Link, LinkTarget, ReferenceKind, SourceLine,
-    Span, can_continue_link_definition, is_table_delimiter_row, parse, starts_footnote_definition,
+    Span, can_continue_link_definition, is_table_delimiter_row, parse, starts_display_math,
+    starts_footnote_definition,
 };
 use swc_next_simd::{cmp::SimdPartialEq, u8x16};
 
@@ -262,6 +263,18 @@ impl<'a> Prose<'a> {
         (end, prefix)
     }
 
+    // At a required line start, keep the later dollar sign that made this line prose.
+    fn anchor_math_opener(&self, index: usize) -> usize {
+        if !starts_display_math(self.words[index].text(&self.buffer)) {
+            return index;
+        }
+        self.words[index + 1..]
+            .iter()
+            .take_while(|word| word.before == Separation::Space)
+            .position(|word| word.text(&self.buffer).contains('$'))
+            .map_or(index, |offset| index + offset + 1)
+    }
+
     fn finish(&mut self) {
         let wrap = self.wrap;
         self.finish_word();
@@ -269,7 +282,11 @@ impl<'a> Prose<'a> {
             return;
         }
         let mut count = 1;
-        let mut join_through = 0;
+        let mut join_through = if wrap == ProseWrap::Always {
+            self.anchor_math_opener(0)
+        } else {
+            0
+        };
         for index in 1..self.words.len() {
             let mut word = self.words[index];
             let value = word.text(&self.buffer);
@@ -298,11 +315,12 @@ impl<'a> Prose<'a> {
             if word.before >= Separation::HardLine {
                 if setext {
                     word.prefix = LinePrefix::Escape;
-                } else if wrap == ProseWrap::Always
-                    && word.prefix == LinePrefix::None
-                    && self.starts_table_delimiter(index)
-                {
-                    (join_through, word.prefix) = self.anchor_table_delimiter(index);
+                } else if wrap == ProseWrap::Always && word.prefix == LinePrefix::None {
+                    if self.starts_table_delimiter(index) {
+                        (join_through, word.prefix) = self.anchor_table_delimiter(index);
+                    } else {
+                        join_through = self.anchor_math_opener(index);
+                    }
                 }
             }
             if word.before == Separation::Space
@@ -860,6 +878,7 @@ fn requires_prefix_word(word: &str) -> bool {
     match word.as_bytes().first() {
         Some(b'<' | b'>') => true,
         Some(b'[') => starts_footnote_definition(word),
+        Some(b'$') => starts_display_math(word),
         Some(b'#') => word.len() <= 6 && word.bytes().all(|byte| byte == b'#'),
         Some(b'+') => word.len() == 1,
         Some(b'`') => word.starts_with("```"),
