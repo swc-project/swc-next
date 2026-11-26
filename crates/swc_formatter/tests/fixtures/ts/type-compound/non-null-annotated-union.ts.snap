@@ -1,0 +1,42 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+(x as /*#__PURE__*/ A | (B
+// note
+))!;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+(x as /*#__PURE__*/ (
+  | A
+  | B
+  // note
+))!;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+(x as /*#__PURE__*/ (
+  | A
+  | B
+  // note
+))!;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+;(x as /*#__PURE__*/ (
+  | A
+  | B
+  // note
+))!
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+(x as /*#__PURE__*/ (
+	| A
+	| B
+	// note
+))!;

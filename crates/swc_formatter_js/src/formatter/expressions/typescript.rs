@@ -1580,6 +1580,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: TypeAssertionHead<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
+        let context = TypeContext::AngleAssertion;
         let opening = match head.before {
             TypeAssertionOpening::Packet(packet) => {
                 PreparedAssertionOpening::Packet(packet, head.body)
@@ -1588,12 +1589,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 PreparedAssertionOpening::Source(span, head.body)
             }
             TypeAssertionOpening::Boundary(TypeExpressionGap::Formatted(boundary)) => {
-                match self.prepare_delimited_type_head(
-                    head.body,
-                    boundary,
-                    TypeContext::Root,
-                    writer,
-                )? {
+                match self.prepare_delimited_type_head(head.body, boundary, context, writer)? {
                     PreparedDelimitedTypeHead::Recorded(head) => {
                         PreparedAssertionOpening::Recorded(head)
                     }
@@ -1611,7 +1607,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_type_angle_packet(packet, writer)?;
                     self.format_prepared_delimited_type(
                         body,
-                        TypeContext::Root,
+                        context,
                         TypeLayout::CallerIndented,
                         writer,
                     )?
@@ -1620,7 +1616,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_verbatim(span, writer)?;
                     self.format_prepared_delimited_type(
                         body,
-                        TypeContext::Root,
+                        context,
                         TypeLayout::CallerIndented,
                         writer,
                     )?
@@ -1644,7 +1640,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                     self.format_prepared_delimited_type(
                         body,
-                        TypeContext::Root,
+                        context,
                         TypeLayout::CallerIndented,
                         writer,
                     )?
@@ -1653,7 +1649,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.soft_line();
                     self.format_recorded_type_head(
                         head,
-                        TypeContext::Root,
+                        context,
                         TypeLayout::CallerIndented,
                         writer,
                     )?

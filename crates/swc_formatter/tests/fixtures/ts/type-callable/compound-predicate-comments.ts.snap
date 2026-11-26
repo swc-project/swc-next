@@ -1,0 +1,58 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function f(v: unknown): // head
+ v is A & (B
+// tail
+) { return true; }
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+function f(v: unknown): // head
+v is (
+  A & B
+  // tail
+) {
+  return true;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+function f(
+  v: unknown,
+): // head
+v is (
+  A & B
+  // tail
+) {
+  return true;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+function f(
+  v: unknown,
+): // head
+v is (
+  A &
+    B
+  // tail
+) {
+  return true
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20,"trailingCommas":"none"}
+---------- Output ----------
+function f(
+	v: unknown
+): // head
+v is (
+	A & B
+	// tail
+) {
+	return true;
+}

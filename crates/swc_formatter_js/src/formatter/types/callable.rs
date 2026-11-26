@@ -944,7 +944,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<TypeOutput<'ast>, FormatError> {
         self.format_function_return_with_context(
             result,
-            TypeContext::Root,
+            TypeContext::BeforeFunctionBody,
             Some(TypeContinuation::Body),
             writer,
         )
@@ -998,7 +998,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
         self.format_signature_return_at_continuation(
             result,
-            TypeContext::Root,
+            TypeContext::BeforeFunctionBody,
             Some(TypeContinuation::Body),
             writer,
         )
@@ -1224,6 +1224,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     &result.content
                 {
                     let span = node.node.span(self.ast);
+                    let continuation_layout = continuation.map(|continuation| {
+                        self.type_layout_at_continuation(span, TypeLayout::Root, continuation)
+                    });
                     let inline_line_comment =
                         matches!(result.delimiter, SignatureReturnDelimiter::Colon)
                             && after
@@ -1243,7 +1246,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                                 span.end,
                             ))
                             && !self.type_uses_comment_head(*node);
-                    if inline_line_comment {
+                    if inline_line_comment
+                        && continuation_layout != Some(TypeLayout::ContinuationRoot)
+                    {
                         self.comments.claim(after.comments())?;
                         let (content, output) = writer.record_with_value(|writer| {
                             self.format_prepared_type_body(*node, context, TypeLayout::Root, writer)
@@ -1270,28 +1275,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         writer.write_fragment(content);
                         return Ok(output);
                     }
-                    if let Some(continuation) = continuation {
-                        let layout =
-                            self.type_layout_at_continuation(span, TypeLayout::Root, continuation);
-                        if after.is_empty()
-                            || layout == TypeLayout::ContinuationRoot
-                                && (self.diagnostic_line_is_sensitive(span.start)
-                                    || matches!(
-                                        self.comment_boundary_binding(&after, span),
-                                        CommentBinding::Unbound
-                                    ))
-                        {
-                            self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
-                            return self.format_type_body_at_continuation(
-                                span,
-                                continuation,
-                                writer,
-                                |formatter, writer| {
-                                    formatter
-                                        .format_prepared_type_body(*node, context, layout, writer)
-                                },
-                            );
-                        }
+                    if let (Some(continuation), Some(layout)) = (continuation, continuation_layout)
+                        && (after.is_empty() || layout == TypeLayout::ContinuationRoot)
+                    {
+                        self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
+                        return self.format_type_body_at_continuation(
+                            span,
+                            continuation,
+                            writer,
+                            |formatter, writer| {
+                                formatter.format_prepared_type_body(*node, context, layout, writer)
+                            },
+                        );
                     }
                     return self.format_prepared_type_after_comments_body(
                         *node,
