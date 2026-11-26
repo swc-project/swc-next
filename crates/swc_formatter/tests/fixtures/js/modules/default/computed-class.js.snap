@@ -1,0 +1,31 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+export default (class { static x = 3; })[key] | 4 | 8;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+export default (class {
+  static x = 3;
+}[key] |
+  4 |
+  8);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+export default (class {
+  static x = 3;
+}[key] |
+  4 |
+  8);
+
+---------- Options ----------
+{"bracketSpacing":false,"indentStyle":"space","lineWidth":20,"quoteStyle":"single","semicolons":"as-needed"}
+---------- Output ----------
+export default (class {
+  static x = 3
+}[key] |
+  4 |
+  8)

@@ -1173,11 +1173,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::IdentifierReference(node) if node == identifier)
     }
 
-    fn default_export_head_needs_parentheses(
-        &self,
-        mut data: ExprData,
-        mut mode: ContentMode,
-    ) -> bool {
+    fn expression_has_declaration_head(&self, mut data: ExprData, mut mode: ContentMode) -> bool {
         loop {
             let (expression, position) = if let Some(binary) = BinaryLike::from_data(data, self.ast)
             {
@@ -1262,8 +1258,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     _ => return false,
                 }
             };
-            data = self.expression_data(expression);
-            if self.expression_needs_parentheses(data, position, mode) == Some(true) {
+            if mode == ContentMode::Verbatim {
+                data = self.ast.expr_data(expression);
+                continue;
+            }
+            data = self.expression_data_for_position(expression, position);
+            let flattened = matches!(
+                position,
+                ExpressionPosition::BinaryOperand { operator, side: OperandSide::Left }
+                    if BinaryOperatorKind::from_data(data, self.ast)
+                        .is_some_and(|left| operator.flattens(left))
+            );
+            if !flattened && self.expression_needs_parentheses(data, position, mode) == Some(true) {
                 return false;
             }
         }
@@ -1363,7 +1369,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             position
         };
         if matches!(position, ExpressionPosition::ExportDefault)
-            && self.default_export_head_needs_parentheses(data, mode)
+            && self.expression_has_declaration_head(data, mode)
         {
             return Some(true);
         }
@@ -1765,6 +1771,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let span = expression.span(self.ast);
         let source = self.source(span);
         let parenthesize = self.expression_is_parenthesized(data, context)
+            || context.parentheses_owner == ParenthesesOwner::Expression
+                && context.expression_start.is_statement()
+                && self.expression_has_declaration_head(data, ContentMode::Verbatim)
             || context.jsx_field_initializer
                 && matches!(data, ExprData::JsxElement(_) | ExprData::JsxFragment(_))
             || matches!(context.expression_head, ExpressionHead::Iteration(_));

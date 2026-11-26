@@ -682,7 +682,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => DefaultLeft::Binding(left),
         };
         let simple = match prepared {
-            DefaultLeft::Simple(simple) if simple.is_typescript() => simple,
+            DefaultLeft::Simple(simple)
+                if simple.is_typescript()
+                    || span.start < simple.expression().span(self.ast).start
+                        && self.target_pair_preserves_anonymous_name(simple, right) =>
+            {
+                simple
+            }
             left => {
                 let owner = self.prepare_default_boundary(left.span(self.ast), right)?;
                 return Ok(PreparedBindingDefault {

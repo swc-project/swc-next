@@ -929,6 +929,44 @@
         "prettierNative": ";[a,b] = // prettier-ignore\n  /* prettier-ignore */\n  right()\n"
       }
     ],
+    "js/assignment-pattern/parenthesized-default-target.js": [
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "[\n  (value) = () => 0,\n] = [];\n",
+        "prettierNative": "[value = () => 0] =\n  [];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "[(value) = () => 0] = [];\n",
+        "prettierNative": "[value = () => 0] = [];\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[\n  (value) = () => 0,\n] = []\n",
+        "prettierNative": ";[value = () => 0] =\n  []\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";[(value) = () => 0] = []\n",
+        "prettierNative": ";[value = () => 0] = []\n"
+      }
+    ],
     "js/assignment-pattern/rhs-parentheses-line.js": [
       {
         "options": {
@@ -16606,6 +16644,16 @@
         "prettierNative": "/** @param {number} value */ (function (\n  value,\n) {\n  return value;\n})\n  /** lookup */\n  .call(\n    null,\n    \"wrong\",\n  );\n"
       }
     ],
+    "js/expressions/parentheses/bound-statement-heads/iife/ignored-member.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(function f(x) { return x; }(x)) // prettier-ignore\n  .toString();\n",
+        "prettierNative": "function f(x) { return x; }(x) // prettier-ignore\n  .toString();\n"
+      }
+    ],
     "js/expressions/parentheses/bound-statement-heads/read/input.js": [
       {
         "options": {
@@ -24850,6 +24898,35 @@
         },
         "swcPlugin": "import {\n  first,\n  // @ts-ignore\n  second as local} from 'missing'\n",
         "prettierNative": "import {\n  first,\n  // @ts-ignore\n  second as local,\n} from 'missing'\n"
+      }
+    ],
+    "js/modules/default/computed-class.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export default (class {\n  static x = 3;\n}[key] |\n  4 |\n  8);\n",
+        "prettierNative": "export default class {\n  static x = 3;\n}[key] |\n  4 |\n  8;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "export default (class {\n  static x = 3;\n}[key] |\n  4 |\n  8);\n",
+        "prettierNative": "export default class {\n  static x = 3;\n}[key] |\n  4 |\n  8;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "quoteStyle": "single",
+          "bracketSpacing": false
+        },
+        "swcPlugin": "export default (class {\n  static x = 3\n}[key] |\n  4 |\n  8)\n",
+        "prettierNative": "export default class {\n  static x = 3\n}[key] |\n  4 |\n  8\n"
       }
     ],
     "js/modules/diagnostic-export-separator.js": [
@@ -45992,6 +46069,24 @@
         },
         "swcPlugin": "const remainder = !callee<Type> % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = !callee<Type> << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = callee<Type>() + suffix;\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix;\nconst enclosedTail = !(/* prettier-ignore */ callee  < Type >) + suffix;\n",
         "prettierNative": "const remainder = (!callee<Type>) % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = (!callee<Type>) << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = (callee<Type>)() + suffix;\nconst ignoredTail = factor * /* prettier-ignore */ (callee  < Type >) + suffix;\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix;\n"
+      }
+    ],
+    "ts/type-argument-expression-boundaries/relational/comparison.ts": [
+      {
+        "options": {
+          "lineWidth": 8,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x =\n  (a <\n    b) >\n  c;\n\nf(\n  (a <\n    b <\n    c),\n  d >>\n    (e +\n      g),\n);\n\nf(\n  (a <\n    b <\n    c <\n    d),\n  e >>>\n    (g +\n      h),\n);\n",
+        "prettierNative": "x =\n  (a <\n    b) >\n  c;\n\nf(\n  a <\n    b <\n    c,\n  d >>\n    (e +\n      g),\n);\n\nf(\n  a <\n    b <\n    c <\n    d,\n  e >>>\n    (g +\n      h),\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "x = (a < b) > c;\n\nf((a < b < c), d >> (e + g));\n\nf((a < b < c < d), e >>> (g + h));\n",
+        "prettierNative": "x = (a < b) > c;\n\nf(a < b < c, d >> (e + g));\n\nf(a < b < c < d, e >>> (g + h));\n"
       }
     ],
     "ts/type-argument-expression-boundaries/relational/ignore.ts": [

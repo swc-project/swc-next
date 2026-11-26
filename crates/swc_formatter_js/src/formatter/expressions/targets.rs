@@ -340,15 +340,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let TargetNode::Simple(target) = target else {
             return false;
         };
-        match self.assignment_runtime_operand(target.expression) {
-            ExprData::MemberExpression(_) => {
-                return !self.ast.lang().is_typescript()
-                    && assignment.operator(self.ast) == AssignmentOperator::Assign;
-            }
-            ExprData::IdentifierReference(_) => {}
-            _ => return false,
+        if matches!(
+            self.assignment_runtime_operand(target.expression),
+            ExprData::MemberExpression(_)
+        ) {
+            return !self.ast.lang().is_typescript()
+                && assignment.operator(self.ast) == AssignmentOperator::Assign;
         }
-        match self.assignment_runtime_operand(assignment.right(self.ast)) {
+        self.target_pair_preserves_anonymous_name(target, assignment.right(self.ast))
+    }
+
+    pub(in crate::formatter) fn target_pair_preserves_anonymous_name(
+        &self,
+        target: SimpleTarget,
+        right: Expr,
+    ) -> bool {
+        if !matches!(
+            self.assignment_runtime_operand(target.expression),
+            ExprData::IdentifierReference(_)
+        ) {
+            return false;
+        }
+        match self.assignment_runtime_operand(right) {
             ExprData::Function(node) => node.id(self.ast).is_none(),
             ExprData::Class(node) => node.id(self.ast).is_none(),
             ExprData::ArrowFunctionExpression(_) => true,
