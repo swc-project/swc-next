@@ -60,7 +60,7 @@ pub(super) enum StatementSequenceKind<'ast> {
     Case {
         leading: StatementBodyLeading<'ast>,
         incoming: Option<CaseIncoming>,
-        terminator: Option<StatementSourceTerminator>,
+        retain_last_terminator: bool,
         has_following: bool,
     },
 }
@@ -978,10 +978,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     StatementPunctuation::Source,
                 )
             } else if let StatementSequenceKind::Case {
-                terminator: Some(terminator),
+                retain_last_terminator: true,
                 ..
             } = kind
                 && following.is_none()
+                && let Some(terminator) = self.statement_source_terminator(statement_span)
             {
                 StatementPunctuation::Source(terminator)
             } else if source_packet.is_some() {
@@ -1332,13 +1333,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     }
                 }
             };
-            if source_packet.is_none()
+            let tail_limit = if source_packet.is_none()
                 && let Some(first) = annotation_tail
                     .as_ref()
                     .and_then(|tail| tail.comments.first())
             {
-                printed.retain_pending_before(first.span.start);
-            }
+                first.span.start
+            } else {
+                following.unwrap_or(span.end)
+            };
+            printed.retain_pending_before(tail_limit);
             let operator_tail = printed.operator_tail;
             let (mut boundary, pending_tail) =
                 if source_packet.is_some() || annotation_tail.is_some() {

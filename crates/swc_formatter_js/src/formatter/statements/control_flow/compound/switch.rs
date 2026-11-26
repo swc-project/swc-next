@@ -782,17 +782,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         let body_span = Span::new(content_start, node.node.span(ast).end);
         let block = node.adjacent_block;
-        let terminator = if (node.trailing.has_suppression()
+        let retain_last_terminator = (node.trailing.has_suppression()
             && node.following_mode == ContentMode::Verbatim
             && self.line_breaks(node.trailing.span.start, node.trailing.span.end) == 0)
-            || following_gap.following_line == Some(LineConstraint::SameLine)
-        {
-            statements.last().and_then(|id| {
-                self.statement_source_terminator(ast.get_node_in_sub_range(id).span(ast))
-            })
-        } else {
-            None
-        };
+            || following_gap.following_line == Some(LineConstraint::SameLine);
         let body_gap_written = !node.colon_comments.is_empty()
             && matches!(
                 node.colon_layout,
@@ -863,7 +856,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 StatementSequenceKind::Case {
                     leading: node.body_leading,
                     incoming: node.incoming,
-                    terminator,
+                    retain_last_terminator,
                     has_following: node.has_following,
                 },
                 writer,
