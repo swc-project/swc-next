@@ -1,0 +1,585 @@
+//! Shared physical field layout and child enumeration for the buffer-backed AST API.
+
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Write,
+};
+
+use convert_case::{Case, Casing};
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote};
+
+use crate::{
+    generator::ast_node::concrete_node_kinds,
+    output::{RawOutput, RustOutput},
+    schema::{AstType, FieldLocation, Schema, TypeId},
+};
+
+mod protocol;
+mod types;
+mod visitor_keys;
+
+pub(crate) use visitor_keys::visitor_keys;
+
+/// Expose Rust struct fields in normal JavaScript casing, without aliases.
+fn field_name(name: &str) -> String {
+    name.strip_prefix("r#").unwrap_or(name).to_case(Case::Camel)
+}
+
+struct WriteCandidate {
+    kind: usize,
+    offset: usize,
+    optional: bool,
+    ty: String,
+}
+
+struct SpecializedField {
+    offset: usize,
+    optional: bool,
+    ty: String,
+    kinds: Vec<usize>,
+    writer: &'static str,
+    enum_name: Option<String>,
+}
+
+type WriteGroup<'a> = (
+    (usize, bool, &'a str),
+    &'static str,
+    Vec<&'a WriteCandidate>,
+);
+
+pub(crate) fn ffi2(schema: &Schema) -> Vec<RawOutput> {
+    let mut metadata = String::from(
+        "import type { FieldDescriptor, NodeLayout, EnumValue } from \"#protocol/types\";\nimport { Field, FIELD_COUNT } from \"#protocol/protocol\";\nexport const layouts: readonly NodeLayout[] = [\n",
+    );
+    let mut descriptors = String::from(
+        "export const fieldDescriptors: readonly (FieldDescriptor | undefined)[] = [\n  undefined,\n",
+    );
+    let mut descriptor_ids: BTreeMap<String, usize> = BTreeMap::new();
+    let mut kinds = String::from("export const NodeKind = Object.freeze({\n");
+    let mut fast_fields: BTreeMap<String, Vec<(usize, String)>> = BTreeMap::new();
+    let mut write_fields: BTreeMap<String, Vec<WriteCandidate>> = BTreeMap::new();
+    let mut extra_counts = Vec::new();
+    let mut validator_arms = TokenStream::new();
+    let mut count = 0usize;
+    for ast in schema.types.iter().filter_map(|ty| match ty {
+        AstType::Struct(ast) => Some(ast),
+        _ => None,
+    }) {
+        let kind = count;
+        count += 1;
+        writeln!(kinds, "  {}: {kind},", ast.name).unwrap();
+        writeln!(
+            metadata,
+            "  {{ name: {:?}, extra: {}, fields: [",
+            ast.name,
+            ast.layout
+                .extra_start_offset()
+                .map_or("null".into(), |n| n.to_string())
+        )
+        .unwrap();
+        extra_counts.push(ast.layout.extra_count);
+        let mut checks = TokenStream::new();
+        if let Some(pointer) = ast.layout.extra_start_offset() {
+            let count = ast.layout.extra_count;
+            checks.extend(quote!(input.extra(#pointer, #count)?;));
+        }
+        for (index, field) in ast.fields.iter().enumerate() {
+            let location = match ast.layout.fields[index] {
+                FieldLocation::Payload { offset, .. } => quote!(Field::Payload(#offset)),
+                FieldLocation::Extra { index } => quote!(Field::Extra(#index)),
+            };
+            checks.extend(validate_field(field.type_id, location.clone(), schema));
+            let name = field_name(&field.name);
+            let (extra, offset) = match ast.layout.fields[index] {
+                FieldLocation::Payload { offset, .. } => (false, offset),
+                FieldLocation::Extra { index } => (true, index),
+            };
+            let desc = descriptor(field.type_id, schema);
+            let tuple = format!("[{extra}, {offset}, {desc}]");
+            let next = descriptor_ids.len() + 1;
+            let descriptor_id = *descriptor_ids.entry(tuple.clone()).or_insert(next);
+            if descriptor_id == next {
+                assert!(u8::try_from(next).is_ok(), "native field descriptor ID");
+                writeln!(descriptors, "  {tuple},").unwrap();
+            }
+            writeln!(metadata, "    [Field.{name}, {descriptor_id}],").unwrap();
+            if !extra && field.attrs.invalidates.is_empty() {
+                let mut parts = desc.split(',');
+                let ty = parts.next().unwrap().trim().trim_matches('"').to_string();
+                let optional = parts.next().unwrap().trim() == "true";
+                write_fields
+                    .entry(name.clone())
+                    .or_default()
+                    .push(WriteCandidate {
+                        kind,
+                        offset,
+                        optional,
+                        ty,
+                    });
+            }
+            if let Some(expression) = fast_field_expression(
+                field.type_id,
+                extra,
+                offset,
+                ast.layout.extra_start_offset(),
+                &name,
+                schema,
+            ) {
+                fast_fields
+                    .entry(name)
+                    .or_default()
+                    .push((kind, expression));
+            }
+        }
+        metadata.push_str("  ] },\n");
+        if !checks.is_empty() {
+            let ty = format_ident!("{}", ast.name);
+            validator_arms.extend(quote!(NodeKind::#ty => { #checks }));
+        }
+    }
+    let mut specialized: BTreeMap<String, SpecializedField> = BTreeMap::new();
+    for (name, candidates) in &write_fields {
+        let mut groups: BTreeMap<(usize, bool, &str), Vec<&WriteCandidate>> = BTreeMap::new();
+        for candidate in candidates {
+            groups
+                .entry((candidate.offset, candidate.optional, candidate.ty.as_str()))
+                .or_default()
+                .push(candidate);
+        }
+        let mut best: Option<WriteGroup<'_>> = None;
+        for (key, group) in groups {
+            let writer = match group[0].ty.as_str() {
+                "string" => "writeStringAt",
+                "node" => "writeNodeAt",
+                "bool" => "writeBoolAt",
+                "u8" | "i8" | "u16" | "i16" | "u32" | "i32" | "f64" => "writeNumberAt",
+                ty if ty.starts_with("enum:") => "writeEnumAt",
+                _ => continue,
+            };
+            if best
+                .as_ref()
+                .is_none_or(|(_, _, current)| group.len() > current.len())
+            {
+                best = Some((key, writer, group));
+            }
+        }
+        if let Some(((offset, optional, ty), writer, group)) = best {
+            specialized.insert(
+                name.clone(),
+                SpecializedField {
+                    offset,
+                    optional,
+                    ty: ty.to_string(),
+                    kinds: group.iter().map(|candidate| candidate.kind).collect(),
+                    writer,
+                    enum_name: ty.strip_prefix("enum:").map(str::to_string),
+                },
+            );
+        }
+    }
+    metadata.push_str(
+        r#"];
+// Expand the compact native layouts once; a zero slot means no native field.
+const nativeFieldTable = new Uint8Array(layouts.length * FIELD_COUNT);
+for (let kind = 0; kind < layouts.length; kind++) {
+  for (const [field, descriptor] of layouts[kind].fields) {
+    nativeFieldTable[kind * FIELD_COUNT + field] = descriptor;
+  }
+}
+export function nativeField(kind: number, field: number): FieldDescriptor | undefined {
+  return fieldDescriptors[nativeFieldTable[kind * FIELD_COUNT + field]];
+}
+"#,
+    );
+    kinds.push_str("} as const);\n");
+    metadata.push_str(&kinds);
+    writeln!(
+        metadata,
+        "export const nativeExtraCounts: readonly number[] = {extra_counts:?};"
+    )
+    .unwrap();
+    metadata.push_str("export const enums: Readonly<Record<string, readonly EnumValue[]>> = {\n");
+    for enumeration in &schema.scalar_enums {
+        let name = &enumeration.name;
+        let variants = enumeration
+            .variants
+            .iter()
+            .map(|variant| variant.name.as_str())
+            .collect::<Vec<_>>();
+        writeln!(metadata, "  {name}: {variants:?},").unwrap();
+    }
+    metadata.push_str("};\n");
+    let names = schema
+        .types
+        .iter()
+        .filter_map(|ty| match ty {
+            AstType::Struct(ast) => Some(ast),
+            _ => None,
+        })
+        .flat_map(|ast| ast.fields.iter().map(|field| field_name(&field.name)))
+        .collect::<BTreeSet<_>>();
+    let numeric_kind = fast_fields["value"]
+        .iter()
+        .find(|(_, expression)| expression.contains("getFloat64"))
+        .unwrap()
+        .0;
+    let mut node_js = String::from(
+        r#"// Generated by tasks/ast_tools. Do not edit.
+import { Field, fieldId } from '#protocol/protocol';
+import type { AstView } from '#protocol/index';
+import type { Node } from './native-types.d.ts';
+"#,
+    );
+    node_js.push_str("import type { NodeField, FieldInput } from '#protocol/types';\n");
+    node_js.push_str("import { enums } from '#protocol/schema';\n");
+    node_js.push_str(
+        r#"export class NodeView<T extends Node = Node> {
+  declare private readonly nodeShape: T;
+  // Retain a buffer-free shape across batches that release every AST.
+  static #shape = new this(null!, 0, 0);
+  #ast: AstView;
+  #id: number;
+  #kind: number;
+  #version: number;
+  constructor(ast: AstView, id: number, kind: number) {
+    this.#ast = ast;
+    this.#id = id;
+    this.#kind = kind;
+    this.#version = ast === null ? 0 : ast._editVersion;
+  }
+  // The cached kind is a scalar; revalidate it after any edit.
+  _refresh(): void {
+    const ast = this.#ast;
+    this.#kind = ast._kindAt(this.#id);
+    this.#version = ast._editVersion;
+  }
+  isSame(other: unknown): boolean {
+    return this === other || (other instanceof NodeView && other.#ast === this.#ast && other.#id === this.#id);
+  }
+  get ast(): AstView { return this.#ast; }
+  get nodeId(): number { return this.#id; }
+  get type(): T['type'] {
+    if (this.#version !== this.#ast._editVersion) { this._refresh(); }
+    return this.#ast._typeAt(this.#id, this.#kind) as T['type'];
+  }
+  set type(value: string) { this.#ast._setType(this.#id, value); }
+  get start(): number { return this.#ast.start(this.#id); }
+  set start(value: number) { this.#ast._setSpan(this.#id, true, value); }
+  get end(): number { return this.#ast.end(this.#id); }
+  set end(value: number) { this.#ast._setSpan(this.#id, false, value); }
+  get<K extends string>(field: K): NodeField<K> {
+    const ast = this.#ast;
+    if (this.#version !== ast._editVersion) { this._refresh(); }
+    return ast.value(this.#id, fieldId(field), this.#kind) as NodeField<K>;
+  }
+  set<K extends string>(field: K, value: FieldInput<K>): void { this.#ast.writeNativeField(this.#id, fieldId(field), value); }
+  toJSON(): unknown { return this.#ast.materialize(this); }
+"#,
+    );
+    writeln!(node_js, "  _numberValue(): NodeField<\"value\"> {{\n    const ast = this.#ast;\n    if (this.#version !== ast._editVersion) {{ this._refresh(); }}\n    const kind = this.#kind;\n    if (kind !== {numeric_kind}) {{ return ast.value(this.#id, Field.value, kind) as NodeField<\"value\">; }}\n    const row = ast.row(this.#id);\n    return (row === -1 ? ast._view : ast._arena!.view!).getFloat64(ast._payloadAt(this.#id, row), true);\n  }}\n  _setNumberValue(value: FieldInput<\"value\">) {{ this.#ast.writeNativeField(this.#id, Field.value, value); }}").unwrap();
+    for name in names {
+        writeln!(node_js, "  get {name}(): NodeField<{name:?}> {{").unwrap();
+        node_js
+                .push_str("    const ast = this.#ast;\n    if (this.#version !== ast._editVersion) { this._refresh(); }\n    const kind = this.#kind;\n");
+        if fast_fields.contains_key(&name) {
+            let mut groups: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+            for (kind, expression) in &fast_fields[&name] {
+                groups.entry(expression).or_default().push(*kind);
+            }
+            // Hot groups: identifier names and declaration ids dominate.
+            // Keep the common group in a small wrapper and move the rest
+            // into a separate cold method.
+            let fast_group = match name.as_str() {
+                "name" => groups
+                    .iter()
+                    .find(|(expression, _)| expression.contains("ast.stringAt"))
+                    .map(|(expression, kinds)| (*expression, kinds.clone())),
+                "id" => groups
+                    .iter()
+                    .find(|(expression, _)| {
+                        expression.contains("ast._nodeAt") && expression.contains("false")
+                    })
+                    .map(|(expression, kinds)| (*expression, kinds.clone())),
+                _ => None,
+            };
+            if let Some((expression, kinds)) = &fast_group {
+                let condition = kinds
+                    .iter()
+                    .map(|kind| format!("kind === {kind}"))
+                    .collect::<Vec<_>>()
+                    .join(" || ");
+                let rest = format!("_{name}Rest");
+                writeln!(
+                        node_js,
+                        "    if ({condition}) {{\n      const row = ast.row(this.#id);\n      const offset = ast._payloadAt(this.#id, row);\n      const view = row === -1 ? ast._view : ast._arena!.view!;\n      return ({expression}) as NodeField<{name:?}>;\n    }}\n    return this.{rest}(kind);\n  }}\n  {rest}(kind: number): NodeField<{name:?}> {{\n    const ast = this.#ast;\n    const row = ast.row(this.#id);\n    const offset = ast._payloadAt(this.#id, row);\n    const view = row === -1 ? ast._view : ast._arena!.view!;"
+                    )
+                    .unwrap();
+                groups.remove(*expression);
+            }
+            // Share physical loads when every direct branch needs them.
+            // Keeping one copy also lets V8 inline these getters into callers.
+            let shared_location = fast_group.is_none()
+                && groups.len() > 1
+                && groups
+                    .keys()
+                    .all(|expression| expression.contains("offset") || expression.contains("view"));
+            if shared_location {
+                node_js.push_str("    const row = ast.row(this.#id);\n    const offset = ast._payloadAt(this.#id, row);\n    const view = row === -1 ? ast._view : ast._arena!.view!;\n");
+            }
+            node_js.push_str("    switch (kind) {\n");
+            for (expression, kinds) in groups {
+                for kind in kinds {
+                    writeln!(node_js, "      case {kind}:").unwrap();
+                }
+                let physical = fast_group.is_none()
+                    && !shared_location
+                    && (expression.contains("offset") || expression.contains("view"));
+                if physical {
+                    node_js.push_str("      {\n        const row = ast.row(this.#id);\n        const offset = ast._payloadAt(this.#id, row);\n        const view = row === -1 ? ast._view : ast._arena!.view!;\n");
+                }
+                writeln!(
+                    node_js,
+                    "        return ({expression}) as NodeField<{name:?}>;"
+                )
+                .unwrap();
+                if physical {
+                    node_js.push_str("      }\n");
+                }
+            }
+            writeln!(
+                    node_js,
+                    "      default: return ast.value(this.#id, Field.{name}, kind) as NodeField<{name:?}>;\n    }}"
+                )
+                .unwrap();
+        } else {
+            writeln!(
+                node_js,
+                "    return ast.value(this.#id, Field.{name}, kind) as NodeField<{name:?}>;"
+            )
+            .unwrap();
+        }
+        if let Some(field) = specialized.get(&name) {
+            writeln!(
+                node_js,
+                "  }}\n  set {name}(value: FieldInput<{name:?}>) {{\n    const ast = this.#ast, id = this.#id;\n    if (this.#version !== ast._editVersion) {{ this._refresh(); }}\n    const kind = this.#kind;\n    switch (kind) {{"
+            )
+            .unwrap();
+            for kind in &field.kinds {
+                writeln!(node_js, "      case {kind}:").unwrap();
+            }
+            let call = match field.writer {
+                "writeStringAt" => format!(
+                    "ast._writeStringAt(id, {}, {}, value)",
+                    field.offset, field.optional
+                ),
+                "writeNodeAt" => format!("ast._writeNodeAt(id, {}, value)", field.offset),
+                "writeBoolAt" => format!("ast._writeBoolAt(id, {}, value)", field.offset),
+                "writeNumberAt" => format!(
+                    "ast._writeNumberAt(id, {}, {:?}, value)",
+                    field.offset, field.ty
+                ),
+                "writeEnumAt" => format!(
+                    "ast._writeEnumAt(id, {}, {}, enums.{}, value)",
+                    field.offset,
+                    field.optional,
+                    field.enum_name.as_ref().expect("enum name")
+                ),
+                _ => unreachable!(),
+            };
+            writeln!(
+                node_js,
+                "        {call};\n        break;\n      default: ast.writeNativeField(id, Field.{name}, value);\n    }}\n  }}"
+            )
+            .unwrap();
+        } else {
+            writeln!(
+                node_js,
+                "  }}\n  set {name}(value: FieldInput<{name:?}>) {{ this.#ast.writeNativeField(this.#id, Field.{name}, value); }}"
+            )
+            .unwrap();
+        }
+    }
+    node_js.push_str("}\n");
+    writeln!(node_js, "class NumericNodeView extends NodeView {{\n  constructor(ast: AstView, id: number, kind: number) {{ super(ast, id, kind); }}\n  static #shape = new this(null!, 0, 0);\n  get value(): NodeField<\"value\"> {{ return this._numberValue(); }}\n  set value(value: FieldInput<\"value\">) {{ this._setNumberValue(value); }}\n}}\nexport const NUMERIC_NODE_KIND = {numeric_kind};\nexport function createNumericNodeView(ast: AstView, id: number, kind: number): NodeView {{\n  return new NumericNodeView(ast, id, kind);\n}}\nexport function createNodeView(ast: AstView, id: number, kind: number): NodeView {{\n  return kind === NUMERIC_NODE_KIND ? createNumericNodeView(ast, id, kind) : new NodeView(ast, id, kind);\n}}").unwrap();
+    descriptors.push_str("];\n");
+    let at = metadata
+        .find("export const layouts")
+        .expect("layouts header");
+    metadata.insert_str(at, &descriptors);
+    metadata.insert_str(0, "// Generated by tasks/ast_tools. Do not edit.\n");
+    let rust = RustOutput {
+        path: "crates/swc_ecma_ast/src/ffi2/schema.rs".into(),
+        tokens: quote! {
+            //! Generated by tasks/ast_tools. Do not edit.
+            use crate::NodeKind;
+            pub(super) const NODE_KIND_COUNT: usize = #count;
+            pub(super) enum Field { Payload(usize), Extra(usize) }
+            pub(super) trait FieldValidator {
+                fn extra(&mut self, pointer: usize, count: usize) -> Result<(), super::DeserializeError>;
+                fn node(&mut self, field: Field, kinds: &[NodeKind], optional: bool) -> Result<(), super::DeserializeError>;
+                fn list(&mut self, field: Field, kinds: &[NodeKind], optional: bool) -> Result<(), super::DeserializeError>;
+                fn boolean(&mut self, field: Field) -> Result<(), super::DeserializeError>;
+                fn enumeration(&mut self, field: Field, count: usize, optional: bool) -> Result<(), super::DeserializeError>;
+                fn string(&mut self, field: Field, wtf8: bool, optional: bool) -> Result<(), super::DeserializeError>;
+            }
+            pub(super) fn validate_fields(kind: NodeKind, input: &mut impl FieldValidator) -> Result<(), super::DeserializeError> {
+                match kind { #validator_arms _ => {} }
+                Ok(())
+            }
+        },
+    }.into();
+    let mut outputs = vec![
+        rust,
+        RawOutput {
+            path: "npm/core-ffi2/src-js/protocol/schema.ts".into(),
+            content: metadata.into_bytes(),
+        },
+        RawOutput {
+            path: "npm/core-ffi2/src-js/protocol/node.ts".into(),
+            content: node_js.into_bytes(),
+        },
+    ];
+    outputs.push(protocol::protocol(schema));
+    outputs.push(types::native_types(schema));
+    outputs
+}
+
+fn validate_field(id: TypeId, field: TokenStream, schema: &Schema) -> TokenStream {
+    let mut optional = false;
+    let mut ty = &schema.types[id];
+    let mut inner_id = id;
+    if let AstType::Option(value) = ty {
+        optional = true;
+        inner_id = value.inner_type_id;
+        ty = &schema.types[inner_id];
+    }
+    let kinds = |id| {
+        concrete_node_kinds(id, schema)
+            .iter()
+            .map(|name| {
+                let name = format_ident!("{name}");
+                quote!(NodeKind::#name)
+            })
+            .collect::<Vec<_>>()
+    };
+    match ty {
+        AstType::Struct(_) | AstType::Enum(_) => {
+            let kinds = kinds(inner_id);
+            quote!(input.node(#field, &[#(#kinds),*], #optional)?;)
+        }
+        AstType::SubRange(range) => {
+            let (id, optional) = match &schema.types[range.inner_type_id] {
+                AstType::Option(value) => (value.inner_type_id, true),
+                _ => (range.inner_type_id, false),
+            };
+            let kinds = kinds(id);
+            quote!(input.list(#field, &[#(#kinds),*], #optional)?;)
+        }
+        AstType::Primitive(value) => match value.name {
+            "bool" => quote!(input.boolean(#field)?;),
+            "AstUtf8" | "AstWtf8" => {
+                let wtf8 = value.name == "AstWtf8";
+                quote!(input.string(#field, #wtf8, #optional)?;)
+            }
+            name => {
+                if let Some(enumeration) =
+                    schema.scalar_enums.iter().find(|value| value.name == name)
+                {
+                    let count = enumeration.variants.len();
+                    quote!(input.enumeration(#field, #count, #optional)?;)
+                } else {
+                    TokenStream::new()
+                }
+            }
+        },
+        _ => unreachable!(),
+    }
+}
+
+fn descriptor(id: TypeId, schema: &Schema) -> String {
+    let mut optional = false;
+    let mut ty = &schema.types[id];
+    if let AstType::Option(option) = ty {
+        optional = true;
+        ty = &schema.types[option.inner_type_id];
+    }
+    let name = match ty {
+        AstType::Struct(_) | AstType::Enum(_) => "node".into(),
+        AstType::SubRange(range) => {
+            optional = matches!(&schema.types[range.inner_type_id], AstType::Option(_));
+            assert!(matches!(
+                &schema.types[range.inner_type_id],
+                AstType::Struct(_) | AstType::Enum(_) | AstType::Option(_)
+            ));
+            "list".into()
+        }
+        AstType::Primitive(primitive) => match primitive.name {
+            "AstUtf8" | "AstWtf8" => "string".into(),
+            name if schema
+                .scalar_enums
+                .iter()
+                .any(|enumeration| enumeration.name == name) =>
+            {
+                format!("enum:{name}")
+            }
+            name => name.to_string(),
+        },
+        _ => unreachable!(),
+    };
+    format!("{name:?}, {optional}")
+}
+
+fn fast_field_expression(
+    id: TypeId,
+    extra: bool,
+    offset: usize,
+    pointer: Option<usize>,
+    name: &str,
+    schema: &Schema,
+) -> Option<String> {
+    let descriptor = descriptor(id, schema);
+    let (encoding, tail) = descriptor.split_once(", ").unwrap();
+    let optional = tail.split(',').next().unwrap();
+    let encoding = encoding.trim_matches('"');
+    if encoding == "list" {
+        return None;
+    }
+    let address = if extra {
+        let words = if matches!(encoding, "string" | "f64") {
+            ", 2"
+        } else {
+            ""
+        };
+        format!(
+            "ast.extraOffset(offset, {}, {offset}{words})",
+            pointer.unwrap()
+        )
+    } else {
+        format!("offset + {offset}")
+    };
+    let expression = match encoding {
+        "bool" => format!("view.getUint8({address}) !== 0"),
+        "u8" => format!("view.getUint8({address})"),
+        "i8" => format!("view.getInt8({address})"),
+        "u16" => format!("view.getUint16({address}, true)"),
+        "i16" => format!("view.getInt16({address}, true)"),
+        "u32" => format!("view.getUint32({address}, true)"),
+        "i32" => format!("view.getInt32({address}, true)"),
+        "f64" => format!("view.getFloat64({address}, true)"),
+        "node" => format!("ast._nodeAt(ast.childAt(this.#id, {address}, {optional}, view))"),
+        "string" => format!("ast.stringAt({address}, {optional}, view)"),
+        value if value.starts_with("enum:") => {
+            format!("ast.enumAt({address}, {:?}, {optional}, view)", &value[5..])
+        }
+        _ => return None,
+    };
+    Some(if extra {
+        format!(
+            "this.#id >= ast.nodeCount || view.getUint32(offset + {}, true) >= ast._extraCount ? ast.value(this.#id, Field.{name}, kind) : {expression}",
+            pointer.unwrap()
+        )
+    } else {
+        expression
+    })
+}

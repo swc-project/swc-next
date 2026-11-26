@@ -3821,10 +3821,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "swc_next_core_ffi2_bridge"
+version = "0.8.1"
+dependencies = [
+ "mimalloc",
+ "napi-build",
+ "swc_next",
+ "swc_next_allocator",
+ "swc_next_bridge",
+ "swc_next_ecma_ast",
+ "swc_next_ecma_codegen",
+ "swc_next_ecma_parser",
+ "swc_next_ecma_semantic",
+]
+
+[[package]]
 name = "swc_next_ecma_ast"
 version = "0.8.1"
 dependencies = [
  "cow-utils",
+ "memchr",
  "num-bigint 0.5.1",
  "swc_next_allocator",
  "swc_next_ast_macros",

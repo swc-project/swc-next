@@ -149,6 +149,11 @@ impl<'a> StringPool<'a> {
         &self.extra
     }
 
+    #[cfg(feature = "internal_ffi2")]
+    pub(crate) fn extend_extra(&mut self, bytes: &[u8]) {
+        self.extra.extend_from_slice(bytes);
+    }
+
     #[inline]
     pub fn add_utf8(&mut self, text: &str) -> AstUtf8 {
         let (start, end) = self.add_bytes(text.as_bytes());

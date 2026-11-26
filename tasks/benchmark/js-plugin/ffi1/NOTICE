@@ -1,0 +1,16 @@
+This project contains JavaScript ports and adapted tests of:
+
+  https://github.com/swc-project/plugins
+  Commit: 355f70a7b78e25d32b4ef0faeb9b1875dfc83928
+  packages/formatjs
+  packages/import-meta-env
+  packages/react-remove-properties
+
+The upstream code is licensed under Apache-2.0; see LICENSE.
+The import-meta-env transform was originally adapted upstream from
+https://github.com/Codex-/swc-plugin-import-meta-env by Alex Miller (Apache-2.0).
+
+Modifications: replaced SWC Rust/WASM visitors with SWC Next ESTree JavaScript
+walkers, added lexical binding resolution, exposed extraction metadata through
+the JavaScript API, and adapted upstream tests to the local plugin runner.
+ICU message parsing uses @formatjs/icu-messageformat-parser.
