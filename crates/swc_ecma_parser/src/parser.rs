@@ -14900,7 +14900,16 @@ fn import_or_export_kind_for_declare(declare: bool) -> ImportOrExportKind {
 fn can_follow_type_arguments_in_expression(token: Token) -> bool {
     match token.tag() {
         TokenTag::LeftParen | TokenTag::NoSubstitutionTemplate | TokenTag::TemplateHead => true,
-        TokenTag::LessThan | TokenTag::GreaterThan | TokenTag::Plus | TokenTag::Minus => false,
+        // TypeScript scans every token that starts with `>` as `>` here.
+        TokenTag::LessThan
+        | TokenTag::GreaterThan
+        | TokenTag::GreaterThanEqual
+        | TokenTag::RightShift
+        | TokenTag::UnsignedRightShift
+        | TokenTag::RightShiftAssign
+        | TokenTag::UnsignedRightShiftAssign
+        | TokenTag::Plus
+        | TokenTag::Minus => false,
         _ => {
             token.has_line_terminator_before()
                 || is_binary_operator_like(token.tag())
@@ -16239,6 +16248,16 @@ mod tests {
             depth
         }
 
+        fn assigned_binary_left(ast: &Ast<'_>) -> NodeKind {
+            let binary = expression(ast)
+                .as_assignment_expression(ast)
+                .unwrap()
+                .right(ast)
+                .as_binary_expression(ast)
+                .unwrap();
+            ast.node_kind(binary.left(ast).node_id())
+        }
+
         let typescript = Options {
             lang: Lang::Ts,
             ..Options::default()
@@ -16300,6 +16319,24 @@ mod tests {
 
             assert!(has_errors("a < (if[0]) > (0);", options));
             assert!(!has_errors("f<(const)>();", options));
+
+            assert!(has_errors("x = f<T> >> y;", options));
+
+            assert!(has_errors("x = f<T> >>> y;", options));
+
+            assert!(has_errors("x = f<T> >= y;", options));
+
+            let (errors, left) = parse("x = f<T> == y;", options, assigned_binary_left);
+            assert!(errors.is_empty());
+            assert_eq!(left, NodeKind::TsInstantiationExpression);
+
+            let (errors, left) = parse("x = f<T> << y;", options, assigned_binary_left);
+            assert!(errors.is_empty());
+            assert_eq!(left, NodeKind::TsInstantiationExpression);
+
+            let (errors, left) = parse("x = f<T>> y;", options, assigned_binary_left);
+            assert!(errors.is_empty());
+            assert_eq!(left, NodeKind::IdentifierReference);
         }
     }
 
