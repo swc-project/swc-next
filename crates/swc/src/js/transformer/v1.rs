@@ -336,3 +336,43 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     output
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn transform_tsx_with(source: &str, transformer: JsTransformerConfig) -> String {
+        let output = transform_js::<true>(
+            source,
+            JsTransformApiOptions {
+                filename: Some("input.tsx".into()),
+                transformer: Some(transformer),
+                ..Default::default()
+            },
+        );
+        assert!(output.diagnostics.is_empty());
+        output.code
+    }
+
+    #[test]
+    fn jsx_default_runtime() {
+        let omitted = transform_tsx_with("export const el = <div />;", JsTransformerConfig::default());
+        let enabled = transform_tsx_with(
+            "export const el = <div />;",
+            JsTransformerConfig {
+                jsx: Some(BoolOr::Bool(true)),
+                ..Default::default()
+            },
+        );
+        let empty = transform_tsx_with(
+            "export const el = <div />;",
+            JsTransformerConfig {
+                jsx: Some(BoolOr::Options(JsxConfig::default())),
+                ..Default::default()
+            },
+        );
+        assert_eq!(omitted, empty);
+        assert_eq!(enabled, empty);
+        assert!(omitted.contains("react/jsx-runtime"));
+    }
+}

@@ -268,10 +268,10 @@ pub struct JsAssumptions {
 }
 
 #[cfg(any(feature = "js_transformer_v1", feature = "js_transformer_v2"))]
-pub(super) fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Option<U> {
+pub(super) fn enabled_options<T: Default, U: From<T>>(options: Option<BoolOr<T>>) -> Option<U> {
     match options {
         None | Some(BoolOr::Bool(false)) => None,
-        Some(BoolOr::Bool(true)) => Some(U::default()),
+        Some(BoolOr::Bool(true)) => Some(T::default().into()),
         Some(BoolOr::Options(options)) => Some(options.into()),
     }
 }
