@@ -20,7 +20,9 @@ use crate::formatter::comments::{
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use crate::formatter::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
-use crate::formatter::member_separator::{MemberBody, MemberSeparator};
+use crate::formatter::member_separator::{
+    MemberBody, MemberSeparator, ts_member_modifier, ts_member_modifier_needs_separator,
+};
 use crate::formatter::suppression::{
     ContentMode, DelimitedFollowing, DelimitedSuppression, SuppressionPosition,
 };
@@ -498,9 +500,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             || next.is_some()
                                 && (self.line_constraint(gap_span.start, gap_span.end)
                                     == LineConstraint::SameLine
-                                    || matches!(gap, MemberGap::Source(_))
-                                        && self.source_line_breaks(gap_span.start, gap_span.end)
-                                            == 0)
+                                    || matches!(&gap, MemberGap::Source(gap)
+                                        if self.source_line_breaks(gap.following.start, gap.following.end) == 0)
+                                    || matches!(
+                                        &gap,
+                                        MemberGap::Formatted { trailing, .. }
+                                            if matches!(trailing.gap(), CommentGap::Source(LineConstraint::SameLine))
+                                    ))
                     } else {
                         false
                     };
@@ -649,11 +655,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn prepare_member_gap(&self, gap: Span, role: MemberGapRole) -> MemberGap<'ast> {
         let comments = self.comments.in_range(gap);
-        if self.content_mode(comments) == ContentMode::Verbatim {
-            let (before_separator, following) = match role
-                .separator()
-                .filter(|separator| gap.start <= separator.start && separator.end <= gap.end)
-            {
+        let separator = role
+            .separator()
+            .filter(|separator| gap.start <= separator.start && separator.end <= gap.end);
+        let same_line_directive = matches!(role, MemberGapRole::Between(_))
+            && separator.is_some_and(|separator| {
+                comments.iter().any(|&comment| {
+                    comment.span.end <= separator.start
+                        && self.comment_semantics(comment).diagnostic
+                        && self.line_constraint(comment.span.end, gap.end)
+                            == LineConstraint::SameLine
+                })
+            });
+        if same_line_directive || self.content_mode(comments) == ContentMode::Verbatim {
+            let (before_separator, following) = match separator {
                 Some(separator) => {
                     let count =
                         comments.partition_point(|comment| comment.span.end <= separator.start);
@@ -815,20 +830,39 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         ) {
             return SeparatorRequirement::Required;
         }
-        match name {
-            // TypeScript's member lookahead skips `default` before reading the accessor head.
-            Some("default") if !property.optional => match next.map(|next| next.data) {
-                Some(TsTypeElementData::TsMethodSignature(method))
-                    if matches!(
-                        method.kind(self.ast),
-                        TsMethodSignatureKind::Get | TsMethodSignatureKind::Set
-                    ) =>
-                {
-                    SeparatorRequirement::BeforeAccessor(method)
+        if property.optional || !name.is_some_and(ts_member_modifier) {
+            return SeparatorRequirement::Optional;
+        }
+        let ast = self.ast;
+        let (key, computed, context) = match next.map(|next| next.data) {
+            Some(TsTypeElementData::TsMethodSignature(method)) => {
+                if matches!(
+                    method.kind(ast),
+                    TsMethodSignatureKind::Get | TsMethodSignatureKind::Set
+                ) {
+                    // Type-member lookahead skips modifier tokens before checking an accessor head.
+                    return SeparatorRequirement::BeforeAccessor(method);
                 }
-                _ => SeparatorRequirement::Optional,
-            },
-            _ => SeparatorRequirement::Optional,
+                (
+                    method.key(ast),
+                    method.computed(ast),
+                    PropertyKeyContext::TypeMethod,
+                )
+            }
+            Some(TsTypeElementData::TsPropertySignature(property)) => (
+                property.key(ast),
+                property.computed(ast),
+                PropertyKeyContext::TypeProperty,
+            ),
+            _ => return SeparatorRequirement::Optional,
+        };
+        let next_name = (!computed)
+            .then(|| self.property_key_identifier(key, context, ContentMode::Formatted, quoting))
+            .flatten();
+        if ts_member_modifier_needs_separator(name, next_name, false) {
+            SeparatorRequirement::Required
+        } else {
+            SeparatorRequirement::Optional
         }
     }
 

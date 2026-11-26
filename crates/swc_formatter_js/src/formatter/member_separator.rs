@@ -24,6 +24,39 @@ impl MemberBody {
     }
 }
 
+/// TypeScript can consume these modifiers across a member's line break.
+pub(super) fn ts_member_modifier_needs_separator(
+    name: Option<&str>,
+    next_name: Option<&str>,
+    decorated: bool,
+) -> bool {
+    matches!(
+        (name, next_name),
+        (Some("const"), Some("enum")) | (Some("default"), Some("class" | "function" | "interface"))
+    ) || name == Some("default") && decorated
+}
+
+pub(super) fn ts_member_modifier(name: &str) -> bool {
+    matches!(
+        name,
+        "abstract"
+            | "accessor"
+            | "async"
+            | "const"
+            | "declare"
+            | "default"
+            | "export"
+            | "in"
+            | "out"
+            | "override"
+            | "private"
+            | "protected"
+            | "public"
+            | "readonly"
+            | "static"
+    )
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum MemberSeparator {
     Omit,

@@ -5720,27 +5720,47 @@ pub(super) fn raw_type_has_open_end(node: TsType, ast: &Ast<'_>) -> bool {
     raw_type_terminal(node, ast) != RawTypeTerminal::Closed
 }
 
-pub(super) fn raw_type_terminal(mut node: TsType, ast: &Ast<'_>) -> RawTypeTerminal {
+pub(super) fn raw_type_terminal(node: TsType, ast: &Ast<'_>) -> RawTypeTerminal {
+    match terminal_type_data(node, ast, false) {
+        TsTypeData::TsJsDocUnknownType(_) => RawTypeTerminal::TypeContinuation,
+        TsTypeData::TsOptionalType(_) | TsTypeData::TsJsDocNullableType(_) => {
+            RawTypeTerminal::PostfixQuestion
+        }
+        _ => RawTypeTerminal::Closed,
+    }
+}
+
+pub(super) fn type_tail_is_bare_abstract(node: TsType, ast: &Ast<'_>) -> bool {
+    let TsTypeData::TsTypeReference(node) = terminal_type_data(node, ast, true) else {
+        return false;
+    };
+    node.type_arguments(ast).is_none()
+        && matches!(
+            ast.ts_type_name_data(node.type_name(ast)),
+            TsTypeNameData::IdentifierReference(name) if ast.get_utf8(name.name(ast)) == "abstract"
+        )
+}
+
+fn terminal_type_data(mut node: TsType, ast: &Ast<'_>, unwrap_pairs: bool) -> TsTypeData {
     loop {
-        node = match ast.ts_type_data(node) {
-            TsTypeData::TsJsDocUnknownType(_) => return RawTypeTerminal::TypeContinuation,
-            TsTypeData::TsOptionalType(_) => return RawTypeTerminal::PostfixQuestion,
-            TsTypeData::TsJsDocNullableType(node) if node.postfix(ast) => {
-                return RawTypeTerminal::PostfixQuestion;
+        let data = ast.ts_type_data(node);
+        node = match data {
+            TsTypeData::TsParenthesizedType(node) if unwrap_pairs => node.type_annotation(ast),
+            TsTypeData::TsJsDocNullableType(node) if !node.postfix(ast) => {
+                node.type_annotation(ast)
             }
-            TsTypeData::TsJsDocNullableType(node) => node.type_annotation(ast),
             TsTypeData::TsJsDocNonNullableType(node) if !node.postfix(ast) => {
                 node.type_annotation(ast)
             }
             TsTypeData::TsUnionType(node) => {
                 let Some(last) = node.types(ast).last() else {
-                    return RawTypeTerminal::Closed;
+                    return data;
                 };
                 ast.get_node_in_sub_range(last)
             }
             TsTypeData::TsIntersectionType(node) => {
                 let Some(last) = node.types(ast).last() else {
-                    return RawTypeTerminal::Closed;
+                    return data;
                 };
                 ast.get_node_in_sub_range(last)
             }
@@ -5749,7 +5769,7 @@ pub(super) fn raw_type_terminal(mut node: TsType, ast: &Ast<'_>) -> RawTypeTermi
             TsTypeData::TsConstructorType(node) => node.return_type(ast).type_annotation(ast),
             TsTypeData::TsTypePredicate(node) => {
                 let Some(annotation) = node.type_annotation(ast) else {
-                    return RawTypeTerminal::Closed;
+                    return data;
                 };
                 annotation.type_annotation(ast)
             }
@@ -5758,7 +5778,7 @@ pub(super) fn raw_type_terminal(mut node: TsType, ast: &Ast<'_>) -> RawTypeTermi
                 let parameter = node.type_parameter(ast);
                 let Some(annotation) = parameter.default(ast).or_else(|| parameter.constraint(ast))
                 else {
-                    return RawTypeTerminal::Closed;
+                    return data;
                 };
                 annotation
             }
@@ -5793,10 +5813,13 @@ pub(super) fn raw_type_terminal(mut node: TsType, ast: &Ast<'_>) -> RawTypeTermi
             | TsTypeData::TsArrayType(_)
             | TsTypeData::TsIndexedAccessType(_)
             | TsTypeData::TsTupleType(_)
+            | TsTypeData::TsJsDocUnknownType(_)
+            | TsTypeData::TsOptionalType(_)
+            | TsTypeData::TsJsDocNullableType(_)
             | TsTypeData::TsJsDocNonNullableType(_)
             | TsTypeData::TsParenthesizedType(_)
             | TsTypeData::TsTypeLiteral(_)
-            | TsTypeData::TsMappedType(_) => return RawTypeTerminal::Closed,
+            | TsTypeData::TsMappedType(_) => return data,
         };
     }
 }
