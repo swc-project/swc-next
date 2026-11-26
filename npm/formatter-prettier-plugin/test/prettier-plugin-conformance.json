@@ -26674,6 +26674,60 @@
         "prettierNative": "function f() {\n  return (\n    // operand tail\n    // result member\n    /* @__PURE__ */ make().value\n  )\n}\n"
       }
     ],
+    "js/return-throw-comment-envelope/return-conditional-head.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // note\n    (a && b) || c ? 1 : 2\n  );\n}\n",
+        "prettierNative": "function f() {\n  return (\n    (// note\n    a &&\n      b) ||\n      c\n      ? 1\n      : 2\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // note\n    (a && b) || c ? 1 : 2\n  );\n}\n",
+        "prettierNative": "function f() {\n  return (\n    (// note\n    a &&\n      b) ||\n      c\n      ? 1\n      : 2\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() {\n  return (\n    // note\n    (a && b) || c ? 1 : 2\n  )\n}\n",
+        "prettierNative": "function f() {\n  return (\n    (// note\n    a &&\n      b) ||\n      c\n      ? 1\n      : 2\n  )\n}\n"
+      }
+    ],
+    "js/return-throw-comment-envelope/return-nested-block.js": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    /* note */\n    foo()\n  );\n}\n",
+        "prettierNative": "function f() {\n  return /* note */ foo();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f() {\n  return (\n    /* note */\n    foo()\n  );\n}\n",
+        "prettierNative": "function f() {\n  return /* note */ foo();\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f() {\n  return (\n    /* note */\n    foo()\n  )\n}\n",
+        "prettierNative": "function f() {\n  return /* note */ foo()\n}\n"
+      }
+    ],
     "js/return-throw-comment-envelope/return-operator-block.js": [
       {
         "options": {
@@ -43903,6 +43957,33 @@
         },
         "swcPlugin": "function f() {\n  return (\n    // @ts-ignore\n    missingName\n      // result member\n      .value\n  )\n}\n",
         "prettierNative": "function f() {\n  return (\n    // @ts-ignore\n    // result member\n    missingName.value\n  )\n}\n"
+      }
+    ],
+    "ts/return-throw-comment-envelope/ignored-return-value.ts": [
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f(): number {\n  return /* prettier-ignore */ (\n// @ts-ignore\nfoo()\n);\n}\n",
+        "prettierNative": "function f(): number {\n  return (\n    /* prettier-ignore */ // @ts-ignore\n    foo()\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f(): number {\n  return /* prettier-ignore */ (\n// @ts-ignore\nfoo()\n);\n}\n",
+        "prettierNative": "function f(): number {\n  return (\n    /* prettier-ignore */ // @ts-ignore\n    foo()\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 40,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f(): number {\n  return /* prettier-ignore */ (\n// @ts-ignore\nfoo()\n)\n}\n",
+        "prettierNative": "function f(): number {\n  return (\n    /* prettier-ignore */ // @ts-ignore\n    foo()\n  )\n}\n"
       }
     ],
     "ts/runtime-arrow-return/empty-ignore-effective-directive.ts": [
