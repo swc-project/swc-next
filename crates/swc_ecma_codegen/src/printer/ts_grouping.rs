@@ -499,9 +499,12 @@ impl<'a> State<'a> {
                 }
                 Event::Close(id) => {
                     let close = self.closes[id];
-                    if printed_follower_can_commit(code, close.offset + 1) {
-                        let frame = stack.last_mut().unwrap();
-                        frame.suffix = frame.suffix.max(close.eligible);
+                    let frame = stack.last_mut().unwrap();
+                    // A later close can already cover every opening this one could close.
+                    if close.eligible > frame.suffix
+                        && printed_follower_can_commit(code, close.offset + 1)
+                    {
+                        frame.suffix = close.eligible;
                     }
                 }
                 _ => {}
