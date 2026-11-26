@@ -887,12 +887,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        let property_prefix = match entry.node {
-            RuntimeParameter::Property(node) => {
-                Some(self.prepare_parameter_property_prefix(node, core_start)?)
-            }
-            _ => None,
-        };
         let fixed_decorator_group = entry.decorators.is_some_and(|prefix| {
             self.diagnostic_range_is_sensitive(entry.span)
                 || self.lint_line_intersects(entry.span)
@@ -916,10 +910,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 self.format_decorators(prefix, layout, core_start, writer)?;
             }
-            if let Some(prefix) = property_prefix {
-                self.format_parameter_property_prefix(prefix, writer)?;
+            match entry.node {
+                RuntimeParameter::Property(property) => {
+                    self.format_parameter_property_core(property, core_start, prepared, writer)
+                }
+                RuntimeParameter::Callable(_) => {
+                    self.format_prepared_parameter_item(prepared, writer)
+                }
             }
-            self.format_prepared_parameter_item(prepared, writer)
         })
     }
 
@@ -937,12 +935,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if prepared.is_source() {
             return self.format_prepared_parameter_item(prepared, writer);
         }
-        let prefix =
-            self.prepare_parameter_property_prefix(property, property.span(self.ast).start)?;
+        let start = property.span(self.ast).start;
         writer.group(false, |writer| {
-            self.format_parameter_property_prefix(prefix, writer)?;
-            self.format_prepared_parameter_item(prepared, writer)
+            self.format_parameter_property_core(property, start, prepared, writer)
         })
+    }
+
+    fn format_parameter_property_core(
+        &mut self,
+        property: TsParameterProperty,
+        start: u32,
+        prepared: PreparedParameterItem<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+        let modifiers = Span::new(start, property.parameter(self.ast).span(self.ast).start);
+        let comments = self.comments.in_range(modifiers);
+        if self.content_mode(comments) == ContentMode::Verbatim {
+            self.format_verbatim(Span::new(start, property.span(self.ast).end), writer)?;
+            return Ok(None);
+        }
+        let prefix = self.prepare_parameter_property_prefix(property, modifiers, comments)?;
+        self.format_parameter_property_prefix(prefix, writer)?;
+        self.format_prepared_parameter_item(prepared, writer)
     }
 
     fn format_parameter_property_prefix(
@@ -985,14 +999,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn prepare_parameter_property_prefix(
         &self,
         property: TsParameterProperty,
-        core_start: u32,
+        span: Span,
+        mut comments: &'ast [Comment],
     ) -> Result<ParameterPropertyPrefix<'ast>, FormatError> {
         let ast = self.ast;
-        let span = Span::new(core_start, property.parameter(ast).span(ast).start);
-        let mut comments = self.comments.in_range(span);
-        if self.has_suppression && self.content_mode(comments) == ContentMode::Verbatim {
-            return Err(self.unsupported("parameter property modifier suppression", property));
-        }
         let accessibility = match property.accessibility(ast) {
             swc_next_ecma_ast::Accessibility::None => None,
             swc_next_ecma_ast::Accessibility::Public => Some("public"),

@@ -53,6 +53,12 @@ pub(super) enum DefaultOwner<'ast> {
     },
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum DefaultCommentPlacement {
+    BindingHead,
+    Initializer,
+}
+
 #[derive(Clone, Copy)]
 pub(super) enum BindingInitializerOwner {
     Variable {
@@ -690,7 +696,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 simple
             }
             left => {
-                let owner = self.prepare_default_boundary(left.span(self.ast), right)?;
+                let owner = self.prepare_default_boundary(
+                    left.span(self.ast),
+                    right,
+                    DefaultCommentPlacement::BindingHead,
+                )?;
                 return Ok(PreparedBindingDefault {
                     left,
                     right,
@@ -710,7 +720,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let owner = if whole {
             DefaultOwner::Whole
         } else {
-            self.prepare_default_owner(target.span, right, gap.after_target(target.span.end))?
+            self.prepare_default_owner(
+                target.span,
+                right,
+                gap.after_target(target.span.end),
+                DefaultCommentPlacement::BindingHead,
+            )?
         };
         Ok(PreparedBindingDefault {
             left: DefaultLeft::Target(target),
@@ -724,8 +739,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         &self,
         left: Span,
         right: Expr,
+        placement: DefaultCommentPlacement,
     ) -> Result<DefaultOwner<'ast>, FormatError> {
-        self.prepare_default_owner(left, right, self.default_gap(left.end, right)?)
+        self.prepare_default_owner(left, right, self.default_gap(left.end, right)?, placement)
     }
 
     fn default_gap(&self, left_end: u32, right: Expr) -> Result<DefaultGap<'ast>, FormatError> {
@@ -746,6 +762,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         left: Span,
         right: Expr,
         gap: DefaultGap<'ast>,
+        placement: DefaultCommentPlacement,
     ) -> Result<DefaultOwner<'ast>, FormatError> {
         let DefaultGap {
             span: gap,
@@ -815,7 +832,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let comments = self
                 .comments
                 .in_range(Span::new(left.end, boundary.binding_head_end()));
-            let head_comments = if source_clear_left
+            let head_comments = if placement == DefaultCommentPlacement::BindingHead
+                && source_clear_left
                 && !comments.is_empty()
                 && boundary.before.is_empty()
                 && boundary.operator_line.is_empty()
