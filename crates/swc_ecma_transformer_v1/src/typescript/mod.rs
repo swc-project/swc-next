@@ -28,7 +28,9 @@ pub(crate) fn typescript(
     module_type: ModuleType,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
-    if module_type != ModuleType::Preserve && ast.is_module() {
+    if ast.source_type() == SourceType::CommonJs {
+        options.import_export_assign_config = TsImportExportAssignConfig::Classic;
+    } else if module_type != ModuleType::Preserve && ast.is_module() {
         options.import_export_assign_config = TsImportExportAssignConfig::Preserve;
     }
     let pass = TypeScript { config: &options };
@@ -115,7 +117,9 @@ struct TypeScriptReact<'a> {
 impl TypeScriptReact<'_> {
     fn process(&self, ast: &mut Ast<'_>, resolver: &mut Resolver) -> Vec<Diagnostic> {
         let options = self.typescript.config;
-        let id_usage = if ast.is_module() && !options.verbatim_module_syntax {
+        let id_usage = if matches!(ast.source_type(), SourceType::Module | SourceType::CommonJs)
+            && !options.verbatim_module_syntax
+        {
             jsx_usage(ast, options, resolver)
         } else {
             HashSet::new()
