@@ -12,7 +12,9 @@ use super::{
     Formatter, PreparedAnnotation, PreparedType, PreparedTypeParentheses, TypeBoundaryLayout,
     TypeContext, TypeContinuation, TypeGap, TypeLayout, TypeOutput,
 };
-use crate::formatter::bindings::{BindingGroup, DefaultOwner, InitializerLayout};
+use crate::formatter::bindings::{
+    BindingGroup, DefaultCommentPlacement, DefaultOwner, InitializerLayout,
+};
 use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::expressions::ExpressionContext;
@@ -1590,7 +1592,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         pattern.span(ast).end
                     };
                     let left = Span::new(pattern.span(ast).start, left_end);
-                    let owner = self.prepare_default_boundary(left, right)?;
+                    let placement = if matches!(consumer, ParameterConsumer::ConstructorProperty(_))
+                    {
+                        DefaultCommentPlacement::Initializer
+                    } else {
+                        DefaultCommentPlacement::BindingHead
+                    };
+                    let owner = self.prepare_default_boundary(left, right, placement)?;
                     let (left_mode, layout, head) = match owner {
                         DefaultOwner::Whole => {
                             return Ok(PreparedParameterItem(ParameterItemState::Source(

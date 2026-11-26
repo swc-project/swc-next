@@ -39155,6 +39155,82 @@
         "prettierNative": "const value = 1 /* prettier-ignore */ as const\n"
       }
     ],
+    "ts/constructor-parameter-properties/ignored-modifier.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class A {\n  constructor(\n    public /* prettier-ignore */ readonly a :number,\n    b = 1,\n  ) {}\n}\n",
+        "prettierNative": "class A {\n  constructor(\n    public readonly /* prettier-ignore */ a :number,\n    b = 1,\n  ) {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class A {\n  constructor(\n    public /* prettier-ignore */ readonly a :number,\n    b = 1,\n  ) {}\n}\n",
+        "prettierNative": "class A {\n  constructor(\n    public readonly /* prettier-ignore */ a :number,\n    b = 1,\n  ) {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "trailingCommas": "none",
+          "arrowParentheses": "as-needed"
+        },
+        "swcPlugin": "class A {\n  constructor(\n    public /* prettier-ignore */ readonly a :number,\n    b = 1\n  ) {}\n}\n",
+        "prettierNative": "class A {\n  constructor(\n    public readonly /* prettier-ignore */ a :number,\n    b = 1\n  ) {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "class A {\r\n  constructor(\r\n    public /* prettier-ignore */ readonly a :number,\r\n    b = 1,\r\n  ) {}\r\n}\r\n",
+        "prettierNative": "class A {\r\n  constructor(\r\n    public readonly /* prettier-ignore */ a :number,\r\n    b = 1,\r\n  ) {}\r\n}\r\n"
+      }
+    ],
+    "ts/constructor-parameter-properties/initializer-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class A {\n  constructor(\n    public b =\n      /* note */\n      1,\n  ) {}\n}\n",
+        "prettierNative": "class A {\n  constructor(\n    public /* note */\n    b = 1,\n  ) {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class A {\n  constructor(\n    public b =\n      /* note */\n      1,\n  ) {}\n}\n",
+        "prettierNative": "class A {\n  constructor(\n    public /* note */\n    b = 1,\n  ) {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "trailingCommas": "none",
+          "arrowParentheses": "as-needed"
+        },
+        "swcPlugin": "class A {\n  constructor(\n    public b =\n      /* note */\n      1\n  ) {}\n}\n",
+        "prettierNative": "class A {\n  constructor(\n    public /* note */\n    b = 1\n  ) {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "class A {\r\n  constructor(\r\n    public b =\r\n      /* note */\r\n      1,\r\n  ) {}\r\n}\r\n",
+        "prettierNative": "class A {\r\n  constructor(\r\n    public /* note */\r\n    b = 1,\r\n  ) {}\r\n}\r\n"
+      }
+    ],
     "ts/control-flow/diagnostic-case-gap/expect-error-before-case.ts": [
       {
         "options": {
