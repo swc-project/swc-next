@@ -893,7 +893,12 @@ impl Parser<'_> {
         } else {
             mark
         };
-        flanks(&self.input.text, start, start + width, flank_mark)
+        let text = &self.input.text;
+        delimiter_flanking(
+            char::from(flank_mark),
+            text[..start].chars().next_back(),
+            text[start + width..].chars().next(),
+        )
     }
 
     fn opener(
@@ -911,11 +916,7 @@ impl Parser<'_> {
             let matches = if mark == b'~' {
                 opening.width == width
             } else {
-                // CommonMark measures runs capable of both opening and closing
-                // by their original lengths for the multiple-of-three rule.
-                !(opening.can_close || can_open)
-                    || !(opening.width + width).is_multiple_of(3)
-                    || opening.width.is_multiple_of(3)
+                emphasis_runs_match(opening.width, opening.can_close, width, can_open)
             };
             if matches {
                 return Some(index);
@@ -1263,9 +1264,9 @@ fn skip_html_space(bytes: &[u8], mut pos: usize) -> usize {
     pos
 }
 
-fn flanks(s: &str, p: usize, end: usize, mark: u8) -> (bool, bool) {
-    let prev = s[..p].chars().next_back();
-    let next = s[end..].chars().next();
+/// Whether a delimiter run between these characters can open and can close, in that order.
+/// An underscore also observes CommonMark's restriction on intraword emphasis.
+pub fn delimiter_flanking(mark: char, prev: Option<char>, next: Option<char>) -> (bool, bool) {
     let pw = prev.is_none_or(char::is_whitespace);
     let nw = next.is_none_or(char::is_whitespace);
     let punct = |c: char| {
@@ -1282,11 +1283,22 @@ fn flanks(s: &str, p: usize, end: usize, mark: u8) -> (bool, bool) {
     let np = next.is_some_and(punct);
     let left = !nw && (!np || pw || pp);
     let right = !pw && (!pp || nw || np);
-    if mark == b'_' {
+    if mark == '_' {
         (left && (!right || pp), right && (!left || np))
     } else {
         (left, right)
     }
+}
+
+/// Apply CommonMark's multiple-of-three rule to two flanking emphasis runs of the same marker.
+/// Widths are those of the original runs, including any markers already consumed.
+pub fn emphasis_runs_match(
+    open: usize,
+    open_can_close: bool,
+    close: usize,
+    close_can_open: bool,
+) -> bool {
+    !(open_can_close || close_can_open) || open % 3 + close % 3 != 3
 }
 
 pub(crate) fn run(bytes: &[u8], start: usize, end: usize) -> usize {

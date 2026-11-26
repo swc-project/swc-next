@@ -2,6 +2,59 @@
 
 const utf8 = new TextEncoder();
 const invalidDoc = () => new TypeError("Invalid document");
+const invalidBuffer = () => new TypeError("Invalid SWCD document buffer");
+
+/** Read the SWCD frame. Fragment instruction decoding belongs to the visitor. */
+export function readDocument(buffer, visitFragment) {
+  const bytes = new Uint8Array(
+    buffer.buffer,
+    buffer.byteOffset,
+    buffer.byteLength,
+  );
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 0;
+  const word = () => {
+    if (offset + 4 > bytes.length) throw invalidBuffer();
+    const value = view.getUint32(offset, true);
+    offset += 4;
+    return value;
+  };
+  if (word() !== 0x44435753 || word() !== 0) throw invalidBuffer();
+  const count = word();
+  const stringLength = word();
+  const fragmentLimit = bytes.length - stringLength;
+  if (count === 0 || count > (fragmentLimit - offset) / 4)
+    throw invalidBuffer();
+
+  for (let index = 0; index < count; index++) {
+    if (offset + 4 > fragmentLimit) throw invalidBuffer();
+    const length = word();
+    const end = offset + length;
+    if (end > fragmentLimit) throw invalidBuffer();
+    visitFragment?.(view, offset, end, count);
+    offset = end;
+  }
+  const poolEnd = offset + stringLength;
+  const stringPool = bytes.subarray(offset, poolEnd);
+  offset = poolEnd;
+  const labelData = [];
+  if (offset !== bytes.length) {
+    const length = word();
+    if (length !== bytes.length - offset) throw invalidBuffer();
+    const labels = word();
+    if (labels === 0 || labels > (bytes.length - offset) / 4)
+      throw invalidBuffer();
+    for (let id = 0; id < labels; id++) {
+      const length = word();
+      const end = offset + length;
+      if (end > bytes.length) throw invalidBuffer();
+      labelData.push(bytes.subarray(offset, end));
+      offset = end;
+    }
+    if (offset !== bytes.length) throw invalidBuffer();
+  }
+  return { stringPool, labelData };
+}
 
 function word(output, value) {
   if (!Number.isInteger(value) || value < 0 || value > 0xffffffff) {

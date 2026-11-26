@@ -137,21 +137,22 @@ const _: () = assert!(std::mem::size_of::<Fragment<'_>>() <= 16);
 /// Construction facts travel with every borrowed scope, including flat views.
 /// They describe independent properties; projecting a scope does not erase them.
 #[derive(Debug, Clone, Copy)]
-struct FragmentSummary(u8);
+struct FragmentSummary(u16);
 
 impl FragmentSummary {
-    const EMPTY: Self = Self((FragmentCapabilities::Neutral as u8) << 1);
+    const EMPTY: Self = Self((FragmentCapabilities::Neutral as u16) << 1);
 
-    const REQUIRED: u8 = 1;
-    const CAPABILITIES: u8 = 0b110;
-    const CONDITIONAL_LINES: u8 = 1 << 3;
-    const INTRINSIC_LINES: u8 = 1 << 4;
-    const SOURCE_GROUPS: u8 = 1 << 5;
-    const RICH_INDENT: u8 = 1 << 6;
-    const EXTENDED_PRINT: u8 = 1 << 7;
+    const REQUIRED: u16 = 1;
+    const CAPABILITIES: u16 = 0b110;
+    const CONDITIONAL_LINES: u16 = 1 << 3;
+    const INTRINSIC_LINES: u16 = 1 << 4;
+    const SOURCE_GROUPS: u16 = 1 << 5;
+    const RICH_INDENT: u16 = 1 << 6;
+    const EXTENDED_PRINT: u16 = 1 << 7;
+    const HAS_LABELS: u16 = 1 << 8;
 
     fn effect(self) -> BreakEffect {
-        BreakEffect(self.0 & Self::REQUIRED)
+        BreakEffect((self.0 & Self::REQUIRED) as u8)
     }
 
     fn capabilities(self) -> FragmentCapabilities {
@@ -177,6 +178,10 @@ impl FragmentSummary {
 
     fn intrinsic_lines(self) -> bool {
         self.0 & Self::INTRINSIC_LINES != 0
+    }
+
+    fn has_labels(self) -> bool {
+        self.0 & Self::HAS_LABELS != 0
     }
 }
 
@@ -482,9 +487,16 @@ pub struct Doc<'a> {
     root: Fragment<'a>,
     /// Capacity for local group decisions; no Prettier field.
     group_count: u32,
+    /// An intact, validated transport trailer borrowed from a decoded buffer.
+    label_data: &'a [u8],
 }
 
 impl<'a> Doc<'a> {
+    /// Whether the root has no layout instructions.
+    pub fn is_empty(&self) -> bool {
+        self.root.elements().is_empty()
+    }
+
     /// Whether the Doc contains an explicit line instruction, independent of
     /// print width. Visits both IfBreak branches and line suffixes, follows
     /// only the primary contents of conditional groups, and respects flat
@@ -519,6 +531,9 @@ impl<'a> Doc<'a> {
 
     /// Replaces LF within Text with a separate Doc. The replacement's named
     /// groups are scoped independently and its label IDs are preserved.
+    /// A single labeled input or a shared transport table carries its records
+    /// into the result. For conflicting label namespaces, supply a combined
+    /// table when encoding the result.
     pub fn replace_end_of_line_with(self, replacement: Self) -> Self {
         transform::replace_end_of_line(self, Some(replacement))
     }
@@ -535,16 +550,17 @@ impl<'a> Doc<'a> {
         normalize::strip_trailing_hardline(self)
     }
 
-    /// Decodes a versioned document, borrowing its text from the input buffer.
+    /// Decodes a versioned document, borrowing text and opaque label data from the buffer.
     ///
     /// Supports version 0's complete balanced fragment scopes, including
     /// shared fragments. Line suffixes must not depend on a fill outside the
     /// suffix. This is not a decoder for arbitrary Prettier documents.
     ///
-    /// Returns an error for unsupported versions or malformed documents.
-    /// Distinct text ranges may consume at most eight times the buffer length
-    /// in decoding work; exceeding this limit returns a resource error. The
-    /// returned document's later printing work is not bounded by this limit.
+    /// Returns an error for unsupported versions or malformed documents. An
+    /// optional label table must contain a record for every encoded label ID.
+    /// Distinct text ranges may consume at most eight times the byte length
+    /// through the end of the string pool in decoding work. Exceeding this
+    /// limit returns a resource error. This limit applies to decoding.
     pub fn decode(
         allocator: &'a swc_next_allocator::Allocator,
         buffer: &'a [u8],
@@ -555,6 +571,7 @@ impl<'a> Doc<'a> {
     /// Encodes the logical document into an owned version-0 buffer.
     ///
     /// Text instructions retain their complete strings, including source newlines.
+    /// A decoded document retains its label records when re-encoded.
     /// This transport is still evolving and does not yet cover every document that
     /// the native printer can render.
     pub fn encode(self) -> Vec<u8> {
@@ -570,6 +587,20 @@ impl<'a> Doc<'a> {
     /// original contents and expanded-state fields for structural round trips.
     pub fn encode_for_prettier(self) -> Vec<u8> {
         encode::encode::<true>(self)
+    }
+
+    /// Encodes a Prettier Doc buffer with opaque records indexed by [`LabelId`].
+    ///
+    /// Every exported label ID must index the supplied records. Several scopes
+    /// can use the same ID, and records may be empty or unused. An empty slice
+    /// emits the ordinary version-0 layout. The native printer renders the label contents.
+    ///
+    /// Returns an error for out-of-range IDs and tables beyond the transport limits.
+    pub fn encode_for_prettier_with_label_data(
+        self,
+        records: &[impl AsRef<[u8]>],
+    ) -> Result<Vec<u8>, DocumentBufferError> {
+        encode::encode_with_label_data(self, records)
     }
 
     pub fn print(self, options: PrintOptions) -> String {

@@ -5,6 +5,7 @@ publish = false
 version = "0.1.0"
 
 [dependencies]
+base64       = "0.23.1"
 clap         = { workspace = true }
 jsonc-parser = { workspace = true }
 jwalk        = { workspace = true }
@@ -23,7 +24,10 @@ swc_next_ecma_minifier    = { workspace = true }
 swc_next_ecma_parser      = { workspace = true }
 swc_next_ecma_semantic    = { workspace = true }
 swc_next_formatter        = { workspace = true, features = ["serde"] }
+swc_next_formatter_core   = { workspace = true }
+swc_next_formatter_host   = { workspace = true }
 swc_next_formatter_js     = { workspace = true }
+swc_next_markdown_parser  = { workspace = true }
 
 [[bin]]
 name = "conformance"

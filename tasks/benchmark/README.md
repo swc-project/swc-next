@@ -47,6 +47,13 @@ cargo test --locked -p benchmark --bench gungraun -- --test '*::transform::*'
 
 For the JavaScript N-API boundary, use [JavaScript API Gungraun](js/README.md).
 
+The Markdown parser and formatter use the same three [documents](fixtures/markdown).
+The formatter receives a parsed document and preserves fenced code as plain text.
+
+```sh
+cargo bench --locked -p benchmark --bench gungraun -- --allow-aslr=yes '*::bench_markdown_*'
+```
+
 ## Pipeline simulator
 
 ```sh

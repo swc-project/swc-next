@@ -12,8 +12,8 @@ use crate::{
 ///
 /// The storage lifetime is independent of the borrowed dispatcher lifetime.
 /// Copies share the arena and services, with their own layout and depth values.
-/// Only [`Self::embed`] derives a child; producing a document on that child
-/// retains its depth instead of starting another root operation.
+/// Embedded dispatch derives a child context. Producing a document on that
+/// child retains its depth.
 /// Debug output displays effective configuration and depth, omitting arena and
 /// dispatcher internals.
 #[derive(Clone, Copy)]
@@ -105,6 +105,26 @@ impl<'a, 'services> FormatContext<'a, 'services> {
         source: impl Into<Cow<'a, str>>,
         input_kind: InputKind,
     ) -> Result<EmbeddedOutcome<'a>, EmbeddedError> {
+        self.embed_with(language, input_kind, |arena| match source.into() {
+            Cow::Borrowed(source) => source,
+            Cow::Owned(source) => arena.alloc_str(&source),
+        })
+    }
+
+    /// Dispatches an embedded input whose source is prepared on demand.
+    ///
+    /// The host calls `prepare_source` once, immediately before invoking the
+    /// dispatcher. The closure can borrow session-lived text or copy temporary
+    /// text into the supplied arena for use by the returned Doc.
+    ///
+    /// Disabled or missing dispatchers preserve the original input. The depth
+    /// limit and provider errors follow the same rules as [`Self::embed`].
+    pub fn embed_with(
+        self,
+        language: &str,
+        input_kind: InputKind,
+        prepare_source: impl FnOnce(&'a Allocator) -> &'a str,
+    ) -> Result<EmbeddedOutcome<'a>, EmbeddedError> {
         if !self.embedded_options.enabled {
             return Ok(EmbeddedOutcome::PreserveOriginal(PreserveReason::Disabled));
         }
@@ -116,10 +136,7 @@ impl<'a, 'services> FormatContext<'a, 'services> {
         if self.depth >= self.embedded_options.max_depth {
             return Err(EmbeddedError::depth_limit(self.embedded_options.max_depth));
         }
-        let source = match source.into() {
-            Cow::Borrowed(source) => source,
-            Cow::Owned(source) => self.allocator().alloc_str(&source),
-        };
+        let source = prepare_source(self.allocator());
         let child = Self {
             input_kind,
             depth: self.depth + 1,

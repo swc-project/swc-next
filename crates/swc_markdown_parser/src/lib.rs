@@ -4,6 +4,8 @@ mod block;
 mod inline;
 mod reference;
 mod source;
+pub use block::{can_continue_link_definition, is_table_delimiter_row, starts_footnote_definition};
+pub use inline::{delimiter_flanking, emphasis_runs_match};
 pub use reference::character_reference;
 mod syntax;
 pub use syntax::{SyntaxKind, SyntaxNode, SyntaxPart, SyntaxRole};

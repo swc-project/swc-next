@@ -221,7 +221,10 @@ fn embedded_dispatch() {
 #[test]
 fn embedded_fallbacks() {
     let session = FormatSession::default();
-    let missing = embed(session.context(), "text", "raw", InputKind::Fragment).unwrap();
+    let missing = session
+        .context()
+        .embed_with("text", InputKind::Fragment, |_| unreachable!())
+        .unwrap();
     assert!(matches!(
         missing,
         EmbeddedOutcome::PreserveOriginal(PreserveReason::NoDispatcher)
@@ -236,7 +239,9 @@ fn embedded_fallbacks() {
         max_depth: 0,
     };
     let context = session.context_with_embedded(&dispatcher, disabled);
-    let result = embed(context, "text", String::from("raw"), InputKind::Fragment).unwrap();
+    let result = context
+        .embed_with("text", InputKind::Fragment, |_| unreachable!())
+        .unwrap();
     assert!(matches!(
         result,
         EmbeddedOutcome::PreserveOriginal(PreserveReason::Disabled)
@@ -315,7 +320,9 @@ fn embedded_errors() {
         ..EmbeddedOptions::default()
     };
     let context = session.context_with_embedded(&dispatcher, disabled_budget);
-    let error = embed(context, "text", "raw", InputKind::Fragment).unwrap_err();
+    let error = context
+        .embed_with("text", InputKind::Fragment, |_| unreachable!())
+        .unwrap_err();
     assert_eq!(error.kind(), EmbeddedErrorKind::DepthLimit { max_depth: 0 });
     assert!(dispatcher.calls.borrow().is_empty());
 }
@@ -361,15 +368,21 @@ fn debug_output() {
 #[test]
 fn embedded_storage() {
     let session = FormatSession::default();
-    let document = {
+    let (owned, prepared) = {
         let dispatcher = Dispatcher::default();
         let language = String::from("text");
         let context = session.context_with_embedded(&dispatcher, EmbeddedOptions::default());
         let source = String::from("temporary λ");
-        let result = embed(context, &language, source, InputKind::Fragment).unwrap();
-        formatted(result)
+        let prepared = context
+            .embed_with(&language, InputKind::Fragment, |arena| {
+                arena.alloc_str(&source)
+            })
+            .unwrap();
+        let owned = embed(context, &language, source, InputKind::Fragment).unwrap();
+        (formatted(owned), formatted(prepared))
     };
-    assert_eq!(document.print(session.print_options()), "temporary λ");
+    assert_eq!(owned.print(session.print_options()), "temporary λ");
+    assert_eq!(prepared.print(session.print_options()), "temporary λ");
 }
 
 #[test]

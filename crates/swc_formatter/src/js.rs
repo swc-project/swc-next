@@ -14,7 +14,7 @@ use swc_next_formatter_js::{self as formatter, EcmaDocumentProducer, InvalidInde
 
 pub use swc_next_formatter_js::{FormatError, FormatOptions};
 
-use crate::{IndentStyle, LineEnding};
+use crate::{IndentStyle, LineEnding, restore_bom};
 
 /// Parse and format source text.
 ///
@@ -54,13 +54,6 @@ pub fn format_ast(ast: &AstCtx<'_>, options: FormatOptions) -> Result<String, Fo
         ast.source(),
         document.print(session.print_options()),
     ))
-}
-
-fn restore_bom(source: &str, mut output: String) -> String {
-    if source.starts_with('\u{feff}') {
-        output.insert(0, '\u{feff}');
-    }
-    output
 }
 
 /// JavaScript and TypeScript formatting options.

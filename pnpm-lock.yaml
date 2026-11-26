@@ -387,15 +387,39 @@ importers:
         specifier: 'catalog:'
         version: 10.1.0
 
+  npm/formatter-markdown:
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.3)(@types/node@26.1.1)
+      '@swc-next/formatter':
+        specifier: workspace:*
+        version: link:../formatter
+      '@swc-next/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+      cross-env:
+        specifier: 'catalog:'
+        version: 10.1.0
+
   npm/formatter-prettier-plugin:
     dependencies:
       '@swc-next/formatter-js':
         specifier: workspace:*
         version: link:../formatter-js
+      '@swc-next/formatter-markdown':
+        specifier: workspace:*
+        version: link:../formatter-markdown
     devDependencies:
       '@swc-next/formatter':
         specifier: workspace:*
         version: link:../formatter
+      '@swc-next/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       cross-env:
         specifier: 'catalog:'
         version: 10.1.0

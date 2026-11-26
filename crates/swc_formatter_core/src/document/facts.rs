@@ -23,6 +23,7 @@ pub(super) struct Facts {
     source_groups: bool,
     rich_indent: bool,
     extended_print: bool,
+    has_labels: bool,
 }
 
 impl Facts {
@@ -78,25 +79,31 @@ impl Facts {
         self.extended_print = true;
     }
 
-    #[inline(always)]
-    fn layout_flags(&mut self, flags: u8) {
-        self.source_groups |= flags & FragmentSummary::SOURCE_GROUPS != 0;
-        self.rich_indent |= flags & FragmentSummary::RICH_INDENT != 0;
-        self.extended_print |= flags & FragmentSummary::EXTENDED_PRINT != 0;
+    #[inline]
+    pub(super) fn label(&mut self) {
+        self.has_labels = true;
     }
 
     #[inline(always)]
-    fn state_flags(&mut self, flags: u8) {
+    fn layout_flags(&mut self, flags: u16) {
+        self.source_groups |= flags & FragmentSummary::SOURCE_GROUPS != 0;
+        self.rich_indent |= flags & FragmentSummary::RICH_INDENT != 0;
+        self.extended_print |= flags & FragmentSummary::EXTENDED_PRINT != 0;
+        self.has_labels |= flags & FragmentSummary::HAS_LABELS != 0;
+    }
+
+    #[inline(always)]
+    fn state_flags(&mut self, flags: u16) {
         self.layout_flags(flags);
         self.conditional_lines |= flags & FragmentSummary::CONDITIONAL_LINES != 0;
     }
 
     #[inline(always)]
-    fn fragment_flags(&mut self, flags: u8) {
+    fn fragment_flags(&mut self, flags: u16) {
         self.state_flags(flags);
         self.effect = self
             .effect
-            .join(BreakEffect(flags & FragmentSummary::REQUIRED));
+            .join(BreakEffect((flags & FragmentSummary::REQUIRED) as u8));
         self.intrinsic_lines |= flags & FragmentSummary::INTRINSIC_LINES != 0;
     }
 
@@ -144,6 +151,7 @@ impl Facts {
                 return GroupBoundary::Start;
             }
             I::EndGroup => return GroupBoundary::End,
+            I::StartLabel(_) => self.label(),
             I::BreakParent => self.require_break(),
             I::HardLine | I::LiteralLine | I::LiteralLineAtCurrentIndent => self.hard_line(true),
             I::HardLineOnly | I::LiteralLineOnly => self.hard_line(false),
@@ -224,13 +232,14 @@ impl Facts {
         capabilities: FragmentCapabilities,
     ) -> FragmentSummary {
         FragmentSummary(
-            u8::from(self.effect.preferred_breaks())
-                | ((capabilities as u8) << 1)
-                | (u8::from(self.conditional_lines) << 3)
-                | (u8::from(self.intrinsic_lines) << 4)
-                | (u8::from(self.source_groups) << 5)
-                | (u8::from(self.rich_indent) << 6)
-                | (u8::from(self.extended_print) << 7),
+            u16::from(self.effect.preferred_breaks())
+                | ((capabilities as u16) << 1)
+                | (u16::from(self.conditional_lines) << 3)
+                | (u16::from(self.intrinsic_lines) << 4)
+                | (u16::from(self.source_groups) << 5)
+                | (u16::from(self.rich_indent) << 6)
+                | (u16::from(self.extended_print) << 7)
+                | (u16::from(self.has_labels) << 8),
         )
     }
 }

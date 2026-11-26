@@ -539,6 +539,19 @@ fn paragraph_continuation(source: &str, previous: Span, line: SourceLine) -> Par
     }
 }
 
+impl SourceLine {
+    /// Whether removing this continuation's indentation would open a Markdown
+    /// block or turn the previous paragraph line into a heading or table.
+    pub fn indent_protects_paragraph(self, source: &str, previous: SourceLine) -> bool {
+        let indent = self.indent(source);
+        indent >= 4
+            && !matches!(
+                paragraph_continuation(source, previous.content, self.strip(source, indent)),
+                ParagraphContinuation::Text
+            )
+    }
+}
+
 fn can_continue(source: &str, line: SourceLine) -> bool {
     !line.blank(source) && !interrupts(source, line)
 }
@@ -559,7 +572,7 @@ fn interrupts(source: &str, line: SourceLine) -> bool {
     };
     match b {
         b'{' => liquid_open(s).is_some(),
-        b'[' => footnote_label(s).is_some(),
+        b'[' => starts_footnote_definition(s),
         b'$' => math_open(s).is_some(),
         b'>' => true,
         b'#' => {
@@ -615,6 +628,16 @@ fn frontmatter(source: &str, lines: &[SourceLine], dialect: Dialect) -> Option<(
     ))
 }
 
+fn definition_continuation(source: &str, line: SourceLine) -> bool {
+    continues_paragraph(source, line) && setext(source, line).is_none()
+}
+
+/// Whether the contents of a single line can continue a link definition without opening a block.
+pub fn can_continue_link_definition(text: &str) -> bool {
+    let line = SourceLine::new(Span::new(0, text.len()), Span::new(text.len(), text.len()));
+    definition_continuation(text, line)
+}
+
 fn parse_definition(source: &str, lines: &[SourceLine]) -> Option<(usize, Definition)> {
     let first_text = lines[0]
         .content
@@ -623,8 +646,7 @@ fn parse_definition(source: &str, lines: &[SourceLine]) -> Option<(usize, Defini
     if !first_text.starts_with('[') {
         return None;
     }
-    let continuation =
-        |line: SourceLine| continues_paragraph(source, line) && setext(source, line).is_none();
+    let continuation = |line| definition_continuation(source, line);
     let mut input = inline::Input::new(source, &lines[..1]);
     let start = input.text.len() - input.text.trim_start_matches([' ', '\t']).len();
     let mut close = start + 1;
@@ -732,6 +754,33 @@ fn cell_spans(source: &str, span: Span) -> Vec<Span> {
     }
     cells
 }
+
+fn table_alignments(delimiter: &str) -> impl Iterator<Item = Option<Alignment>> {
+    let cells = delimiter.trim_matches([' ', '\t']);
+    let cells = cells.strip_prefix('|').unwrap_or(cells);
+    let cells = cells.strip_suffix('|').unwrap_or(cells);
+    cells.split('|').map(|cell| {
+        let cell = cell.trim_matches([' ', '\t']);
+        let dashes = cell.strip_prefix(':').unwrap_or(cell);
+        let dashes = dashes.strip_suffix(':').unwrap_or(dashes);
+        if dashes.is_empty() || !dashes.bytes().all(|b| b == b'-') {
+            return None;
+        }
+        Some(match (cell.starts_with(':'), cell.ends_with(':')) {
+            (true, true) => Alignment::Center,
+            (true, false) => Alignment::Left,
+            (false, true) => Alignment::Right,
+            (false, false) => Alignment::None,
+        })
+    })
+}
+
+/// Whether a line has the cell structure of a GFM table delimiter row.
+/// A table also requires a matching header and a pipe in at least one of the two lines.
+pub fn is_table_delimiter_row(line: &str) -> bool {
+    table_alignments(line).all(|cell| cell.is_some())
+}
+
 fn table_head(
     source: &str,
     header: Span,
@@ -744,24 +793,7 @@ fn table_head(
     {
         return None;
     }
-    let cells = cell_spans(source, delimiter);
-    let mut alignments = Vec::new();
-    for cell in cells {
-        let s = cell.text(source);
-        let left = s.starts_with(':');
-        let right = s.ends_with(':');
-        let dashes = s.strip_prefix(':').unwrap_or(s);
-        let dashes = dashes.strip_suffix(':').unwrap_or(dashes);
-        if dashes.is_empty() || !dashes.bytes().all(|b| b == b'-') {
-            return None;
-        }
-        alignments.push(match (left, right) {
-            (true, true) => Alignment::Center,
-            (true, false) => Alignment::Left,
-            (false, true) => Alignment::Right,
-            _ => Alignment::None,
-        });
-    }
+    let alignments: Vec<_> = table_alignments(text).collect::<Option<_>>()?;
     let header = cell_spans(source, header);
     (!header.is_empty() && header.len() == alignments.len()).then_some((header, alignments))
 }
@@ -984,6 +1016,11 @@ fn opaque(
 fn math_open(text: &str) -> Option<usize> {
     let width = text.bytes().take_while(|b| *b == b'$').count();
     (width >= 2 && !text[width..].contains('$')).then_some(width)
+}
+
+/// Whether the line content begins with a footnote definition marker such as `[^label]:`.
+pub fn starts_footnote_definition(text: &str) -> bool {
+    footnote_label(text).is_some()
 }
 
 fn footnote_label(text: &str) -> Option<&str> {

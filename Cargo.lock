@@ -199,6 +199,7 @@ dependencies = [
  "swc_next_ecma_transformer",
  "swc_next_ecma_transformer_v1",
  "swc_next_formatter",
+ "swc_next_markdown_parser",
  "swc_next_type_strip",
  "tracy-client",
 ]
@@ -3946,6 +3947,8 @@ dependencies = [
 name = "swc_next_formatter"
 version = "0.8.1"
 dependencies = [
+ "anyhow",
+ "clap",
  "insta",
  "serde",
  "serde_json",
@@ -3956,6 +3959,9 @@ dependencies = [
  "swc_next_formatter_core",
  "swc_next_formatter_host",
  "swc_next_formatter_js",
+ "swc_next_formatter_markdown",
+ "swc_next_markdown_parser",
+ "tempfile",
 ]
 
 [[package]]
@@ -3974,6 +3980,7 @@ dependencies = [
  "memchr",
  "rustc-hash",
  "swc_next_allocator",
+ "swc_next_simd",
  "unicode-width 0.2.3",
 ]
 
@@ -4006,6 +4013,29 @@ dependencies = [
  "swc_next",
  "swc_next_bridge",
  "swc_next_formatter",
+]
+
+[[package]]
+name = "swc_next_formatter_markdown"
+version = "0.8.0"
+dependencies = [
+ "memchr",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "swc_next_markdown_parser",
+ "swc_next_simd",
+]
+
+[[package]]
+name = "swc_next_formatter_markdown_bridge"
+version = "0.8.1"
+dependencies = [
+ "napi-build",
+ "swc_next_bridge",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
+ "swc_next_formatter_markdown",
+ "swc_next_markdown_parser",
 ]
 
 [[package]]
@@ -4188,6 +4218,7 @@ dependencies = [
 name = "testsuite"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
  "clap",
  "jsonc-parser 0.34.0",
  "jwalk",
@@ -4205,7 +4236,10 @@ dependencies = [
  "swc_next_ecma_parser",
  "swc_next_ecma_semantic",
  "swc_next_formatter",
+ "swc_next_formatter_core",
+ "swc_next_formatter_host",
  "swc_next_formatter_js",
+ "swc_next_markdown_parser",
 ]
 
 [[package]]

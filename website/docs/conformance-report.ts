@@ -30,7 +30,7 @@ export function parseConformanceHeader(snapshot: string, header: string): Confor
   const fields = new Map<string, { value: number; total?: number }>();
   let start = 0;
   if (kind === "formatter") {
-    const reference = lines[0].match(/^formatter \* prettier \d+\.\d+\.\d+ \* (js|typescript)$/);
+    const reference = lines[0].match(/^formatter \* prettier \d+\.\d+\.\d+ \* (js|typescript|markdown)$/);
     start = lines.findIndex((line) => line.startsWith("Passed:"));
     if (!reference || reference[1] !== suite || !/^=+$/.test(lines[1]) || start < 2) throw new Error(`Invalid conformance header: ${snapshot}`);
   } else if (!["estree", "codec"].includes(kind)) {
@@ -57,7 +57,8 @@ export function parseConformanceHeader(snapshot: string, header: string): Confor
   };
   if (kind === "formatter") {
     const passed = count("Passed");
-    const outcomes = ["Snapshot matched", "Mismatched", "Format errors", "Panicked", "Parse errors"].map(count);
+    const outcomes = ["Snapshot matched", "Mismatched"].map(count);
+    if (suite !== "markdown") outcomes.push(...["Format errors", "Panicked", "Parse errors"].map(count));
     if (fields.has("Unparsable output")) outcomes.push(count("Unparsable output"));
     const notIdempotent = count("Not idempotent");
     if (outcomes.some((outcome) => outcome.total !== passed.total) || outcomes.reduce((total, outcome) => total + outcome.passed, 0) !== passed.total || passed.passed > outcomes[0].passed || notIdempotent.total !== passed.total) throw new Error(`Inconsistent formatter counts: ${snapshot}`);

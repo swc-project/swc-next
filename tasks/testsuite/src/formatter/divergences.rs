@@ -12,6 +12,7 @@ struct Divergence {
 struct Fixture {
     path: &'static str,
     options: &'static [&'static str],
+    output: Option<&'static str>,
 }
 
 const DEFAULT: &[&str] = &[""];
@@ -22,11 +23,23 @@ const BOTH_ARROW_PARENS: &[&str] = &["arrowParens: \"always\"", "arrowParens: \"
 const ES5_TRAILING_COMMA: &[&str] = &["trailingComma: \"es5\""];
 
 const fn fixture(path: &'static str, options: &'static [&'static str]) -> Fixture {
-    Fixture { path, options }
+    Fixture {
+        path,
+        options,
+        output: None,
+    }
 }
 
-// List only snapshot mismatches with a verified reason. The option strings match
-// the normalized options shown by PRETTIER_FILTER. An empty string denotes default options.
+const fn markdown_fixture(path: &'static str, output: &'static str) -> Fixture {
+    Fixture {
+        path,
+        options: &[r#"{"proseWrap":"always"}"#],
+        output: Some(output),
+    }
+}
+
+// List only snapshot mismatches with a verified reason. Use normalized options for
+// JS/TS and the Jest snapshot's option suffix for Markdown. Empty means default options.
 pub(super) const KNOWN_DIVERGENCES: Divergences = Divergences(&[
     Divergence {
         reason: "Preserve comments on their original side of operator and terminator tokens",
@@ -140,6 +153,60 @@ pub(super) const KNOWN_DIVERGENCES: Divergences = Divergences(&[
             fixture("typescript/interface2/comments.ts", ES5_TRAILING_COMMA),
         ],
     },
+    Divergence {
+        reason: "Preserve whitespace in unformatted Markdown code blocks",
+        fixtures: &[
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-112.md (Indented code blocks)",
+                "    chunk1\n      \n      chunk2\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-118.md (Indented code blocks)",
+                "    foo  \n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-129.md (Fenced code blocks)",
+                "```\n\n  \n```\n",
+            ),
+        ],
+    },
+    Divergence {
+        reason: "Preserve literal emphasis markers and their surrounding emphasis pairs",
+        fixtures: &[
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-412.md (Emphasis and strong emphasis)",
+                "_foo**bar_\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-438.md (Emphasis and strong emphasis)",
+                "foo *_*\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-441.md (Emphasis and strong emphasis)",
+                "foo **_**\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-450.md (Emphasis and strong emphasis)",
+                "foo _*_\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-453.md (Emphasis and strong emphasis)",
+                "foo __*__\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-469.md (Emphasis and strong emphasis)",
+                "*foo _bar* baz_\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite/snippet: example-470.md (Emphasis and strong emphasis)",
+                "*foo __bar *baz bim__ bam*\n",
+            ),
+            markdown_fixture(
+                "markdown/commonmark-test-suite-legacy/snippet: 0.25/example-441.md (Emphasis and strong emphasis)",
+                "**foo*bar**\n",
+            ),
+        ],
+    },
 ]);
 
 impl Divergences {
@@ -147,12 +214,24 @@ impl Divergences {
         if !matches!(result.status, CaseStatus::Mismatched) || !result.is_valid_output() {
             return None;
         }
+        self.reason_for_fixture(&result.path, &result.options, None)
+    }
+
+    pub(super) fn reason_for_fixture(
+        &self,
+        path: &str,
+        options: &str,
+        output: Option<&str>,
+    ) -> Option<&'static str> {
         self.0
             .iter()
             .find(|divergence| {
                 divergence.fixtures.iter().any(|fixture| {
-                    fixture.path == result.path
-                        && fixture.options.contains(&result.options.as_str())
+                    fixture.path == path
+                        && fixture.options.contains(&options)
+                        && fixture
+                            .output
+                            .is_none_or(|expected| output == Some(expected))
                 })
             })
             .map(|divergence| divergence.reason)
@@ -166,13 +245,21 @@ impl Divergences {
         let mismatches = results
             .iter()
             .filter(|result| matches!(result.status, CaseStatus::Mismatched))
-            .map(|result| (result.path.as_str(), result.options.as_str()))
-            .collect::<BTreeSet<_>>();
+            .map(|result| (result.path.as_str(), result.options.as_str()));
+        self.stale_fixtures(config.fixture_roots, mismatches)
+    }
+
+    pub(super) fn stale_fixtures<'a>(
+        &self,
+        roots: &[&str],
+        mismatches: impl Iterator<Item = (&'a str, &'a str)>,
+    ) -> Vec<String> {
+        let mismatches = mismatches.collect::<BTreeSet<_>>();
         let mut errors = Vec::new();
         for divergence in self.0 {
             for fixture in divergence.fixtures {
                 let (root, _) = fixture.path.split_once('/').unwrap();
-                if !config.fixture_roots.contains(&root) {
+                if !roots.contains(&root) {
                     continue;
                 }
                 for &options in fixture.options {
@@ -201,7 +288,7 @@ pub(super) fn option_label(options: &str) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT, Divergence, Divergences, fixture};
+    use super::{DEFAULT, Divergence, Divergences, fixture, markdown_fixture};
     use crate::formatter::{CaseResult, CaseStatus, JAVASCRIPT};
 
     const PATH: &str = "js/example.js";
@@ -259,5 +346,21 @@ mod tests {
 
         let panic = case_result("", CaseStatus::Panic(String::new()));
         assert_eq!(DIVERGENCES.reason_for(&panic), None);
+    }
+
+    #[test]
+    fn pinned_markdown_output() {
+        const PATH: &str = "markdown/example.md";
+        const OPTIONS: &str = r#"{"proseWrap":"always"}"#;
+        const SPELLING: Divergences = Divergences(&[Divergence {
+            reason: "Preserve literal emphasis markers",
+            fixtures: &[markdown_fixture(PATH, "_a**b_\n")],
+        }]);
+
+        let preserved = SPELLING.reason_for_fixture(PATH, OPTIONS, Some("_a**b_\n"));
+        assert_eq!(preserved, Some("Preserve literal emphasis markers"));
+
+        let escaped = SPELLING.reason_for_fixture(PATH, OPTIONS, Some("_a\\*\\*b_\n"));
+        assert_eq!(escaped, None);
     }
 }
