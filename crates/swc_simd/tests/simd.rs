@@ -181,6 +181,29 @@ fn byte_shifts_and_swizzles() {
 
 #[cfg(feature = "memchr")]
 #[test]
+fn ascii_byte_sets() {
+    use swc_next_simd::memchr::AsciiByteSet;
+
+    const SET: AsciiByteSet = AsciiByteSet::new(b"(|")
+        .with_range(b'0', b'9')
+        .with_bytes(b"\x7f");
+    assert_eq!(SET.find(b""), None);
+    assert_eq!(SET.find(b"abc3|("), Some(3));
+
+    let mut haystack = [0xff; 34];
+    for byte in 0..=u8::MAX {
+        let member = byte.is_ascii_digit() || matches!(byte, b'(' | b'|' | 0x7f);
+        assert_eq!(SET.contains(byte), member);
+        for position in 0..haystack.len() {
+            haystack[position] = byte;
+            assert_eq!(SET.find(&haystack), member.then_some(position));
+            haystack[position] = 0xff;
+        }
+    }
+}
+
+#[cfg(feature = "memchr")]
+#[test]
 fn byte_searches() {
     use swc_next_simd::memchr::memchr4;
 
