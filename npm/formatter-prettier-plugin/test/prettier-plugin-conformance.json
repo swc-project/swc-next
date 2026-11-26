@@ -46789,6 +46789,42 @@
         "prettierNative": "callee/* outer */ <Type> // inner\n`value`;\n"
       }
     ],
+    "ts/type-arguments/ignored-tails/heritage.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface X extends F<(X) /* prettier-ignore */> {}\n",
+        "prettierNative": "interface X extends F<X /* prettier-ignore */> {}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "interface X extends F<\n  (X) /* prettier-ignore */\n> {}\n",
+        "prettierNative": "interface X extends F<X /* prettier-ignore */> {}\n"
+      }
+    ],
+    "ts/type-arguments/ignored-tails/type-query.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type A = typeof fn<F< 'x' > /* prettier-ignore */>;\n\ntype B = typeof fn<( <T>() => void ) /* prettier-ignore */>;\n\ntype C = typeof fn< <T>() => void /* prettier-ignore */>;\n\ntype D = typeof fn<string, 'x' /* prettier-ignore */>;\n",
+        "prettierNative": "type A = typeof fn<F< 'x' > /* prettier-ignore */>;\n\ntype B = typeof fn<<T>() => void /* prettier-ignore */>;\n\ntype C = typeof fn<<T>() => void /* prettier-ignore */>;\n\ntype D = typeof fn<string, 'x' /* prettier-ignore */>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 24,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "type A = typeof fn<\n  F< 'x' > /* prettier-ignore */\n>;\n\ntype B = typeof fn<\n  ( <T>() => void ) /* prettier-ignore */\n>;\n\ntype C = typeof fn<\n  <T>() => void /* prettier-ignore */\n>;\n\ntype D = typeof fn<\n  string,\n  'x' /* prettier-ignore */\n>;\n",
+        "prettierNative": "type A = typeof fn<\n  F< 'x' > /* prettier-ignore */\n>;\n\ntype B = typeof fn<\n  <T>() => void /* prettier-ignore */\n>;\n\ntype C = typeof fn<\n  <T>() => void /* prettier-ignore */\n>;\n\ntype D = typeof fn<\n  string,\n  'x' /* prettier-ignore */\n>;\n"
+      }
+    ],
     "ts/type-bound-fixedpoint/constraint.ts": [
       {
         "options": {

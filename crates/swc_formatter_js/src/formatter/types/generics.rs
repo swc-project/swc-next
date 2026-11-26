@@ -22,7 +22,9 @@ use crate::formatter::expressions::arguments::{
     TrailingCommaPolicy,
 };
 use crate::formatter::source::{is_source_horizontal_whitespace, is_source_whitespace};
-use crate::formatter::suppression::{ContentMode, SuppressionPosition, is_suppression_comment};
+use crate::formatter::suppression::{
+    ContentMode, DelimitedFollowing, SuppressionPosition, is_suppression_comment,
+};
 use crate::{
     FormatError, TrailingCommas,
     document::{ConditionTarget, GroupId, GroupRequest, GroupScope, IndentScope, Writer},
@@ -895,9 +897,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
+        let first_source = if self.has_suppression
+            && separate_angles
+            && let TypeList::Arguments(arguments, _) = node
+            && let Some(GenericMember::Type(first)) = members.peek().copied()
+        {
+            let span = first.span(ast);
+            let (following, end) = arguments.params(ast).iter().nth(1).map_or(
+                (DelimitedFollowing::End, content.end),
+                |index| {
+                    let next: TsType = ast.get_node_in_sub_range(index);
+                    (DelimitedFollowing::Node, next.span(ast).start)
+                },
+            );
+            self.delimited_suppression(span, end, following)
+                .and_then(|suppression| suppression.preceding)
+        } else {
+            None
+        };
         let mut first_body = None;
         let mut first_packet = None;
-        let hug = if matches!(node, TypeList::Arguments(arguments, _) if arguments.params(ast).len() == 1)
+        let hug = if first_source.is_none()
+            && matches!(node, TypeList::Arguments(arguments, _) if arguments.params(ast).len() == 1)
             && let Some(GenericMember::Type(first)) = members.peek().copied()
         {
             let prepared =
@@ -1044,6 +1065,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             false
         };
         if separate_angles
+            && first_source.is_none()
             && first_body.is_none()
             && let Some(GenericMember::Type(first)) = members.peek().copied()
         {
@@ -1051,15 +1073,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 first_type.get_or_insert_with(|| self.prepare_type(first, ContentMode::Formatted));
             first_body = Some(self.prepare_delimited_type(*prepared)?);
         }
-        // These grammar positions require a standalone `<` token. Use the
-        // prepared first type: transparent pairs can expose a generic function.
+        // These grammar positions require a standalone `<` token. Check the
+        // source spelling for an ignored type and the emitted shape otherwise.
         let separate_opening = separate_angles
-            && first_body.as_ref().is_some_and(|body| {
-                matches!(&body.content, super::compound::PreparedTypeContent::Type(first)
-                    if matches!(first.data, TsTypeData::TsFunctionType(function)
-                        if function.type_parameters(ast).is_some())
-                        && opening_comments.first().is_none_or(|comment| comment.span.start >= first.node.span(ast).start))
-            });
+            && if let Some(span) = first_source {
+                self.source(span).starts_with('<')
+                    && opening_comments
+                        .first()
+                        .is_none_or(|comment| comment.span.start >= span.start)
+            } else {
+                first_body.as_ref().is_some_and(|body| {
+                    matches!(&body.content, super::compound::PreparedTypeContent::Type(first)
+                        if matches!(first.data, TsTypeData::TsFunctionType(function)
+                            if function.type_parameters(ast).is_some())
+                            && opening_comments.first().is_none_or(|comment| comment.span.start >= first.node.span(ast).start))
+                })
+            };
         let opening_separator = if separate_opening {
             FlatSeparator::Space
         } else {
@@ -1177,7 +1206,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             if item.mode == ContentMode::Verbatim {
                                 node.source_owner = Some(node.node);
                             }
-                            if let Some(body) = first_body.take() {
+                            let body = first_body.take();
+                            if let Some(body) = body
+                                && item.mode != ContentMode::Verbatim
+                            {
                                 self.format_prepared_delimited_type(
                                     body,
                                     TypeContext::Root,
