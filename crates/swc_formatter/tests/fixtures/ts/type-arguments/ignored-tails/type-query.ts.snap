@@ -1,0 +1,41 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+type A = typeof fn<F< 'x' > /* prettier-ignore */>;
+
+type B = typeof fn<( <T>() => void ) /* prettier-ignore */>;
+
+type C = typeof fn< <T>() => void /* prettier-ignore */>;
+
+type D = typeof fn<string, 'x' /* prettier-ignore */>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+type A = typeof fn<F< 'x' > /* prettier-ignore */>;
+
+type B = typeof fn<( <T>() => void ) /* prettier-ignore */>;
+
+type C = typeof fn< <T>() => void /* prettier-ignore */>;
+
+type D = typeof fn<string, 'x' /* prettier-ignore */>;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":24}
+---------- Output ----------
+type A = typeof fn<
+  F< 'x' > /* prettier-ignore */
+>;
+
+type B = typeof fn<
+  ( <T>() => void ) /* prettier-ignore */
+>;
+
+type C = typeof fn<
+  <T>() => void /* prettier-ignore */
+>;
+
+type D = typeof fn<
+  string,
+  'x' /* prettier-ignore */
+>;

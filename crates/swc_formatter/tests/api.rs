@@ -480,6 +480,16 @@ fn comment_token_boundaries() {
             .lines()
             .any(|line| line.trim_start().starts_with("-->"))
     );
+
+    for line in ["\n", "\r", "\r\n", "\u{2028}", "\u{2029}"] {
+        let input = format!("import 'x'{line}// prettier-ignore{line}with {{ type :'json' }};");
+        let output = format_checked(&input, parser, always);
+        assert!(output.contains("\n// prettier-ignore\nwith { type :'json' }"));
+
+        let input = format!("import 'x' with{line}// prettier-ignore{line}{{ type :'json' }};");
+        let output = format_checked(&input, parser, always);
+        assert!(output.contains("with\n// prettier-ignore\n{ type :'json' }"));
+    }
 }
 
 #[test]

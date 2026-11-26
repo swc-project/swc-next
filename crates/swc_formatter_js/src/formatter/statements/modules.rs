@@ -2248,7 +2248,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
         let comments = self.comments.between(Span::new(start, end))?;
-        let source = self.content_mode(comments) == ContentMode::Verbatim
+        let suppressed = self.content_mode(comments) == ContentMode::Verbatim;
+        let source = suppressed
             || preserve_directives && self.has_comment_directive_in(Span::new(start, end))
             || comments
                 .iter()
@@ -2257,7 +2258,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return self.format_source_token_gap(start, end, space, writer);
         }
         self.comments.claim(comments)?;
-        self.format_comment_run(comments, CommentRunLayout::SourceAfter(start), writer)?;
+        let layout = if suppressed {
+            CommentRunLayout::SourceLineTail(start)
+        } else {
+            CommentRunLayout::SourceAfter(start)
+        };
+        self.format_comment_run(comments, layout, writer)?;
         let last = comments.last().map_or(start, |comment| comment.span.end);
         self.source_line_constraint(last, end).write(
             writer,
