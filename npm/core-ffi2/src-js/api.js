@@ -3,7 +3,7 @@ import { encodeParserConfig } from "@swc-next/protocol/parser";
 import { encodeTransformApiOptions } from "@swc-next/protocol/transform";
 import { decodeJsOutput } from "@swc-next/protocol/output";
 import { encodeGeneratorConfig } from "@swc-next/protocol/generator";
-import { readAst, NodeView } from "./protocol/index.ts";
+import { readAst, NodeView } from "#protocol/index";
 
 export function createApi(binding) {
   function parseBufferSync(source, options) {

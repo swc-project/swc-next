@@ -1,9 +1,9 @@
-import type { AstView } from "./index.ts";
-import { fieldDescriptors, layouts } from "./schema.ts";
-import { NodeView } from "./node.ts";
-import { fieldLocation, newNodeRaw } from "./storage.ts";
-import { writeNativeFieldAt, writeNodeIdAt, writeReferencesAt } from "./writer.ts";
-import { NONE } from "./layout.ts";
+import type { AstView } from "#protocol/index";
+import { fieldDescriptors, layouts } from "#protocol/schema";
+import { NodeView } from "#protocol/node";
+import { fieldLocation, newNodeRaw } from "#protocol/storage";
+import { writeNativeFieldAt, writeNodeIdAt, writeReferencesAt } from "#protocol/writer";
+import { NONE } from "#protocol/layout";
 
 /**
  * Deep-clone a native node from `source` into `dest`.

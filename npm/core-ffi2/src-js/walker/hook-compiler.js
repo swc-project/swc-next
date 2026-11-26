@@ -1,4 +1,4 @@
-import { NodeKind, NodeView } from "../protocol/index.ts";
+import { NodeKind, NodeView } from "#protocol/index";
 
 const baseEntries = Object.values(NodeKind).map(() => ({ enter: null, leave: null }));
 

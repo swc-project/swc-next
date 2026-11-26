@@ -3,8 +3,8 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const forceWasi = process.env.NAPI_RS_FORCE_WASI;
 const binding = forceWasi === "true" || forceWasi === "error"
-  ? require("../dist/swc-next-core-ffi2.node.mjs")
-  : require("../dist/swc-next-core-ffi2.node");
+  ? require("./swc-next-core-ffi2.node.mjs")
+  : require("./swc-next-core-ffi2.node");
 
 export const {
   generateSync2,

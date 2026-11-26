@@ -1,13 +1,15 @@
-import type { AstView } from "./index.ts";
-import type { FieldDescriptor } from "./types.ts";
-import { layouts, nativeExtraCounts, nativeField } from "./schema.ts";
-import { initialFields } from "./protocol.ts";
-import { NONE, NONE as U32_MAX, ROW_SIZE, EXTRA_SIZE, UTF8_STRINGS } from "./layout.ts";
+import type { AstView } from "#protocol/index";
+import type { FieldDescriptor } from "#protocol/types";
+import { layouts, nativeExtraCounts, nativeField } from "#protocol/schema";
+import { initialFields } from "#protocol/protocol";
+import { NONE, NONE as U32_MAX, ROW_SIZE, EXTRA_SIZE, UTF8_STRINGS } from "#protocol/layout";
 
 const encoder = new TextEncoder();
 
-export const isWellFormed: (value: string) => boolean = typeof "".isWellFormed === "function"
-  ? value => value.isWellFormed()
+type StringWithWellFormed = string & { isWellFormed(): boolean };
+
+export const isWellFormed: (value: string) => boolean = typeof ("" as StringWithWellFormed).isWellFormed === "function"
+  ? value => (value as StringWithWellFormed).isWellFormed()
   : value => {
       for (let index = 0; index < value.length; index++) {
         const code = value.charCodeAt(index);
@@ -296,7 +298,7 @@ export function ensureArena(ast: AstView) {
   return ast._arena;
 }
 
-export function fieldLocation(ast: AstView, id: number, descriptor: FieldDescriptor, kind = ast.kind(id)) {
+export function fieldLocation(ast: AstView, id: number, descriptor: FieldDescriptor, kind: number = ast.kind(id)) {
   const layout = layouts[kind], arena = ast._arena;
   const row = ast.row(id);
   let view = row === -1 ? ast._view : arena!.view!;

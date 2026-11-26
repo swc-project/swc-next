@@ -1,8 +1,8 @@
 import type { Lang, SourceType } from "@swc-next/types";
 import type { Node } from "./native-types.d.ts";
-import type { NodeView } from "./node.ts";
-import type { AstView } from "./index.ts";
-import type { AstList, ListEntry } from "./list.ts";
+import type { NodeView } from "#protocol/node";
+import type { AstView } from "#protocol/index";
+import type { AstList, ListEntry } from "#protocol/list";
 
 export interface AstMeta {
   readonly lang: Lang;
@@ -73,21 +73,22 @@ export interface NodeDescriptor {
 export type AstValue<T> = T extends readonly (infer Element)[] ? AstList<AstValue<Element>>
   : T extends Node ? AstNode<T> : T;
 export type AstNodeFields<T extends Node> = { [K in keyof T]: AstValue<T[K]> };
-type NodeInputValue<T> = Extract<AstValue<T>, NodeIdentity> extends never
-  ? AstValue<T> extends AstList<infer Element> ? readonly (Element | NodeDescriptor)[] : never
+type NodeInputValue<T> = Extract<T, Node> extends never
+  ? T extends readonly (infer Element)[] ? readonly (AstValue<Element> | NodeDescriptor)[] : never
   : NodeDescriptor;
 export type AstNodeInput<T extends Node> = { [K in keyof T]: T[K] | AstValue<T[K]> | NodeInputValue<T[K]> };
-export interface NodeIdentity {
-  readonly ast: AstView;
-  readonly nodeId: number;
-  get(field: string): unknown;
-  set(field: string, value: unknown): void;
-}
-export type AstNode<T extends Node = Node> = T extends unknown ? AstNodeFields<T> & NodeIdentity : never;
+export type AstNode<T extends Node = Node> = T extends unknown ? AstNodeFields<T> & NodeView<T> : never;
+export type ShallowNode<T extends NodeView> = T extends NodeView<infer Shape> ? AstNodeInput<Shape> : never;
+export type Materialized<T> = T extends AstList<infer Element> ? Materialized<Element>[]
+  : T extends RegExp ? T
+  : T extends readonly (infer Element)[] ? Materialized<Element>[]
+  : T extends NodeView<infer Shape> ? Shape
+  : T extends object ? { [K in keyof T]: Materialized<T[K]> } : T;
+type FieldReplacement<T> = T extends Node ? NodeDescriptor
+  : T extends readonly unknown[] ? readonly (ListEntry | NodeDescriptor)[]
+  : never;
 export type FieldInput<K extends string> = K extends UnionKeys<Node>
-  ? NodeField<K>
-    | (NodeField<K> extends AstList<infer Element> ? readonly Element[] : never)
-    | NodeInputValue<UnionField<Node, K>>
+  ? NodeField<K> | FieldReplacement<UnionField<Node, K>>
   : unknown;
 
 export type NodeList = AstList<ListEntry>;

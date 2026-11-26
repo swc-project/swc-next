@@ -1,13 +1,13 @@
-import type { AstView } from "./index.ts";
-import type { NodeDescriptor } from "./types.ts";
-import type { NodeView } from "./node.ts";
-import { fieldNames } from "./protocol.ts";
+import type { AstView } from "#protocol/index";
+import type { AstNode, NodeDescriptor } from "#protocol/types";
+import type { NodeView } from "#protocol/node";
+import { fieldNames } from "#protocol/protocol";
 
 export type ListEntry = NodeView | null | undefined;
 
 
 /** A live AST field. The view retains positions, never copies of its elements. */
-export class AstList<T = ListEntry> implements Iterable<T> {
+export class AstList<T = AstNode> implements Iterable<T> {
   // Keep the non-extensible receiver shape alive without retaining AST storage.
   static #shape = new this(null!, 0, 0);
   readonly ast: AstView;

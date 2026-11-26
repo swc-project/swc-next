@@ -12,10 +12,10 @@
 // `root` is a NodeView from an AstView (`ast.program` or `ast.node(id)`).
 // Hooks receive `(ctx)`; the current node is materialized lazily by `ctx.node`,
 // and `ctx` also exposes numeric `nodeId`, `parentId`, `kind` and `ancestorIds()`.
-import { NodeView } from "../protocol/index.ts";
+import { NodeView } from "#protocol/index";
 import { visitorKeys } from "./visitor-keys.js";
 import { childVisitors } from "./child-visitors.js";
-import { NONE, fieldId, fieldNames, layouts, nativeField } from "../protocol/internal.ts";
+import { NONE, fieldId, fieldNames, layouts, nativeField } from "#protocol/internal";
 import { compile, assertNode, assertSync, SKIP, REMOVED, REPLACED } from "./hook-compiler.js";
 
 export { visitorKeys, NONE };
@@ -617,10 +617,10 @@ function runWalk(root, compiled, state) {
 
 /**
  * Traverse a buffer-backed AST synchronously from a NodeView.
- * @param {import("../protocol/index.ts").NodeView} root
+ * @param {import("#protocol/index").NodeView} root
  * @param {object} hooks
  * @param {any} [state]
- * @returns {import("../protocol/index.ts").NodeView} root
+ * @returns {import("#protocol/index").NodeView} root
  */
 export function walk(root, hooks, state) {
   return runWalk(root, compile(hooks), state);

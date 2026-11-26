@@ -1,12 +1,12 @@
-import type { AstView } from "./index.ts";
-import type { AstMeta, EnumValue, FieldDescriptor, NodeDescriptor } from "./types.ts";
-import { AstList, ListEdit, isList, listAt } from "./list.ts";
-import type { ListInput } from "./list.ts";
-import { NodeView } from "./node.ts";
-import { enums, nativeField, NodeKind } from "./schema.ts";
-import { writeNode, setSpan, fieldLocation, ensureArena } from "./storage.ts";
-import { Field, languages, sourceTypes } from "./protocol.ts";
-import { NONE } from "./layout.ts";
+import type { AstView } from "#protocol/index";
+import type { AstMeta, EnumValue, FieldDescriptor, NodeDescriptor } from "#protocol/types";
+import { AstList, ListEdit, isList, listAt } from "#protocol/list";
+import type { ListInput } from "#protocol/list";
+import { NodeView } from "#protocol/node";
+import { enums, nativeField, NodeKind } from "#protocol/schema";
+import { writeNode, setSpan, fieldLocation, ensureArena } from "#protocol/storage";
+import { Field, languages, sourceTypes } from "#protocol/protocol";
+import { NONE } from "#protocol/layout";
 
 const EMPTY = new Uint8Array();
 

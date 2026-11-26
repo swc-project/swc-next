@@ -6,18 +6,25 @@
   "exports": {
     ".": {
       "types": "./src-js/index.d.ts",
-      "import": "./src-js/index.js"
+      "import": "./dist/index.js"
     },
     "./browser": {
       "types": "./src-js/browser.d.ts",
-      "import": "./src-js/browser.js"
+      "import": "./dist/browser.js"
     },
-    "./binding": "./src-js/binding.js"
+    "./binding": {
+      "types": "./src-js/binding.d.ts",
+      "default": "./dist/binding.js"
+    }
+  },
+  "imports": {
+    "#protocol/*": "./src-js/protocol/*.ts"
   },
   "scripts": {
-    "build:ffi2": "napi build --no-js --dts ../src-js/binding.d.ts --output-dir dist",
-    "build:wasm:ffi2": "cargo run --quiet --locked -p bridge_cli -- build core-ffi2 --output-dir dist",
-    "test": "node --test \"test/!(walk*).test.js\" && rstest run --include \"test/walk*.test.js\"",
+    "build:js": "pnpm -w exec rslib build --config npm/core-ffi2/rslib.config.js",
+    "build:ffi2": "pnpm build:js && napi build --no-js --dts ../src-js/binding.d.ts --output-dir dist",
+    "build:wasm:ffi2": "pnpm build:js && cargo run --quiet --locked -p bridge_cli -- build core-ffi2 --output-dir dist",
+    "test": "pnpm build:js && node --test \"test/!(walk*).test.js\" && rstest run --include \"test/walk*.test.js\"",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test"
   },
   "napi": {

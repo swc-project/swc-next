@@ -1,27 +1,30 @@
 import type { Node, Program } from "./native-types.d.ts";
-import type { DeltaArena } from "./storage.ts";
-import type { AstMeta, BufferInput, NodeList, FieldOffset, FieldDescriptor, NodeField, AstNode, AstNodeInput, EnumValue, NodeDescriptor } from "./types.ts";
+import type { DeltaArena } from "#protocol/storage";
+import type { AstMeta, BufferInput, NodeList, FieldOffset, FieldDescriptor, NodeField, AstNode, AstNodeInput, EnumValue, Materialized, NodeDescriptor } from "#protocol/types";
 export type * from "./native-types.d.ts";
 export type { Lang, SourceType } from "@swc-next/types";
-import { layouts, enums, nativeField, NodeKind } from "./schema.ts";
-import { NodeView, createNodeView, createNumericNodeView, NUMERIC_NODE_KIND } from "./node.ts";
-import { cloneNode as cloneNodeInto } from "./clone.ts";
-import { writeType, writeSpan, writeNativeField, finishEdits, writeStringAt, writeNodeAt, writeBoolAt, writeNumberAt, writeEnumAt } from "./writer.ts";
-import { fieldLocation, isWellFormed, newNode } from "./storage.ts";
-import { AstList, isList, listAt } from "./list.ts";
-import type { ListEntry } from "./list.ts";
-import { fieldId, fieldNames, parserMeta } from "./protocol.ts";
-import { NONE, SPAN_SIZE, PAYLOAD_SIZE } from "./layout.ts";
-import { PositionCache } from "./position.ts";
+import { layouts, enums, nativeField, NodeKind } from "#protocol/schema";
+import { NodeView, createNodeView, createNumericNodeView, NUMERIC_NODE_KIND } from "#protocol/node";
+import { cloneNode as cloneNodeInto } from "#protocol/clone";
+import { writeType, writeSpan, writeNativeField, finishEdits, writeStringAt, writeNodeAt, writeBoolAt, writeNumberAt, writeEnumAt } from "#protocol/writer";
+import { fieldLocation, isWellFormed, newNode } from "#protocol/storage";
+import { AstList, isList, listAt } from "#protocol/list";
+import type { ListEntry } from "#protocol/list";
+import { fieldId, fieldNames, parserMeta } from "#protocol/protocol";
+import { NONE, SPAN_SIZE, PAYLOAD_SIZE } from "#protocol/layout";
+import { PositionCache } from "#protocol/position";
 
-export { NodeKind } from "./schema.ts";
+export { NodeKind } from "#protocol/schema";
 
 const EMPTY_POSITION_CACHE = new PositionCache(new DataView(new ArrayBuffer(8)), 0, 0);
-export { NodeView } from "./node.ts";
-export { AstList, sameList } from "./list.ts";
-export type { AstNode, AstNodeFields, AstNodeInput } from "./types.ts";
+export { NodeView } from "#protocol/node";
+export { AstList, sameList } from "#protocol/list";
+export type {
+  AstNode, AstNodeFields, AstNodeInput, AstValue, Materialized, NodeDescriptor, ShallowNode,
+} from "#protocol/types";
 const LAYOUT_TEMPLATE = Symbol("AST view layout");
 const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+type NativeNodeKind = (typeof NodeKind)[keyof typeof NodeKind];
 
 export interface AstComment {
   readonly type: "Line" | "Block";
@@ -163,13 +166,13 @@ export class AstView {
     return arena === null || !arena.rowCount && !arena.extraUsed && !arena.stringUsed
       ? null : arena.borrow(this.rootId, this._editor?.flags ?? this._flags);
   }
-  spliceList(node: NodeView | number, key: string, start: number, deleteCount: number, ...values: (ListEntry | NodeDescriptor)[]) {
+  spliceList(node: NodeView | number, key: string, start: number, deleteCount: number, ...values: (ListEntry | NodeDescriptor)[]): (AstNode | null)[] {
     if (node instanceof NodeView && node.ast !== this) { throw new TypeError("Node belongs to another AST buffer"); }
     const id = node instanceof NodeView ? node.nodeId : node;
     const list = this.value(id, fieldId(key));
     if (!(list instanceof AstList)) { throw new TypeError("Expected an AST list"); }
     const removed = list.splice(start, deleteCount, ...values);
-    return removed;
+    return removed as (AstNode | null)[];
   }
   get meta() {
     return this._editor === null ? this.#meta : parserMeta[this._editor.flags];
@@ -189,8 +192,8 @@ export class AstView {
   get sourceUtf16Length() {
     return this._positions.sourceUnits;
   }
-  get root(): NodeView | null {
-    return this.node(this.rootId);
+  get root(): AstNode {
+    return this.node(this.rootId)!;
   }
   get program(): AstNode<Program> {
     if (this.kind(this.rootId) !== NodeKind.Program)
@@ -223,9 +226,9 @@ export class AstView {
   _writeEnumAt(id: number, offset: number, optional: boolean, table: readonly EnumValue[], value: unknown): void {
     writeEnumAt(this, id, offset, optional, table, value);
   }
+  /** A shallow, editable copy that preserves child node references. */
+  cloneNode<T extends Node>(node: NodeView<T>): AstNodeInput<T>;
   cloneNode<T extends Node>(node: T): T;
-  cloneNode<T extends Node>(node: AstNode<T>): AstNodeInput<T>;
-  cloneNode(node: NodeView): Record<string, unknown>;
   cloneNode(node: object): Record<string, unknown> {
     if (!(node instanceof NodeView)) { return { ...node }; }
     const ast = node.ast;
@@ -251,9 +254,9 @@ export class AstView {
     if (id < this.nodeCount || this._arena?.has(id)) { return; }
     throw new RangeError("Invalid AST node ID");
   }
-  kind(id: number): number {
+  kind(id: number): NativeNodeKind {
     this.validateId(id);
-    return this._kindAt(id);
+    return this._kindAt(id) as NativeNodeKind;
   }
   /** Views already hold a validated logical ID; original slots read directly. */
   _kindAt(id: number): number {
@@ -295,14 +298,14 @@ export class AstView {
   utf8Offset(position: number): number {
     return this._positions.utf8Offset(position);
   }
-  node(id: number): NodeView | null {
+  node(id: number): AstNode | null {
     if (id === NONE) { return null; }
     if (id < this.#nodeCount) {
       if (!Number.isInteger(id) || id < 0) { throw new RangeError("Invalid AST node ID"); }
     } else {
       this.validateId(id);
     }
-    return this._nodeAt(id);
+    return this._nodeAt(id) as AstNode | null;
   }
   /** Child slots have already checked their numeric IDs. */
   _nodeAt(id: number): NodeView | null {
@@ -323,14 +326,14 @@ export class AstView {
     const start = view.getUint32(offset, true), end = view.getUint32(offset + 4, true);
     return optional && start === NONE && end === 0 ? null : this.string(start, end);
   }
-  enumAt(offset: number, name: string, optional: boolean, view = this._view): import("./types.ts").EnumValue | null {
+  enumAt(offset: number, name: string, optional: boolean, view = this._view): import("#protocol/types").EnumValue | null {
     const value = view.getUint8(offset);
     if (optional && value === 255) { return null; }
     const values = enums[name];
     if (value >= values.length) { throw new RangeError("Unknown AST enum value"); }
     return values[value];
   }
-  fieldOffset(id: number, field: number, kind = this.kind(id)): FieldOffset | null {
+  fieldOffset(id: number, field: number, kind: number = this.kind(id)): FieldOffset | null {
     const row = this.row(id);
     if (row !== -1) { kind = this._arena!.kind(id); }
     const descriptor = nativeField(kind, field);
@@ -374,9 +377,9 @@ export class AstView {
       { return this.childAt(owner, this._extra + index * 4, optional); }
     return this.childAt(owner, this._arena!.extraAddress(index), optional, this._arena!.view!);
   }
-  list(owner: number, field: number): NodeList { return new AstList(this, owner, field); }
+  list(owner: number, field: number): NodeList { return new AstList<ListEntry>(this, owner, field); }
 
-  value(id: number, field: number, kind = this.kind(id)): unknown {
+  value(id: number, field: number, kind: number = this.kind(id)): unknown {
     const row = this.row(id);
     if (row !== -1) { kind = this._arena!.kind(id); }
     const descriptor = nativeField(kind, field);
@@ -513,10 +516,8 @@ export class AstView {
     return ["type", "start", "end", ...layouts[this.kind(id)].fields.map(([field]) => fieldNames[field])];
   }
   /** Explicitly create editable native-shaped objects; this is the copying boundary. */
-  materialize<T extends Node>(root: T): T;
-  materialize<T extends Node>(root: AstNode<T>): T;
+  materialize<T>(root: T): Materialized<T>;
   materialize(): Node;
-  materialize(root: unknown): unknown;
   materialize(root: unknown = this.root): unknown {
     const copies = new Map<object | number, object>(),
       pending: Array<[object, Record<string, unknown> | unknown[]]> = [];
@@ -550,8 +551,8 @@ export class AstView {
     }
     return result;
   }
-  get comments() {
-    return Array.from({ length: this._commentCount }, (_, index) => {
+  get comments(): AstComment[] {
+    return Array.from({ length: this._commentCount }, (_, index): AstComment => {
     const offset = this._comments + index * 8,
       view = this._view,
       ast = this;
@@ -579,7 +580,7 @@ export class AstView {
     });
     });
   }
-  get diagnostics() {
+  get diagnostics(): readonly AstDiagnostic[] {
     let cursor = this._diagnostics;
     const limit = cursor + this._diagnosticLength;
     const byte = () => {
@@ -604,7 +605,7 @@ export class AstView {
     };
     const results = [];
     for (let index = 0; index < this._diagnosticCount; index++) {
-      const severity = ["error", "warning", "hint", "info"][byte()];
+      const severity = ["error", "warning", "hint", "info"][byte()] as AstDiagnostic["severity"] | undefined;
       if (!severity) { throw new RangeError("Invalid diagnostic severity"); }
       const start = word(),
         end = word(),

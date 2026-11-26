@@ -1,7 +1,7 @@
-export type * from "./protocol/index.d.ts";
+export type * from "#protocol/index";
 export * from "./walker/index.js";
-export { readAst, AstView, NodeView, NodeKind, AstList } from "./protocol/index.d.ts";
-import type { AstView, AstNode, Program } from "./protocol/index.d.ts";
+export { readAst, AstView, NodeView, NodeKind, AstList } from "#protocol/index";
+import type { AstView, AstNode, Program } from "#protocol/index";
 
 import type {
   GeneratorConfig,

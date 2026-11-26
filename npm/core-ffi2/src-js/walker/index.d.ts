@@ -1,4 +1,4 @@
-import type { AstList, AstNode, AstView, NodeDescriptor, NodeView } from "../protocol/index.d.ts";
+import type { AstList, AstNode, AstView, NodeDescriptor, NodeView } from "#protocol/index";
 import type { NodeType } from "./visitor-keys.js";
 
 export { visitorKeys } from "./visitor-keys.js";
