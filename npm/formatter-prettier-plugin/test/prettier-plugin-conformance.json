@@ -2416,6 +2416,25 @@
         "prettierNative": "class Sample extends Parent /* eslint-disable-next-line no-undef */ {\n  first = visible();\n  other = visible();\n  second = hidden();\n  last = visible();\n}\n"
       }
     ],
+    "js/classes/member-terminators/ignored-field-before-quoted-method.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  // prettier-ignore\n  x = value\n  \"in\"() {}\n}\n",
+        "prettierNative": "class C {\n  // prettier-ignore\n  x = value\n  in() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C {\n  // prettier-ignore\n  x = value\n  \"in\"() {}\n}\n",
+        "prettierNative": "class C {\n  // prettier-ignore\n  x = value\n  in() {}\n}\n"
+      }
+    ],
     "js/classes/member-terminators/receiver-tail-source-gap.js": [
       {
         "options": {
@@ -35124,6 +35143,26 @@
         "prettierNative": "class A {\n  static readonly /* note  */ x = 1\n}\n"
       }
     ],
+    "ts/class-member-modifiers/semi-false/default-before-decorator.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C {\n  default;\n  @d b\n}\n",
+        "prettierNative": "class C {\n  default\n  @d b\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C {\n  default;\n  @d b\n}\n",
+        "prettierNative": "class C {\n  default\n  @d b\n}\n"
+      }
+    ],
     "ts/class-member-modifiers/semi-false/export-field.ts": [
       {
         "options": {
@@ -44947,6 +44986,17 @@
         "prettierNative": "namespace N {\n  // prettier-ignore\n  \"use strict\";\n}\n"
       }
     ],
+    "ts/statements/omitted-tails/abstract-before-new.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "type T = abstract;\nnew Foo()\n",
+        "prettierNative": "type T = abstract\nnew Foo()\n"
+      }
+    ],
     "ts/statements/omitted-tails/annotation-head/alias.ts": [
       {
         "options": {
@@ -45127,6 +45177,17 @@
         "prettierNative": "namespace Value {}\n/** @type {Function} */ consume(1)\n"
       }
     ],
+    "ts/statements/omitted-tails/default-before-quoted-member.mts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface I {\n  default;\n  class: string\n}\n",
+        "prettierNative": "interface I {\n  default\n  class: string\n}\n"
+      }
+    ],
     "ts/statements/omitted-tails/diagnostic-packet.ts": [
       {
         "options": {
@@ -45145,6 +45206,59 @@
         },
         "swcPlugin": "const before = 0\n/* ordinary */ // @ts-expect-error\n\nconst value: string = 1\n",
         "prettierNative": "const before = 0 /* ordinary */ // @ts-expect-error\nconst value: string = 1\n"
+      }
+    ],
+    "ts/statements/omitted-tails/global-before-block.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "global;\n{\n  f()\n}\n",
+        "prettierNative": "global\n{\n  f()\n}\n"
+      }
+    ],
+    "ts/statements/omitted-tails/import-equals-before-expression.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "import alias = require;\n({ value: 1 })\n",
+        "prettierNative": "import alias = require\n;({ value: 1 })\n"
+      }
+    ],
+    "ts/statements/omitted-tails/interface-diagnostic-separator.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "interface I {\n  a: 1 /* @ts-ignore */; b: 2; }\n",
+        "prettierNative": "interface I {\n  a: 1 /* @ts-ignore */;\n  b: 2;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface I {\n  a: 1 /* @ts-ignore */; b: 2 }\n",
+        "prettierNative": "interface I {\n  a: 1 /* @ts-ignore */\n  b: 2\n}\n"
+      }
+    ],
+    "ts/statements/omitted-tails/readonly-before-accessor.mts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "interface I {\n  readonly;\n  get b(): number\n}\n",
+        "prettierNative": "interface I {\n  readonly\n  get b(): number\n}\n"
       }
     ],
     "ts/statements/static-header/decorated-first/input.ts": [

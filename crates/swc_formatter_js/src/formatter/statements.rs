@@ -18,7 +18,7 @@ use self::tails::{
 use swc_next_ecma_ast::{
     Ast, BlockStatement, Comment, CommentKind, Decl, DeclData, Directive, EmptyStatement,
     ExportDefaultDeclarationKindData, Expr, ExprData, FunctionBody, GetSpan, Span, StaticBlock,
-    Stmt, StmtData, SubRange, TsModuleBlock,
+    Stmt, StmtData, SubRange, TsModuleBlock, TsModuleReferenceData, TsType, TsTypeNameData,
 };
 
 use super::Formatter;
@@ -400,21 +400,21 @@ impl StatementItem {
         }
     }
 
-    fn is_bare_let_expression(self, ast: &Ast<'_>) -> bool {
+    fn bare_identifier<'a>(self, ast: &Ast<'a>) -> Option<&'a str> {
         let Self::Statement(statement) = self else {
-            return false;
+            return None;
         };
         let StmtData::ExpressionStatement(statement) = ast.stmt_data(statement) else {
-            return false;
+            return None;
         };
         let mut expression = statement.expression(ast);
         loop {
             match ast.expr_data(expression) {
                 ExprData::ParenthesizedExpression(node) => expression = node.expression(ast),
                 ExprData::IdentifierReference(node) => {
-                    return ast.get_utf8(node.name(ast)) == "let";
+                    return Some(ast.get_utf8(node.name(ast)));
                 }
-                _ => return false,
+                _ => return None,
             }
         }
     }
@@ -442,7 +442,14 @@ impl StatementItem {
     }
 
     /// The terminal grammar of the selected raw statement or declaration.
-    fn raw_type_terminal(mut self, ast: &Ast<'_>) -> super::types::RawTypeTerminal {
+    fn raw_type_terminal(self, ast: &Ast<'_>) -> super::types::RawTypeTerminal {
+        self.tail_type(ast, false)
+            .map_or(super::types::RawTypeTerminal::Closed, |node| {
+                super::types::raw_type_terminal(node, ast)
+            })
+    }
+
+    fn tail_type(mut self, ast: &Ast<'_>, unwrap_pairs: bool) -> Option<TsType> {
         // Follow only the terminal body of the statement that was copied.
         while let Self::Statement(statement) = self {
             let next = match ast.stmt_data(statement) {
@@ -477,21 +484,24 @@ impl StatementItem {
                 _ => None,
             };
             if let Some(expression) = expression {
-                return super::expressions::raw_tail::raw_expression_terminal(expression, ast);
+                return super::expressions::raw_tail::expression_tail_type(
+                    expression,
+                    ast,
+                    unwrap_pairs,
+                );
             }
         }
-        let Some(declaration) = self.declaration(ast) else {
-            return super::types::RawTypeTerminal::Closed;
-        };
-        let annotation = match ast.decl_data(declaration) {
+        match ast.decl_data(self.declaration(ast)?) {
             DeclData::TsTypeAliasDeclaration(node) => Some(node.type_annotation(ast)),
             DeclData::VariableDeclaration(node) => {
-                let Some(last) = node.declarators(ast).last() else {
-                    return super::types::RawTypeTerminal::Closed;
-                };
+                let last = node.declarators(ast).last()?;
                 let declarator = ast.get_node_in_sub_range(last);
                 if let Some(initializer) = declarator.init(ast) {
-                    return super::expressions::raw_tail::raw_expression_terminal(initializer, ast);
+                    return super::expressions::raw_tail::expression_tail_type(
+                        initializer,
+                        ast,
+                        unwrap_pairs,
+                    );
                 }
                 declarator
                     .type_annotation(ast)
@@ -501,10 +511,7 @@ impl StatementItem {
                 .return_type(ast)
                 .map(|annotation| annotation.type_annotation(ast)),
             _ => None,
-        };
-        annotation.map_or(super::types::RawTypeTerminal::Closed, |node| {
-            super::types::raw_type_terminal(node, ast)
-        })
+        }
     }
 
     fn span(self, ast: &Ast<'_>) -> Span {
@@ -1002,11 +1009,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     && (following_syntax.is_some() && statement.has_open_type_tail(ast)
                         // A bare `let` can start a lexical declaration across a newline.
                         || matches!(following_syntax, Some(FollowingSyntax::Statement))
-                            && statement.is_bare_let_expression(ast))
-                    || pending.as_ref().is_some_and(|next| {
-                        matches!(next.item, StatementItem::Statement(node)
-                            if matches!(ast.stmt_data(node), StmtData::BlockStatement(_)))
-                    }) && statement.needs_terminator_before_block(ast))
+                            && statement.bare_identifier(ast) == Some("let"))
+                    || self.statement_boundary_needs_terminator(
+                        statement,
+                        pending.as_ref().map(|next| next.item),
+                    )?)
             {
                 StatementPunctuation::Canonical(Semicolons::Always)
             } else {
@@ -1591,6 +1598,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_trailing_comment_run(comments, None, None, writer)?;
         }
         Ok((end, following_gap))
+    }
+
+    fn statement_boundary_needs_terminator(
+        &self,
+        previous: StatementItem,
+        next: Option<StatementItem>,
+    ) -> Result<bool, FormatError> {
+        let ast = self.ast;
+        let Some(StatementItem::Statement(next)) = next else {
+            return Ok(false);
+        };
+        let next = ast.stmt_data(next);
+        if matches!(next, StmtData::BlockStatement(_)) {
+            return Ok(previous.needs_terminator_before_block(ast)
+                || ast.is_ts() && previous.bare_identifier(ast) == Some("global"));
+        }
+        let StmtData::ExpressionStatement(next) = next else {
+            return Ok(false);
+        };
+        if !ast.is_ts() {
+            return Ok(false);
+        }
+        let mut context =
+            ExpressionContext::at(ExpressionPosition::Statement(StringStatement::Bare));
+        let mut expression = next.expression(ast);
+        if let Some(declaration) = previous.declaration(ast)
+            && let DeclData::TsImportEqualsDeclaration(node) = ast.decl_data(declaration)
+            && let TsModuleReferenceData::TsTypeName(name) =
+                ast.ts_module_reference_data(node.module_reference(ast))
+            && let TsTypeNameData::IdentifierReference(name) = ast.ts_type_name_data(name)
+            && ast.get_utf8(name.name(ast)) == "require"
+        {
+            return self.expression_needs_asi_guard(expression, context);
+        }
+        loop {
+            let data = self.expression_data(expression);
+            if matches!(data, ExprData::NewExpression(_)) {
+                return Ok(previous
+                    .tail_type(ast, true)
+                    .is_some_and(|node| super::types::type_tail_is_bare_abstract(node, ast)));
+            }
+            let Some((child, child_context)) = self.expression_head_operand(data, context)? else {
+                return Ok(false);
+            };
+            expression = child;
+            context = child_context;
+        }
     }
 
     fn statement_starts_with_verbatim_angle(

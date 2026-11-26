@@ -28,7 +28,7 @@ use super::expressions::{
 use super::functions::bodyless::PreparedBodylessSignature;
 use super::functions::{MethodOwner, SignaturePreceding, SourceMethodHeader, SourceMethodPrefix};
 use super::heritage::{HeritageItem, HeritageLayout, HeritageOwners, HeritagePrefix};
-use super::member_separator::{MemberBody, MemberSeparator};
+use super::member_separator::{MemberBody, MemberSeparator, ts_member_modifier_needs_separator};
 use super::source::{is_source_horizontal_whitespace, is_source_whitespace};
 use super::statements::IncomingStatement;
 use super::suppression::{
@@ -1248,7 +1248,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             members.peek().copied(),
                             content.end,
                             mode,
-                            quoting,
+                            self.class_member_quoting_after(&current, node, quoting),
                         )
                     })
                     .transpose()?;
@@ -1592,13 +1592,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.source_bodyless_class_method(method, sibling, core_start, quoting)?
             }
             ClassElementData::PropertyDefinition(field) => {
-                match self.source_class_field(
-                    field,
-                    sibling,
-                    core_start,
-                    quoting,
-                    following.is_some(),
-                )? {
+                match self.source_class_field(field, sibling, core_start, quoting, following)? {
                     Some(field) => ClassMemberContent::Field(field),
                     None => ClassMemberContent::Verbatim,
                 }
@@ -1905,9 +1899,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         source_sibling: Option<DelimitedSuppression>,
         core_start: u32,
         quoting: PropertyKeyQuoting,
-        followed_by_member: bool,
+        following: Option<ClassElement>,
     ) -> Result<Option<SourceClassField<'ast>>, FormatError> {
         let ast = self.ast;
+        let followed_by_member = following.is_some();
         // TypeScript checks initialization of identifier fields and accessors, but
         // skips quoted declarations. Keep the original key kind in both directions.
         let quoting = if ast.lang().is_typescript()
@@ -2173,10 +2168,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             type_requires_terminator(annotation.type_annotation(ast), ast)
                         }) || !has_suffix
                             && computed.is_none()
-                            && MemberBody::Class.bare_name_requires_separator(
+                            && self.class_field_name_needs_separator(
                                 self.property_key_identifier(key, key_context, key_mode, quoting),
-                                followed_by_member,
-                                ast.lang().is_typescript(),
+                                following,
+                                quoting,
                             )),
                 ),
             }
@@ -2435,6 +2430,91 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             boundary,
             writer,
         )
+    }
+
+    fn class_field_name_needs_separator(
+        &self,
+        name: Option<&str>,
+        following: Option<ClassElement>,
+        quoting: PropertyKeyQuoting,
+    ) -> bool {
+        let ast = self.ast;
+        if MemberBody::Class.bare_name_requires_separator(name, following.is_some(), ast.is_ts()) {
+            return true;
+        }
+        if !ast.is_ts() || !matches!(name, Some("default" | "const")) {
+            return false;
+        }
+        let Some(following) = following else {
+            return false;
+        };
+        let decorated = self.member_decorators(following).is_some();
+        let next_name = self
+            .class_member_key(following)
+            .and_then(|(key, computed, context)| {
+                (!computed)
+                    .then(|| {
+                        self.property_key_identifier(key, context, ContentMode::Formatted, quoting)
+                    })
+                    .flatten()
+            });
+        ts_member_modifier_needs_separator(name, next_name, decorated)
+    }
+
+    fn class_member_quoting_after(
+        &self,
+        previous: &PreparedClassMember<'ast>,
+        next: ClassElement,
+        quoting: PropertyKeyQuoting,
+    ) -> PropertyKeyQuoting {
+        let ast = self.ast;
+        if quoting != PropertyKeyQuoting::AsNeeded
+            || !matches!(previous.content, ClassMemberContent::Verbatim)
+            || !matches!(ast.class_element_data(previous.node),
+                ClassElementData::PropertyDefinition(field) if field.value(ast).is_some())
+            || self.source(previous.span).ends_with(';')
+            || self.member_decorators(next).is_some()
+        {
+            return quoting;
+        }
+        if let Some((key, false, context)) = self.class_member_key(next)
+            && key.span(ast).start == next.span(ast).start
+            && let PropertyKeyData::Expr(expression) = ast.property_key_data(key)
+            && matches!(ast.expr_data(expression), ExprData::StringLiteral(_))
+            && matches!(
+                self.property_key_identifier(key, context, ContentMode::Formatted, quoting),
+                Some("in" | "instanceof")
+            )
+        {
+            // The quoted key is the grammar boundary for the ignored initializer.
+            return PropertyKeyQuoting::Preserve;
+        }
+        quoting
+    }
+
+    fn class_member_key(
+        &self,
+        member: ClassElement,
+    ) -> Option<(PropertyKey, bool, PropertyKeyContext)> {
+        let ast = self.ast;
+        match ast.class_element_data(member) {
+            ClassElementData::MethodDefinition(node) => Some((
+                node.key(ast),
+                node.computed(ast),
+                ClassMemberPrefixOwner::Method(node).key_context(ast),
+            )),
+            ClassElementData::TsMethodDefinition(node) => Some((
+                node.key(ast),
+                node.computed(ast),
+                ClassMemberPrefixOwner::Bodyless(node).key_context(ast),
+            )),
+            ClassElementData::PropertyDefinition(node) => Some((
+                node.key(ast),
+                node.computed(ast),
+                PropertyKeyContext::ClassField,
+            )),
+            _ => None,
+        }
     }
 
     fn class_member_needs_field_separator(&self, member: &PreparedClassMember<'ast>) -> bool {
