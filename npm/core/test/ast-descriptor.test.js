@@ -4,7 +4,7 @@ import { parseSync, generateSync, NodeKind } from "../dist/ffi2.js";
 
 function parse(source) {
   const ast = parseSync(source);
-  return { ast, declaration: ast.program.body.get(0).declarations.get(0) };
+  return { ast, declaration: ast.program.body.get(0).declarators.get(0) };
 }
 
 function code(ast) {

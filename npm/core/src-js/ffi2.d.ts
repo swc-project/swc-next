@@ -1,9 +1,7 @@
-import type { Program } from "@swc-next/types";
-export type * from "@swc-next/types";
+export type * from "@swc-next/ast2";
 export * from "@swc-next/walker2";
 export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast2";
-export type { AstComment, AstDiagnostic, AstNode, AstNodeInput } from "@swc-next/ast2";
-import type { AstView, AstNode } from "@swc-next/ast2";
+import type { AstView, AstNode, Program } from "@swc-next/ast2";
 
 import type {
   GeneratorConfig,

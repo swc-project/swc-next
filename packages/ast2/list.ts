@@ -1,78 +1,50 @@
 import type { AstView } from "./index.ts";
-import type { ListCursor, NodeDescriptor } from "./types.ts";
+import type { NodeDescriptor } from "./types.ts";
 import type { NodeView } from "./node.ts";
-import { NONE } from "./layout.ts";
+import { fieldNames } from "./protocol.ts";
 
 export type ListEntry = NodeView | null | undefined;
 
 
 /** A live AST field. The view retains positions, never copies of its elements. */
-export class AstList<T = ListEntry> implements ListCursor, Iterable<T> {
+export class AstList<T = ListEntry> implements Iterable<T> {
   // Keep the non-extensible receiver shape alive without retaining AST storage.
-  static #shape = new this(null!, 0, "");
+  static #shape = new this(null!, 0, 0);
   readonly ast: AstView;
   readonly owner: number;
-  readonly key: string;
-  readonly native: boolean;
-  prefix = -1;
-  suffix = -1;
-  owner0 = 0;
-  owner1 = 0;
-  start0 = 0;
-  end0 = 0;
-  start1 = 0;
-  end1 = 0;
-  version = -1;
-  private total = 0;
+  readonly field: number;
+  #start = 0;
+  #end = 0;
+  #version = -1;
 
-  constructor(ast: AstView, owner: number, key: string, native = false) {
-    this.ast = ast; this.owner = owner; this.key = key; this.native = native;
+  constructor(ast: AstView, owner: number, field: number) {
+    this.ast = ast; this.owner = owner; this.field = field;
     Object.preventExtensions(this);
   }
-  setRange(part: number, owner: number, start: number, end: number) {
-    if (part === 0) { this.owner0 = owner; this.start0 = start; this.end0 = end; }
-    else { this.owner1 = owner; this.start1 = start; this.end1 = end; }
-  }
+  get key(): string { return fieldNames[this.field]; }
   refresh() {
-    if (this.version !== this.ast._listVersion) { this.#refreshRange(); }
-  }
-  #refreshRange() {
-    this.prefix = this.suffix = -1;
-    this.start0 = this.end0 = this.start1 = this.end1 = 0;
-    if (this.native) {
-      const [start, end] = this.ast.range(this.owner, this.key);
-      this.setRange(0, this.owner, start, end);
-    } else if (!this.ast.readListCursor(this.owner, this.key, this)) { throw new TypeError("Field is not an AST list"); }
-    this.version = this.ast._listVersion;
-    this.total = this.end0 - this.start0 + this.end1 - this.start1 + Number(this.prefix !== -1) + Number(this.suffix !== -1);
+    if (this.#version !== this.ast._listVersion) {
+      [this.#start, this.#end] = this.ast._range(this.owner, this.field);
+      this.#version = this.ast._listVersion;
+    }
   }
   get length(): number {
     this.refresh();
-    return this.total;
+    return this.#end - this.#start;
   }
   nodeId(index: number): number {
     if (!Number.isInteger(index) || index < 0 || index >= this.length) { throw new RangeError("AST list index out of bounds"); }
     return this.#nodeId(index);
   }
   #nodeId(index: number): number {
-    if (this.prefix !== -1 || index >= this.end0 - this.start0) { return this.#projectedId(index); }
-    return this.ast.extraChild(this.owner0, this.start0 + index, true);
-  }
-  #projectedId(index: number): number {
-    if (this.prefix !== -1) { if (index === 0) { return this.prefix >>> 0; } index--; }
-    const first = this.end0 - this.start0;
-    if (index < first) { return this.ast.extraChild(this.owner0, this.start0 + index, true); }
-    index -= first;
-    if (index < this.end1 - this.start1) { return this.ast.extraChild(this.owner1, this.start1 + index, true); }
-    return this.suffix >>> 0;
+    return this.ast.extraChild(this.owner, this.#start + index, true);
   }
   get(index: number): T | undefined {
     if (!Number.isInteger(index) || index < 0 || index >= this.length) { return; }
     return this.#getAt(index);
   }
   #getAt(index: number): T {
-    const id = this.#nodeId(index);
-    return (id === NONE ? null : this.native ? this.ast.nativeNode(id) : this.ast._nodeAt(id)) as T;
+    return this.ast._nodeAt(this.#nodeId(index)) as T;
   }
   set(index: number, value: T | NodeDescriptor): void {
     if (!Number.isInteger(index) || index < 0 || index >= this.length) { throw new RangeError("AST list index out of bounds"); }
@@ -89,8 +61,7 @@ export class AstList<T = ListEntry> implements ListCursor, Iterable<T> {
     return result;
   }
   #write(input: ListInput<T>): void {
-    if (this.native) { this.ast.writeNativeField(this.owner, this.key, input); }
-    else { this.ast.setField(this.owner, this.key, input); }
+    this.ast.writeNativeField(this.owner, this.field, input);
   }
   push(...values: (T | NodeDescriptor)[]): number {
     if (values.length) { this.#write(new ListEdit(this, this.length, 0, values)); }
@@ -198,7 +169,7 @@ export function listAt<T>(values: ListInput<T> | null | undefined, index: number
 
 export function sameList(left: unknown, right: unknown): boolean {
   return left === right || left instanceof AstList && right instanceof AstList
-    && left.ast === right.ast && left.owner === right.owner && left.key === right.key && left.native === right.native;
+    && left.ast === right.ast && left.owner === right.owner && left.field === right.field;
 }
 function integer(value: number): number {
   const number = Number(value);

@@ -8,7 +8,7 @@ const walker = createWalker({
   MemberExpression(ctx) {
     const node = ctx.node;
     const object = node.object;
-    if (!node.computed && !node.optional && node.property.type === 'Identifier' && node.property.name === 'env'
+    if (!node.computed && !node.optional && node.property.type === 'IdentifierName' && node.property.name === 'env'
       && object.type === 'MetaProperty' && object.meta.name === 'import' && object.property.name === 'meta') {
       node.object = identifier('process', object);
     }

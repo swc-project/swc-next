@@ -23,7 +23,7 @@ test("visits schema children with state and parent context", () => {
   const state = { names: [] };
 
   expect(walk(program, {
-    Identifier(ctx) {
+    IdentifierReference(ctx) {
       ctx.state.names.push(ctx.node.name);
       expect(ctx.key).toBe("expression");
       expect(ctx.index).toBeNull();
@@ -32,31 +32,26 @@ test("visits schema children with state and parent context", () => {
         .toEqual(["Program", "ExpressionStatement"]);
       expect(ctx.nodeId).toBe(ctx.node.nodeId);
       expect(ctx.kind).toBe(NodeKind.IdentifierReference);
-      expect(ctx.type).toBe("Identifier");
+      expect(ctx.type).toBe("IdentifierReference");
       expect(ctx.ast).toBe(ast);
     },
   }, state)).toBe(program);
   expect(state.names).toEqual(["first", "second"]);
 });
 
-test("orders global, alias and concrete hooks", () => {
+test("orders global and native kind hooks", () => {
   const ast = parseSync("(function f() {})");
   const seen = [];
   walk(ast.program, {
-    enter(ctx) { if (ctx.type === "FunctionExpression") seen.push("global enter"); },
+    enter(ctx) { if (ctx.type === "Function") seen.push("global enter"); },
     Function: {
-      enter() { seen.push("alias enter"); },
-      leave() { seen.push("alias leave"); },
-    },
-    FunctionExpression: {
       enter() { seen.push("typed enter"); },
       leave() { seen.push("typed leave"); },
     },
-    leave(ctx) { if (ctx.type === "FunctionExpression") seen.push("global leave"); },
+    leave(ctx) { if (ctx.type === "Function") seen.push("global leave"); },
   });
   expect(seen).toEqual([
-    "global enter", "alias enter", "typed enter",
-    "typed leave", "alias leave", "global leave",
+    "global enter", "typed enter", "typed leave", "global leave",
   ]);
 });
 
@@ -65,11 +60,11 @@ test("replacement visits new children and selects leave hooks for the new type",
   const program = ast.program;
   const seen = [];
   walk(program, {
-    Identifier(ctx) {
+    IdentifierReference(ctx) {
       seen.push(ctx.node.name);
       if (ctx.node.name === "before") {
         const replacement = ast.new_node(NodeKind.UnaryExpression);
-        replacement.operator = "!";
+        replacement.operator = "LogicalNot";
         replacement.argument = identifier(ast, "after");
         ctx.replace(replacement);
       }
@@ -83,11 +78,11 @@ test("replacement visits new children and selects leave hooks for the new type",
 
   seen.length = 0;
   walk(program, {
-    Identifier(ctx) { seen.push(ctx.node.name); },
+    IdentifierReference(ctx) { seen.push(ctx.node.name); },
     UnaryExpression: { leave(ctx) { ctx.replace(identifier(ast, "final")); } },
   });
   expect(seen).toEqual(["after"]);
-  expect(program.body.get(0).expression.type).toBe("Identifier");
+  expect(program.body.get(0).expression.type).toBe("IdentifierReference");
   expect(program.body.get(0).expression.name).toBe("final");
 });
 
@@ -103,7 +98,7 @@ test("skip retains leave while remove skips children and leave", () => {
       },
       leave(ctx) { seen.push(`leave ${ctx.node.expression.name}`); },
     },
-    Identifier(ctx) { seen.push(ctx.node.name); },
+    IdentifierReference(ctx) { seen.push(ctx.node.name); },
   });
   expect(seen).toEqual(["leave skip", "keep", "leave keep"]);
   expect(statementNames(program)).toEqual(["skip", "keep"]);
@@ -121,7 +116,7 @@ test("insertions preserve order and visit only nodes inserted after the current 
       ctx.insertAfter(statement(ast, "after1"));
       ctx.insertAfter(statement(ast, "after2"));
     },
-    Identifier(ctx) { seen.push(ctx.node.name); },
+    IdentifierReference(ctx) { seen.push(ctx.node.name); },
   });
   expect(statementNames(program))
     .toEqual(["before1", "before2", "current", "after1", "after2", "tail"]);
@@ -161,7 +156,7 @@ test("context insertions accept kind descriptors", () => {
 test("context edits reject plain ESTree objects", () => {
   const ast = parseSync("original;");
   expect(() => walk(ast.program, {
-    Identifier(ctx) { ctx.replace({ type: "Identifier", name: "bad" }); },
+    IdentifierReference(ctx) { ctx.replace({ type: "IdentifierReference", name: "bad" }); },
   })).toThrow(/Expected a node view or a node descriptor/);
 });
 
@@ -170,7 +165,7 @@ test("stop retains edits and suppresses siblings and pending leave hooks", () =>
   const program = ast.program;
   const leaves = [];
   walk(program, {
-    Identifier(ctx) {
+    IdentifierReference(ctx) {
       ctx.node.name = "changed";
       ctx.stop();
     },
@@ -186,12 +181,12 @@ test("contexts are reused, nested walks are isolated and saved contexts expire",
   const contexts = [];
   const ancestors = [];
   walk(program, {
-    Identifier(ctx) {
+    IdentifierReference(ctx) {
       const node = ctx.node;
       contexts.push(ctx);
       ancestors.push(ctx.ancestors().map((ancestor) => ancestor.type));
       walk(parseSync("nested;").program, {
-        Identifier(nested) {
+        IdentifierReference(nested) {
           expect(nested).not.toBe(ctx);
           expect(ctx.node).toBe(node);
         },
@@ -223,26 +218,26 @@ test("rejects invalid callbacks, roots and structural edits", () => {
   expect(() => walk(parseSync("").program, { Program: async () => {} })).toThrow(/synchronous/);
   expect(() => walk(parseSync("").program, { Program: () => false })).toThrow(/return undefined/);
   expect(() => walk(parseSync("").program, { Program(ctx) { ctx.remove(); } })).toThrow(/root/);
-  expect(() => walk(parseSync("a;").program, { Identifier(ctx) { ctx.remove(); } }))
+  expect(() => walk(parseSync("a;").program, { IdentifierReference(ctx) { ctx.remove(); } }))
     .toThrow(/array element/);
   expect(() => walk(parseSync("").program, { leave(ctx) { ctx.skip(); } })).toThrow(/enter/);
 
   const ast = parseSync("a;");
   expect(() => walk(ast.program, {
-    Identifier(ctx) {
+    IdentifierReference(ctx) {
       ctx.parent.expression = identifier(ast, "changed");
       ctx.replace(identifier(ast, "bad"));
     },
   })).toThrow(/container/);
 });
-test("delegated parameter lists keep the visible wrapper as parent", () => {
+test("parameter patterns keep their native owner as parent", () => {
   const ast = parseSync("function f([a, b]) {}", { lang: "ts" });
-  const param = ast.program.body.get(0).params.get(0);
+  const pattern = ast.program.body.get(0).params.items.get(0).pattern;
   const seen = [];
   walk(ast.program, {
-    Identifier(ctx) {
+    BindingIdentifier(ctx) {
       if (ctx.node.name === "a") seen.push([ctx.parentId, ctx.parent.type, ctx.key, ctx.index]);
     },
   });
-  expect(seen).toEqual([[param.nodeId, "ArrayPattern", "elements", 0]]);
+  expect(seen).toEqual([[pattern.nodeId, "ArrayPattern", "elements", 0]]);
 });

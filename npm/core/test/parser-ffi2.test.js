@@ -19,9 +19,9 @@ test("parser options use strings without enum value exports", () => {
     comments: "none",
   });
   assert.ok(result instanceof AstView);
-  assert.equal(result.program.sourceType, "script");
+  assert.equal(result.meta.sourceType, "script");
   assert.deepEqual(result.comments, []);
-  assert.equal(result.program.body.get(0).declarations.get(0).id.typeAnnotation.type, "TSTypeAnnotation");
+  assert.equal(result.program.body.get(0).declarators.get(0).id.typeAnnotation.type, "TsTypeAnnotation");
 });
 
 test("decoder preserves nested types through the lazy program getter", () => {
@@ -31,10 +31,10 @@ test("decoder preserves nested types through the lazy program getter", () => {
   const program = result.program;
   let type = program.body.get(0).typeAnnotation;
   for (let index = 0; index < depth; index++) {
-    assert.equal(type.type, "TSArrayType");
+    assert.equal(type.type, "TsArrayType");
     type = type.elementType;
   }
-  assert.equal(type.type, "TSStringKeyword");
+  assert.equal(type.type, "TsStringKeyword");
   assert.ok(AstView.isSame(result.program, program));
 
   const tsx = parseSync(source, { lang: "tsx" });
@@ -62,13 +62,13 @@ test("parseSync normalizes source-backed lone surrogates", () => {
     assert.equal(comments[0].value, " 😀 ");
     assert.equal(comments[1].value, " \ufffd");
 
-    const lone = parseSync('"\ud800";', { lang }).program.body.get(0);
+    const lone = parseSync('"\ud800";', { lang }).program.directives.get(0);
     assert.equal(lone.expression.value, "\ufffd");
-    assert.equal(lone.directive, "\ufffd");
+    assert.equal(lone.value, "\ufffd");
 
     const loneTemplate = parseSync("tag`\ud800`;", { lang }).program.body.get(0);
-    assert.equal(loneTemplate.expression.quasi.quasis.get(0).value.raw, "\ufffd");
-    assert.equal(loneTemplate.expression.quasi.quasis.get(0).value.cooked, "\ufffd");
+    assert.equal(loneTemplate.expression.quasi.quasis.get(0).raw, "\ufffd");
+    assert.equal(loneTemplate.expression.quasi.quasis.get(0).cooked, "\ufffd");
   }
 });
 
@@ -81,7 +81,7 @@ test("parseSync preserves lazy source data across buffer reuse", () => {
       parse(" ".repeat(256), { lang });
       transformSync(" ".repeat(512));
 
-      const declaration = result.program.body.get(0).declarations.get(0);
+      const declaration = result.program.body.get(0).declarators.get(0);
       assert.equal(declaration.id.name, "名字");
       assert.equal(declaration.init.value, "🌍");
       assert.equal(declaration.init.raw, '"🌍"');
@@ -93,9 +93,8 @@ test("parseSync preserves lazy source data across buffer reuse", () => {
 test("parseSync normalizes lone surrogates in RegExp source", () => {
   for (const lang of ["js", "ts"]) {
     const regexp = parseSync("/\ud800/gi;", { lang }).program.body.get(0).expression;
-    assert.equal(regexp.raw, "/\ufffd/gi");
-    assert.equal(regexp.regex.pattern, "\ufffd");
-    assert.equal(regexp.regex.flags, "gi");
+    assert.equal(regexp.pattern, "\ufffd");
+    assert.equal(regexp.flags, "gi");
   }
 });
 
@@ -345,15 +344,15 @@ test("parseSync preserves source encoding at the API boundary", () => {
   const standalone = parseStandalone(source);
   assert.equal(typeof Object.getOwnPropertyDescriptor(AstView.prototype, "program").get, "function");
   assert.equal(result.program.end, source.length);
-  assert.equal(result.program.body.get(0).declarations.get(0).init.value, "한글😀");
+  assert.equal(result.program.body.get(0).declarators.get(0).init.value, "한글😀");
   assert.deepEqual(standalone.materialize(), result.materialize());
 
   const high = parseSync('"\ud800";');
-  assert.equal(high.program.body.get(0).expression.value, "\ufffd");
+  assert.equal(high.program.directives.get(0).expression.value, "\ufffd");
   assert.equal(high.program.end, 4);
 
   const low = parseSync('"\udc00";');
-  assert.equal(low.program.body.get(0).expression.value, "\ufffd");
+  assert.equal(low.program.directives.get(0).expression.value, "\ufffd");
   assert.equal(low.program.end, 4);
 
   assert.throws(() => parseSync(undefined), TypeError);

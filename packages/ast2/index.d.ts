@@ -1,15 +1,11 @@
-import type {
-  FormalParameters,
-  Lang,
-  Node,
-  Program,
-  SourceType,
-} from "@swc-next/types";
+import type { Lang, SourceType } from "@swc-next/types";
+import type { Node, Program } from "./native-types.d.ts";
 import type { NodeKind as NativeNodeKind } from "./node-kinds.d.ts";
 
 export declare const NodeKind: typeof NativeNodeKind;
 
-export type * from "@swc-next/types";
+export type * from "./native-types.d.ts";
+export type { Lang, SourceType } from "@swc-next/types";
 
 export type AstValue<T> = T extends readonly (infer Element)[] ? AstList<AstValue<Element>>
   : T extends Node ? AstNode<T> : T;
@@ -78,7 +74,10 @@ export declare class NodeView<T extends Node = Node> {
   isSame(other: unknown): boolean;
   readonly ast: AstView;
   readonly nodeId: number;
-  /** Read a native field without ESTree projection. */
+  readonly type: T["type"];
+  start: number;
+  end: number;
+  /** Read a native field by name. */
   get(field: string): unknown;
   /** Write a native field in the current buffer. */
   set(field: string, value: unknown): void;
@@ -146,22 +145,22 @@ export declare class AstView {
   /**
    * Deep-clone a native node from any AST view into this AST. Spans are copied
    * only when both views share the same source text; otherwise cloned nodes
-   * start at offset 0. AST metadata such as `Program.sourceType` stays with the
+   * start at offset 0. AST metadata such as the source type stays with the
    * destination.
    */
   clone<T extends Node>(node: AstNode<T>): AstNode<T>;
-  readonly root: AstNode | AstList<AstNode<FormalParameters[number]>>;
+  readonly root: AstNode;
   /** Throws if the serialized root is a subtree instead of a program. */
   readonly program: AstNode<Program>;
   readonly comments: AstComment[];
   readonly diagnostics: readonly AstDiagnostic[];
-  node(id: number): AstNode | AstList<AstNode<FormalParameters[number]>> | null;
+  node(id: number): AstNode | null;
   kind(id: number): (typeof NodeKind)[keyof typeof NodeKind];
   byteStart(id: number): number;
   byteEnd(id: number): number;
   /** Query the Rust-built non-ASCII source position index. */
   utf16Offset(byteOffset: number): number;
-  /** Convert a modified ESTree position into a UTF-8 offset in the original source. */
+  /** Convert a modified UTF-16 position into a UTF-8 offset in the original source. */
   utf8Offset(utf16Offset: number): number;
   /** Original source bytes for a node, sharing the AST buffer. */
   textBytes(id: number): Uint8Array;

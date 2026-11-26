@@ -1,5 +1,5 @@
 import type { AstView } from "./index.ts";
-import { layouts, NodeKind } from "./schema.ts";
+import { fieldDescriptors, layouts } from "./schema.ts";
 import { NodeView } from "./node.ts";
 import { fieldLocation, newNodeRaw } from "./storage.ts";
 import { writeNativeFieldAt, writeNodeIdAt, writeReferencesAt } from "./writer.ts";
@@ -8,11 +8,11 @@ import { NONE } from "./layout.ts";
 /**
  * Deep-clone a native node from `source` into `dest`.
  *
- * Fields are read through the native layout, so projected wrappers, enums and
+ * Fields are read through the native layout, so nodes, enums and
  * source-backed strings are copied without materializing the source subtree.
  * Spans are copied only when both views share the same source text; otherwise
  * cloned nodes start at offset 0 so they never point at unrelated text. AST
- * metadata such as `Program.sourceType` belongs to the destination and is not
+ * metadata such as the source type belongs to the destination and is not
  * copied.
  */
 export function cloneNode(dest: AstView, source: NodeView): NodeView {
@@ -21,9 +21,9 @@ export function cloneNode(dest: AstView, source: NodeView): NodeView {
   // A clone is one logical edit; invalidate caches once instead of per field.
   dest._editVersion++;
   dest._listVersion++;
-  return dest.nativeNode(
+  return dest.node(
     cloneNodeAt(dest, sourceAst, source.nodeId, sourceAst.kind(source.nodeId), preserveSpans),
-  );
+  )!;
 }
 
 function cloneNodeAt(dest: AstView, sourceAst: AstView, sourceId: number, kind: number,
@@ -35,10 +35,8 @@ function cloneNodeAt(dest: AstView, sourceAst: AstView, sourceId: number, kind: 
     preserveSpans ? sourceAst.byteEnd(sourceId) : 0,
     false,
   );
-  const fields = layouts[kind].fields;
-  for (const key in fields) {
-    if (!Object.hasOwn(fields, key)) { continue; }
-    const descriptor = fields[key], type = descriptor[2];
+  for (const [field, descriptorId] of layouts[kind].fields) {
+    const descriptor = fieldDescriptors[descriptorId]!, type = descriptor[2];
     if (type === "node") {
       const { view, offset } = fieldLocation(sourceAst, sourceId, descriptor, kind);
       const childId = sourceAst.childAt(sourceId, offset, descriptor[3], view);
@@ -56,14 +54,9 @@ function cloneNodeAt(dest: AstView, sourceAst: AstView, sourceId: number, kind: 
           ? NONE : cloneNodeAt(dest, sourceAst, childId, sourceAst._kindAt(childId), preserveSpans);
       }
       writeReferencesAt(dest, targetId, kind, descriptor, ids);
-    } else if (kind === NodeKind.TemplateElement && key === "raw") {
-      // Parser-backed TypeScript template raw is projected from the source
-      // rather than stored, so copy the projected value into the new node.
-      const value = (sourceAst.getField(sourceId, "value", kind) as unknown as { raw: string }).raw;
-      writeNativeFieldAt(dest, targetId, kind, key, descriptor, value, false);
     } else {
-      const value = sourceAst._valueAt(sourceId, key, descriptor, kind);
-      writeNativeFieldAt(dest, targetId, kind, key, descriptor, value, false);
+      const value = sourceAst._valueAt(sourceId, field, descriptor, kind);
+      writeNativeFieldAt(dest, targetId, kind, field, descriptor, value, false);
     }
   }
   return targetId;

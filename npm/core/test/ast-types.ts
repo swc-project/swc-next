@@ -1,11 +1,11 @@
 import type {
   Node,
   Program,
-  Expression,
-  FormalParameters,
-  Identifier,
+  Expr,
+  FormalParameterItem,
+  IdentifierReference,
   ExpressionStatement,
-} from "@swc-next/types";
+} from "@swc-next/ast2";
 import {
   parseSync,
   parseBufferSync,
@@ -21,19 +21,19 @@ const ast = parseSync("function f(value: string) { return value; }", {
 const program: AstNode<Program> = ast.program;
 const body: AstList<AstNode<Program["body"][number]>> = program.body;
 const node: AstNode = body.get(0)!;
-if (node.type === "FunctionDeclaration") {
-  const params: AstList<AstNode<FormalParameters[number]>> = node.params;
+if (node.type === "Function") {
+  const params: AstList<AstNode<FormalParameterItem>> = node.params.items;
   params.map((parameter) => parameter.type);
   if (node.id) { node.id.name = "renamed"; }
 }
 walk(program, {
-  Identifier(context) {
+  IdentifierReference(context) {
     const name: string = context.node.name;
     void name;
   },
 });
 walk(program, {
-  Identifier(context) {
+  IdentifierReference(context) {
     context.replace({ kind: NodeKind.IdentifierReference, name: "renamed" });
     context.insertBefore({ kind: NodeKind.EmptyStatement });
     context.insertAfter([{ kind: NodeKind.EmptyStatement }]);
@@ -48,9 +48,9 @@ const editable: Program = ast.materialize(program);
 editable.body.push(ast.materialize(program.body.get(0)!));
 const buffer: Uint8Array = parseBufferSync("value;");
 const opened: AstNode<Program> = readAst(buffer).program;
-const identifier = ast.new_node<Identifier>(NodeKind.IdentifierReference);
+const identifier = ast.new_node<IdentifierReference>(NodeKind.IdentifierReference);
 identifier.name = "created";
-const created: AstNode<Identifier> = identifier;
+const created: AstNode<IdentifierReference> = identifier;
 const statement = ast.new_node<ExpressionStatement>(NodeKind.ExpressionStatement);
 statement.expression = identifier;
 // @ts-expect-error List mutations only accept buffer nodes.
@@ -61,7 +61,7 @@ const count: number = ast.totalNodeCount;
 void [created, removed, editBuffer, count];
 const firstStatement = opened.body.get(0)!;
 if (firstStatement.type === "ExpressionStatement") {
-  const expression: AstNode<Expression> = firstStatement.expression;
+  const expression: AstNode<Expr> = firstStatement.expression;
   void expression;
 }
 

@@ -32,7 +32,7 @@ function identifier(ast, name, kind = NodeKind.IdentifierReference) {
   return node;
 }
 function literal(ast, value) {
-  const node = ast.new_node(NodeKind.NullLiteral);
+  const node = ast.new_node(typeof value === "number" ? NodeKind.NumericLiteral : NodeKind.StringLiteral);
   node.value = value;
   return node;
 }
@@ -65,23 +65,22 @@ function viewedNodes(ast, node = ast.program) {
   return nodes;
 }
 
-test("projected string fields write and read the same storage", () => {
+test("native string fields write and read the same storage", () => {
   const directiveAst = parseSync('"use strict";');
-  const directive = directiveAst.program.body.get(0);
-  directive.directive = "use asm";
-  assert.equal(directive.directive, "use asm");
+  const directive = directiveAst.program.directives.get(0);
+  directive.value = "use asm";
+  assert.equal(directive.value, "use asm");
   assert.equal(directive.get("value"), "use asm");
-  assert.equal(directiveAst.materialize().body[0].directive, "use asm");
+  assert.equal(directiveAst.materialize().directives[0].value, "use asm");
 
   const textAst = parseSync("<div>hello</div>;", jsx);
   const text = textAst.program.body.get(0).expression.children.get(0);
   text.value = "world";
   assert.equal(text.value, "world");
-  assert.equal(text.raw, "world");
   assert.equal(textAst.cloneNode(text).value, "world");
   expectCode(generateSync(textAst.program).code, "<div>world</div>;", jsx);
 
-  text.raw = "again";
+  text.value = "again";
   assert.equal(text.value, "again");
   assert.equal(textAst.materialize().body[0].expression.children[0].value, "again");
 
@@ -92,39 +91,41 @@ test("projected string fields write and read the same storage", () => {
   expectCode(generateBuffersSync(...surrogates.encode()).code, '["\\uD800", "\\uDC00"];');
 });
 
-test("projected spans and parameter lists preserve native ownership", () => {
+test("native spans and parameter lists retain their owning nodes", () => {
   const programAst = parseSync("  value;", typescript);
+  const statementStart = programAst.program.body.get(0).start;
   programAst.program.start = 1;
   assert.equal(programAst.program.start, 1);
-  assert.equal(programAst.program.body.get(0).start, 1);
+  assert.equal(programAst.program.body.get(0).start, statementStart);
 
   const decoratedAst = parseSync("@dec class C {}", typescript);
   decoratedAst.program.start = 1;
   assert.equal(decoratedAst.program.start, 1);
 
   const parameterAst = parseSync("function f(value: string) {}", typescript);
-  const fn = parameterAst.program.body.get(0), parameter = fn.params.get(0);
-  assert.equal(fn.params.nodeId(0), parameter.nodeId);
+  const fn = parameterAst.program.body.get(0), parameter = fn.params.items.get(0);
+  assert.equal(fn.params.items.nodeId(0), parameter.nodeId);
   const end = parameter.end - 1;
   parameter.end = end;
   assert.equal(parameter.end, end);
   assert.equal(fn.get("params").get("items").get(0).end, end);
 
   const annotationAst = parseSync("let value: string;", typescript);
-  const binding = annotationAst.program.body.get(0).declarations.get(0).id;
-  const annotationEnd = binding.end - 1;
-  binding.end = annotationEnd;
-  assert.equal(binding.end, annotationEnd);
+  const binding = annotationAst.program.body.get(0).declarators.get(0).id;
+  const annotationEnd = binding.typeAnnotation.end;
+  const bindingEnd = binding.end - 1;
+  binding.end = bindingEnd;
+  assert.equal(binding.end, bindingEnd);
   assert.equal(binding.typeAnnotation.end, annotationEnd);
 
   const decoratorAst = parseSync("class C { method(@dec value: string) {} }", typescript);
-  const pattern = decoratorAst.program.body.get(0).body.body.get(0).value.params.get(0);
+  const pattern = decoratorAst.program.body.get(0).body.body.get(0).value.params.items.get(0);
   const decorator = pattern.decorators.get(0);
   pattern.decorators = [];
   assert.equal(pattern.decorators.length, 0);
   pattern.decorators.push(decorator);
   assert.ok(pattern.decorators.get(0).isSame(decorator));
-  assert.equal(decoratorAst.materialize().body[0].body.body[0].value.params[0].decorators.length, 1);
+  assert.equal(decoratorAst.materialize().body[0].body.body[0].value.params.items[0].decorators.length, 1);
 });
 
 test("list growth reuses capacity and updates live references", () => {
@@ -165,8 +166,7 @@ test("metadata overrides remain the default for later encoding", () => {
   const flags = first[0].slice(-4);
   ast.encode();
   assert.deepEqual(first[0].slice(-4), flags);
-  assert.equal(ast.program.sourceType, "script");
-  assert.equal(ast.meta.sourceType, "module");
+  assert.equal(ast.meta.sourceType, "script");
   expectCode(generateBuffersSync(ast.buffer, ast.editBuffer).code, "value;");
 });
 
@@ -196,7 +196,7 @@ test("setters update original fields without appending node rows", () => {
   const result = transform(
     "let x = 1; function keep() { return longCall(a, b, c); }",
     (program, ast) => {
-      program.body.get(0).declarations.get(0).id.name = "renamed";
+      program.body.get(0).declarators.get(0).id.name = "renamed";
     },
   );
   expectCode(
@@ -210,7 +210,7 @@ test("setters update original fields without appending node rows", () => {
 
 test("original scalar and list storage updates without appended data", () => {
   const scalar = parseSync("const value = 1;");
-  const number = scalar.program.body.get(0).declarations.get(0).init;
+  const number = scalar.program.body.get(0).declarators.get(0).init;
   const bytes = scalar.buffer, count = scalar.totalNodeCount;
   const payload = arrayLayout(bytes).payloads + number.nodeId * 16;
   number.value = 2;
@@ -263,7 +263,7 @@ test("node references clone foreign buffers and reject ordinary objects", () => 
   const foreign = parseSync("other;");
   const statement = ast.program.body.get(0);
   const before = ast.buffer.slice();
-  assert.throws(() => { statement.expression = { type: "Identifier", name: "plain" }; }, TypeError);
+  assert.throws(() => { statement.expression = { type: "IdentifierReference", name: "plain" }; }, TypeError);
   assert.throws(() => { ast.program.body.push({ type: "EmptyStatement" }); }, TypeError);
   assert.deepEqual(ast.buffer, before);
   expectCode(generateSync(ast.program).code, "original;");
@@ -384,16 +384,19 @@ test("native construction preserves parameter containers and live native ranges"
   fn.set("functionType", "FunctionDeclaration");
   fn.set("id", identifier(ast, "created", NodeKind.BindingIdentifier));
   fn.set("body", ast.new_node(NodeKind.FunctionBody));
-  fn.params.push(identifier(ast, "value", NodeKind.BindingIdentifier));
+  const parameter = ast.new_node(NodeKind.FormalParameter);
+  parameter.pattern = identifier(ast, "value", NodeKind.BindingIdentifier);
+  fn.params = ast.new_node(NodeKind.FormalParameters);
+  fn.params.items.push(parameter);
   ast.program.body.push(fn);
-  assert.equal(fn.params.length, 1);
-  assert.equal(fn.get("params").get("kind"), "formal");
+  assert.equal(fn.params.items.length, 1);
+  assert.equal(fn.get("params").get("kind"), "FormalParameters");
   expectCode(generateBuffersSync(ast.buffer, ast.editBuffer).code, "function created(value) {}");
 
   const typed = parseSync("function f(value: string) {}", typescript);
   const functionNode = typed.program.body.get(0);
-  const value = functionNode.params.get(0);
-  functionNode.params.replace([value]);
+  const value = functionNode.params.items.get(0);
+  functionNode.params.items.replace([value]);
   expectCode(generateBuffersSync(typed.buffer, typed.editBuffer ?? new Uint8Array()).code, "function f(value: string) {}", typescript);
 
   const array = ast.new_node(NodeKind.ArrayExpression);
@@ -426,91 +429,73 @@ test("type parameter lists use their native ranges", () => {
 
 test("literal changes update raw hints and support Unicode and lone surrogates", () => {
   const string = transform('const value = "old";', (program, ast) => {
-    program.body.get(0).declarations.get(0).init.value = "你好\ud800";
+    program.body.get(0).declarators.get(0).init.value = "你好\ud800";
   });
   expectCode(string.code, 'const value = "你好\\ud800";');
 
   const number = transform("const value = 0x1;", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.value = 42;
+    program.body.get(0).declarators.get(0).init.value = 42;
   });
   expectCode(number.code, "const value = 42;");
 
   const bigint = transform("const value = 1n;", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.value = 7n;
+    program.body.get(0).declarators.get(0).init.raw = "7";
   });
   expectCode(bigint.code, "const value = 7n;");
 
   const different = transform("const value = /a/g;", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.value = "text";
+    program.body.get(0).declarators.get(0).init = literal(ast, "text");
   });
   expectCode(different.code, 'const value = "text";');
 });
 
 test("new nodes and growth remain confined to the extension buffer", () => {
   const result = transform("const values = [];", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.elements = Array.from(
+    program.body.get(0).declarators.get(0).init.elements = Array.from(
       { length: 700 },
       (_, i) => literal(ast, `${i}:${"x".repeat(20)}中`),
     );
   });
-  const value = parseSync(result.code).program.body.get(0).declarations.get(0).init;
+  const value = parseSync(result.code).program.body.get(0).declarators.get(0).init;
   assert.equal(value.elements.length, 700);
   assert.equal(value.elements.get(699).value, `699:${"x".repeat(20)}中`);
   assert.ok(result.extension.length > result.ast.buffer.length);
 });
 
-test("projected object fields and list elisions update storage immediately", () => {
+test("template and RegExp fields and list elisions update storage immediately", () => {
   const template = transform("const value = `old`;", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.quasis.get(0).value.raw = "new";
-    program.body.get(0).declarations.get(0).init.quasis.get(0).value.cooked = "new";
+    program.body.get(0).declarators.get(0).init.quasis.get(0).raw = "new";
+    program.body.get(0).declarators.get(0).init.quasis.get(0).cooked = "new";
   });
   expectCode(template.code, "const value = `new`;");
 
   const regex = transform("const value = /old/g;", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.regex.pattern = "new";
+    program.body.get(0).declarators.get(0).init.pattern = "new";
   });
   expectCode(regex.code, "const value = /new/g;");
 
   const hole = transform("const value = [1, 2];", (program, ast) => {
-    program.body.get(0).declarations.get(0).init.elements.set(0, null);
+    program.body.get(0).declarators.get(0).init.elements.set(0, null);
   });
   expectCode(hole.code, "const value = [, 2];");
 });
 
-test("template raw reads source spelling for TypeScript and normalized text for JavaScript", () => {
+test("template raw uses native storage in JavaScript and TypeScript", () => {
   const source = "const value = `a\rb\r\nc`;";
-  const ts = parseSync(source, typescript).program.body.get(0).declarations.get(0).init.quasis.get(0);
-  assert.equal(ts.value.raw, "a\rb\r\nc");
-
-  const js = parseSync(source).program.body.get(0).declarations.get(0).init.quasis.get(0);
-  assert.equal(js.value.raw, "a\nb\nc");
-
-  assert.throws(() => { ts.value.raw = "x\ry"; }, TypeError);
-
-  const tsAst = parseSync("`old`;", typescript);
-  const synthetic = tsAst.new_node(NodeKind.TemplateElement);
-  synthetic.value.raw = "x\ry";
-  assert.equal(synthetic.value.raw, "x\ry");
-});
-
-test("optional pattern end projection includes the marker", () => {
-  const left = parseSync("function f(x? = 0) {}", typescript).program.body.get(0).params.get(0).left;
-  assert.equal(left.end, 13);
-  assert.throws(() => { left.end = 12; }, RangeError);
-  left.end = 14;
-  assert.equal(left.end, 14);
-  assert.throws(() => { left.end = 12; }, RangeError);
-
-  const spaced = parseSync("function f(x ? = 0) {}", typescript).program.body.get(0).params.get(0).left;
-  assert.equal(spaced.end, 14);
+  for (const options of [{}, typescript]) {
+    const quasi = parseSync(source, options).program.body.get(0).declarators.get(0).init.quasis.get(0);
+    assert.equal(quasi.raw, "a\nb\nc");
+    quasi.raw = "new";
+    assert.equal(quasi.get("raw"), "new");
+  }
 });
 
 test("TypeScript parameter wrappers and annotations survive incremental edits", () => {
   const annotation = transform(
     'const x: string = "value";',
     (program, ast) => {
-      program.body.get(0).declarations.get(0).id.typeAnnotation.typeAnnotation.type =
-        "TSNumberKeyword";
+      program.body.get(0).declarators.get(0).id.typeAnnotation.typeAnnotation.type =
+        "TsNumberKeyword";
     },
     typescript,
   );
@@ -526,7 +511,7 @@ test("TypeScript parameter wrappers and annotations survive incremental edits", 
       const item = ast.new_node(NodeKind.FormalParameter);
       item.set("pattern", name);
       name.set("typeAnnotation", annotation);
-      program.body.get(0).params.push(item);
+      program.body.get(0).params.items.push(item);
     },
     typescript,
   );
@@ -539,7 +524,7 @@ test("TypeScript parameter wrappers and annotations survive incremental edits", 
   const thisParam = transform(
     "function f(this: C, x: number) {}",
     (program, ast) => {
-      program.body.get(0).params.get(0).typeAnnotation.typeAnnotation.type = "TSStringKeyword";
+      program.body.get(0).thisParam.typeAnnotation.typeAnnotation.type = "TsStringKeyword";
     },
     typescript,
   );
@@ -566,12 +551,14 @@ test("walker replacements and JSX attribute mutations use both buffers", () => {
     '<A data-testid="x" title="before" />;',
     (program, ast) => {
       walk(program, {
-        JSXOpeningElement(context) {
+        JsxOpeningElement(context) {
           const node = context.node;
           node.attributes = node.attributes.filter(
             (attr) => attr.name.name !== "data-testid",
           );
-          node.attributes.get(0).value.value = "after";
+          const value = node.attributes.get(0).value;
+          value.value = "after";
+          value.raw = '"after"';
         },
       });
     },
@@ -582,22 +569,22 @@ test("walker replacements and JSX attribute mutations use both buffers", () => {
   const changedType = transform("original;", (program, ast) => {
     const node = program.body.get(0).expression;
     const other = program.body.get(0).expression;
-    assert.equal(other.type, "Identifier");
-    node.type = "Literal";
+    assert.equal(other.type, "IdentifierReference");
+    node.type = "NumericLiteral";
     node.value = 2;
-    assert.equal(node.type, "Literal");
-    assert.equal(other.type, "Literal");
+    assert.equal(node.type, "NumericLiteral");
+    assert.equal(other.type, "NumericLiteral");
   });
   expectCode(changedType.code, "2;");
 });
 
 test("encoding exposes live storage and explicit copies preserve snapshots", () => {
   const ast = parseSync("const x = 1;");
-  ast.program.body.get(0).declarations.get(0).id.name = "first";
+  ast.program.body.get(0).declarators.get(0).id.name = "first";
   const first = ast.encode();
   const saved = first.map(bytes => bytes.slice());
   assert.equal(ast.encode()[1], first[1]);
-  ast.program.body.get(0).declarations.get(0).id.name = "second";
+  ast.program.body.get(0).declarators.get(0).id.name = "second";
   const second = ast.encode();
   expectCode(generateBuffersSync(...saved).code, "const first = 1;");
   expectCode(generateBuffersSync(...second).code, "const second = 1;");
@@ -608,7 +595,7 @@ test("incremental encoding leaves untouched native sibling lists lazy", () => {
   for (const options of [jsx, tsx]) {
     const ast = parseSync("<A><B/><C/><D/><E/></A>;", options);
     walk(ast.program, {
-      JSXOpeningElement(context) {
+      JsxOpeningElement(context) {
         const node = context.node;
         if (node.name.name === "B") { node.name.name = "Changed"; }
       },
@@ -620,10 +607,14 @@ test("incremental encoding leaves untouched native sibling lists lazy", () => {
 
     const rewritten = transform("<A><B title=\"keep\"/></A>;", (program, ast) => {
       walk(program, {
-        JSXOpeningElement(context) {
+        JsxOpeningElement(context) {
           const node = context.node;
           node.attributes = node.attributes.filter(() => true);
-          if (node.name.name === "B") { node.attributes.get(0).value.value = "changed"; }
+          if (node.name.name === "B") {
+            const value = node.attributes.get(0).value;
+            value.value = "changed";
+            value.raw = '"changed"';
+          }
         },
       });
     }, options);
@@ -645,7 +636,7 @@ test("native ancestor references retain holes and typed edits across buffer grow
 
   const changedType = transform("call(original);", (program, ast) => {
     const argument = program.body.get(0).expression.arguments.get(0);
-    argument.type = "Literal";
+    argument.type = "NumericLiteral";
     argument.value = 7;
   });
   expectCode(changedType.code, "call(7);");
@@ -654,14 +645,14 @@ test("native ancestor references retain holes and typed edits across buffer grow
   const call = replacedCall.program.body.get(0).expression;
   const callee = call.callee;
   const argument = call.arguments.get(0);
-  call.type = "Literal";
+  call.type = "NumericLiteral";
   call.value = 9;
   assert.equal(callee.name, "call");
   assert.equal(argument.name, "value");
   expectCode(generateSync(replacedCall.program).code, "9;");
 
   const changedAnnotation = transform("call<string>(original);", (program, ast) => {
-    program.body.get(0).expression.typeArguments.params.get(0).type = "TSNumberKeyword";
+    program.body.get(0).expression.typeArguments.params.get(0).type = "TsNumberKeyword";
   }, typescript);
   expectCode(changedAnnotation.code, "call<number>(original);", typescript);
 
@@ -696,25 +687,34 @@ test("Rust checks native field constraints after kind changes", () => {
   const callAst = parseSync('call("source");');
   const argument = callAst.program.body.get(0).expression.arguments.get(0);
   const argumentId = argument.nodeId;
+  argument.type = "NumericLiteral";
   argument.value = 1;
   assert.equal(argument.nodeId, argumentId);
   assert.equal(callAst.kind(argumentId), NodeKind.NumericLiteral);
-  assert.equal(argument.value, 1);
+  assert.equal(argument.get("value"), 1);
+  argument.set("value", 2);
+  assert.equal(argument.value, 2);
+  expectCode(generateBuffersSync(...callAst.encode()).code, "call(2);");
 
   const moduleAst = parseSync('import value from "source";');
   const source = moduleAst.program.body.get(0).source;
-  assert.doesNotThrow(() => { source.value = 1; });
+  assert.doesNotThrow(() => { source.type = "NumericLiteral"; source.value = 1; });
   assert.doesNotThrow(() => moduleAst.encode());
   assert.throws(() => generateBuffersSync(...moduleAst.encode()));
+  source.type = "StringLiteral";
   source.value = "source";
   expectCode(generateSync(moduleAst.program).code, 'import value from "source";');
 
   const detached = moduleAst.new_node(NodeKind.BindingIdentifier);
-  detached.type = "Literal";
-  assert.equal(detached.type, "Literal");
+  detached.type = "StringLiteral";
+  assert.equal(detached.type, "StringLiteral");
+  assert.equal(detached.get("name"), undefined);
+  assert.throws(() => detached.set("name", "ignored"), TypeError);
   detached.value = "detached";
   assert.equal(moduleAst.kind(detached.nodeId), NodeKind.StringLiteral);
-  assert.equal(detached.value, "detached");
+  detached.set("raw", "'detached'");
+  assert.equal(detached.get("value"), "detached");
+  assert.equal(detached.raw, "'detached'");
 });
 
 test("views can be shallow-cloned without materializing descendant fields", () => {
@@ -729,7 +729,7 @@ test("views can be shallow-cloned without materializing descendant fields", () =
 
 test("Rust rejects cyclic and invalid edits during checked decoding", () => {
   const ast = parseSync("const value = [1];");
-  const array = ast.program.body.get(0).declarations.get(0).init;
+  const array = ast.program.body.get(0).declarators.get(0).init;
   const originalElement = array.elements.get(0);
   assert.doesNotThrow(() => array.elements.set(0, array));
   assert.doesNotThrow(() => ast.encode());
@@ -742,7 +742,7 @@ test("Rust rejects cyclic and invalid edits during checked decoding", () => {
   assert.deepEqual(ast.buffer, after);
 
   const binding = parseSync("const value = 1;");
-  assert.doesNotThrow(() => { binding.program.body.get(0).declarations.get(0).id.type = "Literal"; });
+  assert.doesNotThrow(() => { binding.program.body.get(0).declarators.get(0).id.type = "NumericLiteral"; });
   assert.doesNotThrow(() => binding.encode());
   assert.throws(() => generateSync(binding.program));
 
@@ -761,7 +761,7 @@ test("Rust rejects cyclic and invalid edits during checked decoding", () => {
   const reentrant = parseSync("const value = 1;");
   const options = {
     get minify() {
-      reentrant.program.body.get(0).declarations.get(0).id.type = "Literal";
+      reentrant.program.body.get(0).declarators.get(0).id.type = "NumericLiteral";
       return true;
     },
   };
@@ -770,7 +770,7 @@ test("Rust rejects cyclic and invalid edits during checked decoding", () => {
 
 test("edit inputs are checked before committing binary rows", () => {
   const ast = parseSync("const value = 1;");
-  const binding = ast.program.body.get(0).declarations.get(0).id;
+  const binding = ast.program.body.get(0).declarators.get(0).id;
   assert.doesNotThrow(() => { binding.name = "\ud800"; });
   assert.equal(binding.name, "\ud800");
   assert.doesNotThrow(() => ast.encode());
@@ -786,7 +786,7 @@ test("edit inputs are checked before committing binary rows", () => {
   const reentrant = parseSync("value;");
   const statement = reentrant.program.body.get(0);
   assert.throws(() => { statement.expression = {
-    type: "Identifier",
+    type: "IdentifierReference",
     get name() { throw new Error("ordinary object must not be read"); },
   }; }, TypeError);
   assert.equal(statement.expression.name, "value");
@@ -798,8 +798,8 @@ test("list writes commit before returning and Rust checks the resulting tree", (
   const template = ast.program.body.get(0).expression;
   template.expressions.set(0, identifier(ast, "two"));
   const quasi = ast.new_node(NodeKind.TemplateElement);
-  quasi.value.raw = "before";
-  quasi.value.cooked = "before";
+  quasi.raw = "before";
+  quasi.cooked = "before";
   template.quasis.set(0, quasi);
   expectCode(generateSync(ast.program).code, "`before${two}`;");
 
@@ -815,9 +815,9 @@ test("list writes commit before returning and Rust checks the resulting tree", (
   expectCode(generateSync(cyclic.program).code, "[];");
 
   const pending = parseSync("const a = [], b = [];");
-  const [first, second] = pending.program.body.get(0).declarations.map(node => node.init.elements);
+  const [first, second] = pending.program.body.get(0).declarators.map(node => node.init.elements);
   first.push(literal(pending, 1));
-  assert.throws(() => second.push({ type: "Literal", get value() { throw new Error("invalid node"); } }));
+  assert.throws(() => second.push({ type: "NumericLiteral", get value() { throw new Error("invalid node"); } }));
   expectCode(generateBuffersSync(pending.buffer, pending.editBuffer).code, "const a = [1], b = [];");
   expectCode(generateSync(pending.program).code, "const a = [1], b = [];");
 
@@ -836,7 +836,7 @@ test("checked generation rejects repeated nodes in the current program", () => {
 
 test("Rust rejects mismatched extensions, invalid references and invalid typed fields", () => {
   const ast = parseSync("const value = 1;");
-  ast.program.body.get(0).declarations.get(0).id.name = "newValue";
+  ast.program.body.get(0).declarators.get(0).id.name = "newValue";
   const [base, extension] = ast.encode();
   const mismatch = extension.slice();
   new DataView(mismatch.buffer).setUint32(mismatch.byteLength - 16, 0, true);

@@ -1,7 +1,6 @@
 export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast2";
-import type { AstView, AstNode } from "@swc-next/ast2";
-import type { Lang, Program, SourceType } from "@swc-next/types";
-export type * from "@swc-next/types";
+import type { AstView, AstNode, Lang, Program, SourceType } from "@swc-next/ast2";
+export type * from "@swc-next/ast2";
 
 import type {
   GeneratorConfig,

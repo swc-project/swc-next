@@ -18,7 +18,7 @@ walk(program, {
 
 `program` is a view returned by `parseSync`, `readAst`, or `AstView#node`. If
 you use `@swc-next/core`, you do not need to install `@swc-next/walker2`
-separately. Import the walker APIs directly from `@swc-next/core`:
+separately. Import the walker APIs directly from `@swc-next/core/ffi2`:
 
 ```js
 import { parseSync, generateSync, walk } from "@swc-next/core/ffi2";
@@ -50,11 +50,9 @@ walk(program, {
 }, dependencies);
 ```
 
-Hooks are keyed by ESTree node type. A function is an enter hook; an object may
-have `enter` and `leave` functions. Global `enter` / `leave` hooks apply to all
-nodes. `Function` groups function declarations, expressions, arrows,
-`TSDeclareFunction`, and `TSEmptyBodyFunctionExpression`; `Class` groups class
-declarations and expressions. These are syntax groups, not scope-aware queries.
+Hooks are keyed by native Rust node names, such as `Function`, `TsFunction`,
+and `IdentifierReference`. A function is an enter hook; an object may have
+`enter` and `leave` functions. Global `enter` and `leave` hooks apply to all nodes.
 
 ```js
 walk(program, {
@@ -68,14 +66,14 @@ walk(program, {
 });
 ```
 
-The order is global enter, alias enters in registration order, concrete enter,
-children, concrete leave, alias leaves in reverse order, global leave. Unknown
+The order is global enter, concrete enter, children, concrete leave, and
+global leave. Unknown
 hook names and node types throw. Hooks must be synchronous and return undefined;
 use context methods for structural edits. Async hooks and other return values
 throw. Hook exceptions propagate; edits already made are not rolled back.
 
 Child fields come from `visitorKeys`, generated alongside the codecs from this
-repository's AST schema with explicit ESTree projection rules. Their array order
+repository's native AST schema. Their array order
 is the traversal order (not necessarily source order). Metadata, comments, raw
 text, and arbitrary plugin properties are not traversed. The frozen key table is
 also exported. Trees must be acyclic; shared node objects are visited once per
@@ -108,7 +106,7 @@ there is no implicit cache of mutable hook objects.
 | --- | --- |
 | `node` | Current `NodeView`, created on first access and updated immediately by `replace`. Hooks that only need numeric metadata never create one. |
 | `nodeId`, `parentId` | Numeric node IDs; `parentId` is `NONE` at the root. |
-| `type`, `kind`, `ast` | Live projected type, native kind, and backing `AstView`; these getters do not allocate a view. |
+| `type`, `kind`, `ast` | Live native type, native kind, and backing `AstView`; these getters do not allocate a view. |
 | `parent`, `key`, `index` | Parent view and its child field; index is the current array index or null (also null after removal). All three are null at the root. |
 | `state` | The supplied state object; it may be mutated. |
 | `ancestors()` | A new array of views from the root to the parent, excluding the current node. Only the returned snapshot is allocated on demand. |
@@ -157,7 +155,7 @@ Babel `NodePath` plugins are not directly compatible.
 
 ### TypeScript
 
-`NodeType` is generated from the supported ESTree projections. Default hooks
+`NodeType` is generated from the native node kinds. Default hooks
 narrow `node.type`; node fields are typed through `AstNode` from
 `@swc-next/ast2`. Consumers can supply a discriminated node union with
 `WalkHooks<State, Nodes>` and `walk<Root, State, Nodes>(root, hooks, state)` for
@@ -168,10 +166,10 @@ field-level checking.
 ```sh
 # Walker tests, including core parse/edit/print integration.
 pnpm --filter @swc-next/core build
-pnpm --filter @swc-next/core test:walk
+pnpm --filter @swc-next/core test:ffi2
 ```
 
-Tests use Rstest and live in `npm/core/test/walk`. Root `pnpm test` and
+Tests use Rstest and live in `npm/core/test/walk2`. Root `pnpm test` and
 `pnpm test:wasm` include core and walker tests. Tests are excluded from the published package.
 
 Buffer-backed `@swc-next/ast2` nodes are compared by their AST and node ID when

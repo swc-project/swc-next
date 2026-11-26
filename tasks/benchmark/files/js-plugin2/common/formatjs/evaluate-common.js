@@ -1,22 +1,20 @@
 // Pure evaluation helpers used by the FormatJS plugin.
-// Nothing here depends on whether a node is a plain object or a NodeView.
+// Helpers for native SWC Next node views.
 export const UNKNOWN = Symbol('not statically evaluable');
 
 export const wrappers = new Set([
   'ParenthesizedExpression',
-  'TSAsExpression',
-  'TSTypeAssertion',
-  'TSNonNullExpression',
-  'TSSatisfiesExpression',
-  'TSInstantiationExpression',
+  'TsAsExpression',
+  'TsTypeAssertion',
+  'TsNonNullExpression',
+  'TsSatisfiesExpression',
+  'TsInstantiationExpression',
 ]);
 
 export const functions = new Set([
-  'FunctionDeclaration',
-  'FunctionExpression',
+  'Function',
   'ArrowFunctionExpression',
-  'TSDeclareFunction',
-  'TSEmptyBodyFunctionExpression',
+  'TsFunction',
 ]);
 
 export function unwrap(node) {

@@ -15,7 +15,7 @@ test("legacy and FFI2 APIs coexist", () => {
   assert.equal(ffi2.generateSync(view.program).code, `${source}\n`);
 
   plain.program.body[0].declarations[0].id.name = "legacy";
-  view.program.body.get(0).declarations.get(0).id.name = "view";
+  view.program.body.get(0).declarators.get(0).id.name = "view";
   assert.equal(legacy.generateSync(plain.program).code, 'const legacy = "é😀";\n');
   assert.equal(ffi2.generateSync(view.program).code, 'const view = "é😀";\n');
 });

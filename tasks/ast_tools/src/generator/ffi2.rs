@@ -4,6 +4,7 @@ use std::{
     fmt::Write,
 };
 
+use convert_case::{Case, Casing};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -13,8 +14,11 @@ use crate::{
 };
 
 use super::ast_node::concrete_node_kinds;
-use super::estree::{ENUMS, estree_field_name, estree_type};
-use super::ffi2_protocol::{field_rule, keys};
+
+/// Expose Rust struct fields in normal JavaScript casing, without aliases.
+pub(super) fn field_name(name: &str) -> String {
+    name.strip_prefix("r#").unwrap_or(name).to_case(Case::Camel)
+}
 
 struct WriteCandidate {
     kind: usize,
@@ -40,9 +44,11 @@ type WriteGroup<'a> = (
 
 pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
     let mut metadata = String::from(
-        "import type { NodeLayout, EnumValue } from \"./types.ts\";\nimport type { Lang, SourceType } from \"@swc-next/types\";\nexport const layouts: readonly NodeLayout[] = [\n",
+        "import type { FieldDescriptor, NodeLayout, EnumValue } from \"./types.ts\";\nimport { Field, FIELD_COUNT } from \"./protocol.ts\";\nexport const layouts: readonly NodeLayout[] = [\n",
     );
-    let mut descriptors = String::new();
+    let mut descriptors = String::from(
+        "export const fieldDescriptors: readonly (FieldDescriptor | undefined)[] = [\n  undefined,\n",
+    );
     let mut descriptor_ids: BTreeMap<String, usize> = BTreeMap::new();
     let mut kinds = String::from("export const NodeKind = Object.freeze({\n");
     let mut declarations = String::from(
@@ -63,9 +69,8 @@ pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
         writeln!(declarations, "  readonly {}: {kind};", ast.name).unwrap();
         writeln!(
             metadata,
-            "  {{ name: {:?}, type: {:?}, extra: {}, fields: {{",
+            "  {{ name: {:?}, extra: {}, fields: [",
             ast.name,
-            estree_type(&ast.name),
             ast.layout
                 .extra_start_offset()
                 .map_or("null".into(), |n| n.to_string())
@@ -83,36 +88,21 @@ pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
                 FieldLocation::Extra { index } => quote!(Field::Extra(#index)),
             };
             checks.extend(validate_field(field.type_id, location.clone(), schema));
-            if field.attrs.estree_skip {
-                continue;
-            }
-            let name = estree_field_name(&ast.name, &field.name);
+            let name = field_name(&field.name);
             let (extra, offset) = match ast.layout.fields[index] {
                 FieldLocation::Payload { offset, .. } => (false, offset),
                 FieldLocation::Extra { index } => (true, index),
             };
             let desc = descriptor(field.type_id, schema);
             let tuple = format!("[{extra}, {offset}, {desc}]");
-            let next = descriptor_ids.len();
+            let next = descriptor_ids.len() + 1;
             let descriptor_id = *descriptor_ids.entry(tuple.clone()).or_insert(next);
             if descriptor_id == next {
-                writeln!(descriptors, "const F{descriptor_id} = {tuple} as const;").unwrap();
+                assert!(u8::try_from(next).is_ok(), "native field descriptor ID");
+                writeln!(descriptors, "  {tuple},").unwrap();
             }
-            writeln!(metadata, "    {name}: F{descriptor_id},").unwrap();
-            let rule_js = field_rule(ast, &name, false);
-            let rule_ts = field_rule(ast, &name, true);
-            if !extra
-                && rule_js == "Native"
-                && rule_ts == "Native"
-                && !matches!(
-                    name.as_str(),
-                    "type" | "start" | "end" | "sourceType" | "value" | "optional" | "raw"
-                )
-                && !matches!(
-                    ast.name.as_str(),
-                    "FormalParameter" | "TsIndexSignatureParameter"
-                )
-            {
+            writeln!(metadata, "    [Field.{name}, {descriptor_id}],").unwrap();
+            if !extra && field.attrs.invalidates.is_empty() {
                 let mut parts = desc.split(',');
                 let ty = parts.next().unwrap().trim().trim_matches('"').to_string();
                 let optional = parts.next().unwrap().trim() == "true";
@@ -126,41 +116,21 @@ pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
                         ty,
                     });
             }
-            let physical = fast_field_expression(
+            if let Some(expression) = fast_field_expression(
                 field.type_id,
                 extra,
                 offset,
                 ast.layout.extra_start_offset(),
                 &name,
                 schema,
-            );
-            let expressions: Vec<_> = [false, true]
-                .into_iter()
-                .map(|ts| match field_rule(ast, &name, ts) {
-                    "Native" => physical.clone(),
-                    "List" | "Params" => Some(format!("ast.list(this.#id, {name:?})")),
-                    "False" => Some("false".into()),
-                    "True" => Some("true".into()),
-                    "Null" => Some("null".into()),
-                    _ => None,
-                })
-                .collect();
-            if expressions.iter().any(Option::is_some) {
-                let fallback = format!("ast.getField(this.#id, {name:?}, kind)");
-                let js = expressions[0].as_ref().unwrap_or(&fallback);
-                let ts = expressions[1].as_ref().unwrap_or(&fallback);
-                let expression = if js == ts {
-                    js.clone()
-                } else {
-                    format!("ast._isTs ? ({ts}) : ({js})")
-                };
+            ) {
                 fast_fields
-                    .entry(name.clone())
+                    .entry(name)
                     .or_default()
                     .push((kind, expression));
             }
         }
-        metadata.push_str("  } },\n");
+        metadata.push_str("  ] },\n");
         if !checks.is_empty() {
             let ty = format_ident!("{}", ast.name);
             validator_arms.extend(quote!(NodeKind::#ty => { #checks }));
@@ -206,7 +176,20 @@ pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
             );
         }
     }
-    metadata.push_str("];\n");
+    metadata.push_str(
+        r#"];
+// Expand the compact native layouts once; a zero slot means no native field.
+const nativeFieldTable = new Uint8Array(layouts.length * FIELD_COUNT);
+for (let kind = 0; kind < layouts.length; kind++) {
+  for (const [field, descriptor] of layouts[kind].fields) {
+    nativeFieldTable[kind * FIELD_COUNT + field] = descriptor;
+  }
+}
+export function nativeField(kind: number, field: number): FieldDescriptor | undefined {
+  return fieldDescriptors[nativeFieldTable[kind * FIELD_COUNT + field]];
+}
+"#,
+    );
     kinds.push_str("} as const);\n");
     declarations.push_str("};\n");
     metadata.push_str(&kinds);
@@ -215,22 +198,26 @@ pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
         "export const nativeExtraCounts: readonly number[] = {extra_counts:?};"
     )
     .unwrap();
-    metadata.push_str("export const enums: Readonly<Record<string, readonly EnumValue[]>> & { readonly Lang: readonly Lang[]; readonly SourceType: readonly SourceType[] } = {\n");
-    for (name, values) in ENUMS {
-        writeln!(metadata, "  {name}: [{}] as const,", values.join(", ")).unwrap();
+    metadata.push_str("export const enums: Readonly<Record<string, readonly EnumValue[]>> = {\n");
+    for enumeration in &schema.scalar_enums {
+        let name = &enumeration.name;
+        let variants = enumeration
+            .variants
+            .iter()
+            .map(|variant| variant.name.as_str())
+            .collect::<Vec<_>>();
+        writeln!(metadata, "  {name}: {variants:?},").unwrap();
     }
     metadata.push_str("};\n");
-    // Public getters mirror the projection key tables; native-only fields stay
-    // reachable through `get`/`set` and `AstView.value`.
-    let mut names = BTreeSet::new();
-    for ast in schema.types.iter().filter_map(|ty| match ty {
-        AstType::Struct(ast) => Some(ast),
-        _ => None,
-    }) {
-        for ts in [false, true] {
-            names.extend(keys(ast, ts));
-        }
-    }
+    let names = schema
+        .types
+        .iter()
+        .filter_map(|ty| match ty {
+            AstType::Struct(ast) => Some(ast),
+            _ => None,
+        })
+        .flat_map(|ast| ast.fields.iter().map(|field| field_name(&field.name)))
+        .collect::<BTreeSet<_>>();
     let numeric_kind = fast_fields["value"]
         .iter()
         .find(|(_, expression)| expression.contains("getFloat64"))
@@ -238,14 +225,12 @@ pub fn ffi2(schema: &Schema) -> Vec<RawOutput> {
         .0;
     let mut node_js = String::from(
         r#"// Generated by tasks/ast_tools. Do not edit.
-import { staticTypes as typeNames } from './protocol.ts';
+import { Field, fieldId } from './protocol.ts';
 import type { AstView } from './index.ts';
 "#,
     );
     node_js.push_str("import type { NodeField, FieldInput } from './types.ts';\n");
-    if specialized.values().any(|field| field.enum_name.is_some()) {
-        node_js.push_str("import { enums } from './schema.ts';\n");
-    }
+    node_js.push_str("import { enums } from './schema.ts';\n");
     node_js.push_str(
         r#"export class NodeView {
   // Retain a buffer-free shape across batches that release every AST.
@@ -271,100 +256,105 @@ import type { AstView } from './index.ts';
   }
   get ast(): AstView { return this.#ast; }
   get nodeId(): number { return this.#id; }
+  get type(): string {
+    if (this.#version !== this.#ast._editVersion) { this._refresh(); }
+    return this.#ast._typeAt(this.#id, this.#kind);
+  }
+  set type(value: string) { this.#ast._setType(this.#id, value); }
+  get start(): number { return this.#ast.start(this.#id); }
+  set start(value: number) { this.#ast._setSpan(this.#id, true, value); }
+  get end(): number { return this.#ast.end(this.#id); }
+  set end(value: number) { this.#ast._setSpan(this.#id, false, value); }
   get<K extends string>(field: K): NodeField<K> {
     const ast = this.#ast;
     if (this.#version !== ast._editVersion) { this._refresh(); }
-    return ast.value(this.#id, field, this.#kind, true) as NodeField<K>;
+    return ast.value(this.#id, fieldId(field), this.#kind) as NodeField<K>;
   }
-  set<K extends string>(field: K, value: FieldInput<K>): void { this.#ast.writeNativeField(this.#id, field, value); }
+  set<K extends string>(field: K, value: FieldInput<K>): void { this.#ast.writeNativeField(this.#id, fieldId(field), value); }
   toJSON(): unknown { return this.#ast.materialize(this); }
 "#,
     );
-    writeln!(node_js, "  _numberValue(): NodeField<\"value\"> {{\n    const ast = this.#ast;\n    if (this.#version !== ast._editVersion) {{ this._refresh(); }}\n    const kind = this.#kind;\n    if (kind !== {numeric_kind}) {{ return ast.getField(this.#id, \"value\", kind); }}\n    const row = ast.row(this.#id);\n    return (row === -1 ? ast._view : ast._arena!.view!).getFloat64(ast._payloadAt(this.#id, row), true);\n  }}\n  _setNumberValue(value: FieldInput<\"value\">) {{ this.#ast.setField(this.#id, \"value\", value); }}").unwrap();
+    writeln!(node_js, "  _numberValue(): NodeField<\"value\"> {{\n    const ast = this.#ast;\n    if (this.#version !== ast._editVersion) {{ this._refresh(); }}\n    const kind = this.#kind;\n    if (kind !== {numeric_kind}) {{ return ast.value(this.#id, Field.value, kind) as NodeField<\"value\">; }}\n    const row = ast.row(this.#id);\n    return (row === -1 ? ast._view : ast._arena!.view!).getFloat64(ast._payloadAt(this.#id, row), true);\n  }}\n  _setNumberValue(value: FieldInput<\"value\">) {{ this.#ast.writeNativeField(this.#id, Field.value, value); }}").unwrap();
     for name in names {
         writeln!(node_js, "  get {name}(): NodeField<{name:?}> {{").unwrap();
-        if name == "type" {
-            node_js.push_str("    const ast = this.#ast;\n    if (this.#version !== ast._editVersion) { this._refresh(); }\n    const kind = this.#kind;\n    const type = typeNames[kind];\n    return type == null ? ast.getField(this.#id, \"type\", kind) : type as NodeField<\"type\">;\n");
-        } else {
-            node_js
+        node_js
                 .push_str("    const ast = this.#ast;\n    if (this.#version !== ast._editVersion) { this._refresh(); }\n    const kind = this.#kind;\n");
-            if fast_fields.contains_key(&name) {
-                let mut groups: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
-                for (kind, expression) in &fast_fields[&name] {
-                    groups.entry(expression).or_default().push(*kind);
-                }
-                // Hot groups: identifier names and declaration ids dominate.
-                // Keep the common group in a small wrapper and move the rest
-                // into a separate cold method.
-                let fast_group = match name.as_str() {
-                    "name" => groups
-                        .iter()
-                        .find(|(expression, _)| expression.contains("ast.stringAt"))
-                        .map(|(expression, kinds)| (*expression, kinds.clone())),
-                    "id" => groups
-                        .iter()
-                        .find(|(expression, _)| {
-                            expression.contains("ast._nodeAt") && expression.contains("false")
-                        })
-                        .map(|(expression, kinds)| (*expression, kinds.clone())),
-                    _ => None,
-                };
-                if let Some((expression, kinds)) = &fast_group {
-                    let condition = kinds
-                        .iter()
-                        .map(|kind| format!("kind === {kind}"))
-                        .collect::<Vec<_>>()
-                        .join(" || ");
-                    let rest = format!("_{name}Rest");
-                    writeln!(
+        if fast_fields.contains_key(&name) {
+            let mut groups: BTreeMap<&str, Vec<usize>> = BTreeMap::new();
+            for (kind, expression) in &fast_fields[&name] {
+                groups.entry(expression).or_default().push(*kind);
+            }
+            // Hot groups: identifier names and declaration ids dominate.
+            // Keep the common group in a small wrapper and move the rest
+            // into a separate cold method.
+            let fast_group = match name.as_str() {
+                "name" => groups
+                    .iter()
+                    .find(|(expression, _)| expression.contains("ast.stringAt"))
+                    .map(|(expression, kinds)| (*expression, kinds.clone())),
+                "id" => groups
+                    .iter()
+                    .find(|(expression, _)| {
+                        expression.contains("ast._nodeAt") && expression.contains("false")
+                    })
+                    .map(|(expression, kinds)| (*expression, kinds.clone())),
+                _ => None,
+            };
+            if let Some((expression, kinds)) = &fast_group {
+                let condition = kinds
+                    .iter()
+                    .map(|kind| format!("kind === {kind}"))
+                    .collect::<Vec<_>>()
+                    .join(" || ");
+                let rest = format!("_{name}Rest");
+                writeln!(
                         node_js,
                         "    if ({condition}) {{\n      const row = ast.row(this.#id);\n      const offset = ast._payloadAt(this.#id, row);\n      const view = row === -1 ? ast._view : ast._arena!.view!;\n      return ({expression}) as NodeField<{name:?}>;\n    }}\n    return this.{rest}(kind);\n  }}\n  {rest}(kind: number): NodeField<{name:?}> {{\n    const ast = this.#ast;\n    const row = ast.row(this.#id);\n    const offset = ast._payloadAt(this.#id, row);\n    const view = row === -1 ? ast._view : ast._arena!.view!;"
                     )
                     .unwrap();
-                    groups.remove(*expression);
-                }
-                // Share physical loads when every direct branch needs them.
-                // Keeping one copy also lets V8 inline these getters into callers.
-                let shared_location = fast_group.is_none()
-                    && groups.len() > 1
-                    && groups.keys().all(|expression| {
-                        expression.contains("offset") || expression.contains("view")
-                    });
-                if shared_location {
-                    node_js.push_str("    const row = ast.row(this.#id);\n    const offset = ast._payloadAt(this.#id, row);\n    const view = row === -1 ? ast._view : ast._arena!.view!;\n");
-                }
-                node_js.push_str("    switch (kind) {\n");
-                for (expression, kinds) in groups {
-                    for kind in kinds {
-                        writeln!(node_js, "      case {kind}:").unwrap();
-                    }
-                    let physical = fast_group.is_none()
-                        && !shared_location
-                        && (expression.contains("offset") || expression.contains("view"));
-                    if physical {
-                        node_js.push_str("      {\n        const row = ast.row(this.#id);\n        const offset = ast._payloadAt(this.#id, row);\n        const view = row === -1 ? ast._view : ast._arena!.view!;\n");
-                    }
-                    writeln!(
-                        node_js,
-                        "        return ({expression}) as NodeField<{name:?}>;"
-                    )
-                    .unwrap();
-                    if physical {
-                        node_js.push_str("      }\n");
-                    }
-                }
-                writeln!(
-                    node_js,
-                    "      default: return ast.getField(this.#id, {name:?}, kind);\n    }}"
-                )
-                .unwrap();
-            } else {
-                writeln!(
-                    node_js,
-                    "    return ast.getField(this.#id, {name:?}, kind);"
-                )
-                .unwrap();
+                groups.remove(*expression);
             }
+            // Share physical loads when every direct branch needs them.
+            // Keeping one copy also lets V8 inline these getters into callers.
+            let shared_location = fast_group.is_none()
+                && groups.len() > 1
+                && groups
+                    .keys()
+                    .all(|expression| expression.contains("offset") || expression.contains("view"));
+            if shared_location {
+                node_js.push_str("    const row = ast.row(this.#id);\n    const offset = ast._payloadAt(this.#id, row);\n    const view = row === -1 ? ast._view : ast._arena!.view!;\n");
+            }
+            node_js.push_str("    switch (kind) {\n");
+            for (expression, kinds) in groups {
+                for kind in kinds {
+                    writeln!(node_js, "      case {kind}:").unwrap();
+                }
+                let physical = fast_group.is_none()
+                    && !shared_location
+                    && (expression.contains("offset") || expression.contains("view"));
+                if physical {
+                    node_js.push_str("      {\n        const row = ast.row(this.#id);\n        const offset = ast._payloadAt(this.#id, row);\n        const view = row === -1 ? ast._view : ast._arena!.view!;\n");
+                }
+                writeln!(
+                    node_js,
+                    "        return ({expression}) as NodeField<{name:?}>;"
+                )
+                .unwrap();
+                if physical {
+                    node_js.push_str("      }\n");
+                }
+            }
+            writeln!(
+                    node_js,
+                    "      default: return ast.value(this.#id, Field.{name}, kind) as NodeField<{name:?}>;\n    }}"
+                )
+                .unwrap();
+        } else {
+            writeln!(
+                node_js,
+                "    return ast.value(this.#id, Field.{name}, kind) as NodeField<{name:?}>;"
+            )
+            .unwrap();
         }
         if let Some(field) = specialized.get(&name) {
             writeln!(
@@ -396,25 +386,24 @@ import type { AstView } from './index.ts';
             };
             writeln!(
                 node_js,
-                "        {call};\n        break;\n      default: ast.setField(id, {name:?}, value);\n    }}\n  }}"
+                "        {call};\n        break;\n      default: ast.writeNativeField(id, Field.{name}, value);\n    }}\n  }}"
             )
             .unwrap();
         } else {
             writeln!(
                 node_js,
-                "  }}\n  set {name}(value: FieldInput<{name:?}>) {{ this.#ast.setField(this.#id, {name:?}, value); }}"
+                "  }}\n  set {name}(value: FieldInput<{name:?}>) {{ this.#ast.writeNativeField(this.#id, Field.{name}, value); }}"
             )
             .unwrap();
         }
     }
     node_js.push_str("}\n");
     writeln!(node_js, "class NumericNodeView extends NodeView {{\n  constructor(ast: AstView, id: number, kind: number) {{ super(ast, id, kind); }}\n  static #shape = new this(null!, 0, 0);\n  get value(): NodeField<\"value\"> {{ return this._numberValue(); }}\n  set value(value: FieldInput<\"value\">) {{ this._setNumberValue(value); }}\n}}\nexport const NUMERIC_NODE_KIND = {numeric_kind};\nexport function createNumericNodeView(ast: AstView, id: number, kind: number): NodeView {{\n  return new NumericNodeView(ast, id, kind);\n}}\nexport function createNodeView(ast: AstView, id: number, kind: number): NodeView {{\n  return kind === NUMERIC_NODE_KIND ? createNumericNodeView(ast, id, kind) : new NodeView(ast, id, kind);\n}}").unwrap();
-    if !descriptors.is_empty() {
-        let at = metadata
-            .find("export const layouts")
-            .expect("layouts header");
-        metadata.insert_str(at, &descriptors);
-    }
+    descriptors.push_str("];\n");
+    let at = metadata
+        .find("export const layouts")
+        .expect("layouts header");
+    metadata.insert_str(at, &descriptors);
     metadata.insert_str(0, "// Generated by tasks/ast_tools. Do not edit.\n");
     let rust = RustOutput {
         path: "crates/swc_ecma_ast/src/ffi2/schema.rs".into(),
@@ -453,6 +442,7 @@ import type { AstView } from './index.ts';
         },
     ];
     outputs.push(super::ffi2_protocol::protocol(schema));
+    outputs.push(super::ffi2_types::native_types(schema));
     outputs
 }
 
@@ -508,7 +498,7 @@ fn validate_field(id: TypeId, field: TokenStream, schema: &Schema) -> TokenStrea
     }
 }
 
-pub(super) fn descriptor(id: TypeId, schema: &Schema) -> String {
+fn descriptor(id: TypeId, schema: &Schema) -> String {
     let mut optional = false;
     let mut ty = &schema.types[id];
     if let AstType::Option(option) = ty {
@@ -527,7 +517,13 @@ pub(super) fn descriptor(id: TypeId, schema: &Schema) -> String {
         }
         AstType::Primitive(primitive) => match primitive.name {
             "AstUtf8" | "AstWtf8" => "string".into(),
-            name if ENUMS.iter().any(|(enum_name, _)| *enum_name == name) => format!("enum:{name}"),
+            name if schema
+                .scalar_enums
+                .iter()
+                .any(|enumeration| enumeration.name == name) =>
+            {
+                format!("enum:{name}")
+            }
             name => name.to_string(),
         },
         _ => unreachable!(),
@@ -548,7 +544,7 @@ fn fast_field_expression(
     let optional = tail.split(',').next().unwrap();
     let encoding = encoding.trim_matches('"');
     if encoding == "list" {
-        return Some(format!("ast.list(this.#id, {name:?})"));
+        return None;
     }
     let address = if extra {
         let words = if matches!(encoding, "string" | "f64") {
@@ -573,7 +569,6 @@ fn fast_field_expression(
         "i32" => format!("view.getInt32({address}, true)"),
         "f64" => format!("view.getFloat64({address}, true)"),
         "node" => format!("ast._nodeAt(ast.childAt(this.#id, {address}, {optional}, view))"),
-        "list" => format!("ast.list(this.#id, {name:?})"),
         "string" => format!("ast.stringAt({address}, {optional}, view)"),
         value if value.starts_with("enum:") => {
             format!("ast.enumAt({address}, {:?}, {optional}, view)", &value[5..])
@@ -582,7 +577,7 @@ fn fast_field_expression(
     };
     Some(if extra {
         format!(
-            "this.#id >= ast.nodeCount || view.getUint32(offset + {}, true) >= ast._extraCount ? ast.getField(this.#id, {name:?}, kind) : {expression}",
+            "this.#id >= ast.nodeCount || view.getUint32(offset + {}, true) >= ast._extraCount ? ast.value(this.#id, Field.{name}, kind) : {expression}",
             pointer.unwrap()
         )
     } else {

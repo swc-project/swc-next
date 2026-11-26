@@ -122,19 +122,17 @@ function createTransform({ api, pluginName, plugin, analysis, print }) {
 function canonicalRegExpFlags(api, isFfi2, code, parser) {
   const parsed = api.parseSync(code, parser);
   const edits = [];
-  api.walk(parsed.program, {
-    Literal(nodeOrContext) {
-      const node = isFfi2 ? nodeOrContext.node : nodeOrContext;
-      if (node.regex !== undefined && node.regex !== null) {
-        const start = node.end - node.regex.flags.length;
-        const flags = code.slice(start, node.end);
-        const canonical = [...flags].sort().join("");
-        if (flags !== canonical) {
-          edits.push({ start, end: node.end, flags: canonical });
-        }
-      }
-    },
-  });
+  function collect(node, flagCount) {
+    const start = node.end - flagCount;
+    const flags = code.slice(start, node.end);
+    const canonical = [...flags].sort().join("");
+    if (flags !== canonical) { edits.push({ start, end: node.end, flags: canonical }); }
+  }
+  if (isFfi2) {
+    api.walk(parsed.program, { RegExpLiteral(ctx) { const node = ctx.node; collect(node, node.flags.length); } });
+  } else {
+    api.walk(parsed.program, { Literal(node) { if (node.regex) { collect(node, node.regex.flags.length); } } });
+  }
   let normalized = code;
   for (const edit of edits.sort((left, right) => right.start - left.start)) {
     normalized = normalized.slice(0, edit.start) + edit.flags + normalized.slice(edit.end);

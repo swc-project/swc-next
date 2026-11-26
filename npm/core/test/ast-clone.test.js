@@ -23,7 +23,7 @@ test("clone copies a subtree across AST views", () => {
   assert.equal(code(source), "const value = { nested: [1, 2] };\n");
 });
 
-test("clone copies projected TypeScript fields", () => {
+test("clone copies native TypeScript fields", () => {
   const source = parseSync("function f(a: number): string { return `${a}`; }", typescript);
   const target = parseSync("", typescript);
   cloneInto(target, source);
@@ -40,7 +40,7 @@ test("clone edits do not affect the source AST", () => {
   const source = parseSync("const value = 1;");
   const target = parseSync("");
   const cloned = cloneInto(target, source);
-  cloned.declarations.get(0).id.name = "renamed";
+  cloned.declarators.get(0).id.name = "renamed";
   assert.equal(code(target), "const renamed = 1;\n");
   assert.equal(code(source), "const value = 1;\n");
 });
@@ -51,7 +51,7 @@ test("clone preserves spans when the source text matches", () => {
   const cloned = target.clone(source.program.body.get(0));
   assert.equal(cloned.start, 0);
   assert.equal(cloned.end, 16);
-  assert.equal(cloned.declarations.get(0).id.start, 6);
+  assert.equal(cloned.declarators.get(0).id.start, 6);
 });
 
 test("clone resets spans for a different source", () => {
@@ -60,7 +60,7 @@ test("clone resets spans for a different source", () => {
   const cloned = target.clone(source.program.body.get(0));
   assert.equal(cloned.start, 0);
   assert.equal(cloned.end, 0);
-  assert.equal(cloned.declarations.get(0).id.start, 0);
+  assert.equal(cloned.declarators.get(0).id.start, 0);
 });
 
 test("clone resets TypeScript template element spans for a different source", () => {
@@ -97,7 +97,7 @@ test("assigning a foreign node clones it into the target AST", () => {
   target.program.body.push(foreign);
   assert.notEqual(target.program.body.get(1).nodeId, foreign.nodeId);
   assert.equal(code(target), "let x = 0;\nconst value = 1;\n");
-  target.program.body.get(1).declarations.get(0).id.name = "renamed";
+  target.program.body.get(1).declarators.get(0).id.name = "renamed";
   assert.equal(code(source), "const value = 1;\n");
   assert.equal(code(target), "let x = 0;\nconst renamed = 1;\n");
 });
@@ -114,5 +114,5 @@ test("foreign node fields clone into the target AST", () => {
 
 test("clone rejects non-view inputs", () => {
   const ast = parseSync("");
-  assert.throws(() => ast.clone({ type: "Identifier" }), /Expected a NodeView/);
+  assert.throws(() => ast.clone({ type: "IdentifierReference" }), /Expected a NodeView/);
 });

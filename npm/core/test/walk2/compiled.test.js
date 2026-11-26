@@ -3,7 +3,7 @@ import { NodeKind, parseSync } from "@swc-next/core/ffi2";
 import { createWalker, walk } from "@swc-next/walker2";
 
 function identifier(ast, name) {
-  const node = ast.new_node(NodeKind.IdentifierReference);
+  const node = ast.new_node(NodeKind.BindingIdentifier);
   node.name = name;
   return node;
 }
@@ -15,10 +15,7 @@ test("compiled walkers snapshot hooks and isolate invocation state", () => {
     },
   };
   const hooks = {
-    Function(ctx) {
-      ctx.state.push("alias");
-    },
-    FunctionDeclaration: pair,
+    Function: pair,
     DebuggerStatement(ctx) {
       ctx.state.push(ctx.type);
       ctx.remove();
@@ -36,15 +33,15 @@ test("compiled walkers snapshot hooks and isolate invocation state", () => {
   walker.walk(second, secondState);
   expect(first.body.get(0).body.body.length).toBe(0);
   expect(second.body.get(0).body.body.length).toBe(0);
-  expect(firstState).toEqual(["first", "alias", "typed", "DebuggerStatement"]);
-  expect(secondState).toEqual(["second", "alias", "typed", "DebuggerStatement"]);
+  expect(firstState).toEqual(["first", "typed", "DebuggerStatement"]);
+  expect(secondState).toEqual(["second", "typed", "DebuggerStatement"]);
 });
 
 test("compiled walkers support reentrancy and recover after hook failures", () => {
   const outerState = [];
   const innerState = [];
   const walker = createWalker({
-    Identifier(ctx) {
+    IdentifierReference(ctx) {
       const node = ctx.node;
       if (node.name === "throwError") throw new Error("hook failure");
       ctx.state.push(node.name);
@@ -68,7 +65,7 @@ test("compiled walkers support reentrancy and recover after hook failures", () =
 test("list edits dispatch inserted nodes and stop subsequent traversal", () => {
   const ast = parseSync("var first, last;");
   const program = ast.program;
-  const declarations = program.body.get(0).declarations;
+  const declarators = program.body.get(0).declarators;
   function declarator(name) {
     const node = ast.new_node(NodeKind.VariableDeclarator);
     node.id = identifier(ast, name);
@@ -86,7 +83,7 @@ test("list edits dispatch inserted nodes and stop subsequent traversal", () => {
     },
   });
   expect(seen).toEqual(["first", "inserted", "last"]);
-  expect(declarations.slice().map((node) => node.id.name))
+  expect(declarators.slice().map((node) => node.id.name))
     .toEqual(["before", "inserted", "last"]);
 
   const stopped = [];

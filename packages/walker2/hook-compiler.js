@@ -1,20 +1,6 @@
-import { NodeView } from "@swc-next/ast2";
-import { visitorKeys } from "./visitor-keys.js";
+import { NodeKind, NodeView } from "@swc-next/ast2";
 
-const aliases = {
-  Function: [
-    "FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression",
-    "TSDeclareFunction", "TSEmptyBodyFunctionExpression",
-  ],
-  Class: ["ClassDeclaration", "ClassExpression"],
-};
-const baseDispatch = Object.create(null);
-for (const type of Object.keys(visitorKeys)) {
-  baseDispatch[type] = { enter: null, leave: null };
-}
-const owns = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
-
-export const isNodeType = (type) => baseDispatch[type] !== undefined;
+const baseEntries = Object.values(NodeKind).map(() => ({ enter: null, leave: null }));
 
 export const SKIP = 1;
 export const REMOVED = 2;
@@ -39,12 +25,12 @@ export function assertSync(result) {
 }
 
 /** Compile callback order once; each walker supplies its own traversal metadata. */
-export function compile(hooks, base = baseDispatch) {
+export function compile(hooks) {
   if (!hooks || typeof hooks !== "object") { throw new TypeError("Expected a hooks object"); }
   const entries = Object.entries(hooks);
   const table = new Map();
   let enter, leave;
-  const add = (name, value) => {
+  const add = (kind, name, value) => {
     const pair = typeof value === "function" ? { enter: value } : value;
     if (!pair || typeof pair !== "object") { throw new TypeError(`Invalid hook: ${name}`); }
     for (const key of Object.keys(pair)) {
@@ -53,10 +39,10 @@ export function compile(hooks, base = baseDispatch) {
         throw new TypeError(`Invalid hook: ${name}.${key}`);
       }
     }
-    const entry = table.get(name) ?? { enter: [], leave: [] };
+    const entry = table.get(kind) ?? { enter: [], leave: [] };
     if (pair.enter) { entry.enter.push(pair.enter); }
     if (pair.leave) { entry.leave.unshift(pair.leave); }
-    table.set(name, entry);
+    table.set(kind, entry);
   };
   for (const [name, value] of entries) {
     if (value === undefined) { continue; }
@@ -64,18 +50,11 @@ export function compile(hooks, base = baseDispatch) {
       if (typeof value !== "function") { throw new TypeError(`Invalid hook: ${name}`); }
       if (name === "enter") { enter = value; }
       else { leave = value; }
-    } else if (!owns(aliases, name) && !isNodeType(name)) {
-      throw new TypeError(`Unknown AST hook: ${name}`);
+    } else {
+      const kind = NodeKind[name];
+      if (typeof kind !== "number") { throw new TypeError(`Unknown AST hook: ${name}`); }
+      add(kind, name, value);
     }
-  }
-  // Alias hooks surround concrete hooks, independent of property order.
-  for (const [name, value] of entries) {
-    if (value !== undefined && owns(aliases, name)) {
-      for (const type of aliases[name]) { add(type, value); }
-    }
-  }
-  for (const [name, value] of entries) {
-    if (value !== undefined && isNodeType(name)) { add(name, value); }
   }
   for (const pair of table.values()) {
     if (enter) { pair.enter.unshift(enter); }
@@ -83,9 +62,9 @@ export function compile(hooks, base = baseDispatch) {
   }
   const compact = handlers => handlers.length === 0
     ? null : handlers.length === 1 ? handlers[0] : handlers;
-  const dispatch = table.size === 0 ? base : Object.create(base);
-  for (const [type, pair] of table) {
-    dispatch[type] = { ...base[type], enter: compact(pair.enter), leave: compact(pair.leave) };
+  const compiled = table.size === 0 ? baseEntries : baseEntries.slice();
+  for (const [kind, pair] of table) {
+    compiled[kind] = { enter: compact(pair.enter), leave: compact(pair.leave) };
   }
-  return { dispatch, types: [...table.keys()], globalEnter: enter ?? null, globalLeave: leave ?? null };
+  return { entries: compiled, globalEnter: enter ?? null, globalLeave: leave ?? null };
 }

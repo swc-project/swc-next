@@ -61,7 +61,7 @@ export class PositionCache {
     return this._utf16Slow(byte);
   }
 
-  /** Convert modified ESTree positions back to the original source's UTF-8 offsets. */
+  /** Convert modified UTF-16 positions back to the original source's UTF-8 offsets. */
   utf8Offset(position: number): number {
     if (!Number.isInteger(position) || position < 0)
       { throw new RangeError("Invalid UTF-16 source offset"); }

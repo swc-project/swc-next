@@ -39,12 +39,12 @@ test("edits round-trip through the core encoder and parser", () => {
     },
   });
   const { code } = generateSync(program);
-  expect(seen).toEqual(["hashbang", "original", "nested", "after", "tail"]);
+  expect(seen).toEqual(["original", "nested", "after", "tail", "hashbang"]);
   expect(code).toBe("#!/usr/bin/env bun\nbefore();\nreplacement(nested());\nafter();\ntail();\n");
   expect(parseSync(code).diagnostics).toEqual([]);
 });
 
-function expectProjectionCoverage(source, options) {
+function expectNativeCoverage(source, options) {
   const { program, diagnostics } = parseSync(source, options);
   expect(diagnostics).toEqual([]);
   const expected = [];
@@ -66,21 +66,21 @@ function expectProjectionCoverage(source, options) {
   const sortVisits = (left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right));
   expect(actual.sort(sortVisits)).toEqual(expected.sort(sortVisits));
   const identifiers = [];
-  walk(program, { Identifier(ctx) { identifiers.push([ctx.type, ctx.node.start, ctx.node.end]); } });
-  expect(identifiers.sort(sortVisits)).toEqual(expected.filter(([type]) => type === "Identifier"));
+  walk(program, { IdentifierReference(ctx) { identifiers.push([ctx.type, ctx.node.start, ctx.node.end]); } });
+  expect(identifiers.sort(sortVisits)).toEqual(expected.filter(([type]) => type === "IdentifierReference"));
 }
 
-test("traverses parser-projected JavaScript, JSX and TypeScript children", () => {
-  expectProjectionCoverage(
+test("traverses native JavaScript, JSX and TypeScript children", () => {
+  expectNativeCoverage(
     '#!/usr/bin/env node\nfunction f({ a = 1, ...rest }, ...args) { return `${a}:${args[0]}`; }',
   );
-  expectProjectionCoverage(
+  expectNativeCoverage(
     "const x = <A<T> value={f()} {...props}><B />{g()}</A>;", { lang: "tsx" },
   );
-  expectProjectionCoverage(
+  expectNativeCoverage(
     "function f<T>(this: C, x: T = value, ...rest: T[]): T { return x; }", { lang: "ts" },
   );
-  expectProjectionCoverage(
+  expectNativeCoverage(
     "class C { constructor(public value: number) {} method(x: number): void {} }", { lang: "ts" },
   );
 });

@@ -1,15 +1,13 @@
-import * as core from "@swc-next/core/ffi2";
 import { createWalker } from "@swc-next/walker2";
 
-const NodeKind = core.NodeKind;
+function identifier(ctx) { ctx.state.length += ctx.node.name.length; }
 
-function count(context) {
-  if (NodeKind === undefined ? context.type !== "TsThisParameter" : context.kind !== NodeKind.TsThisParameter) {
-    context.state.length += context.node.name.length;
-  }
-}
-
-const walker = createWalker({ Identifier: count });
+const walker = createWalker({
+  BindingIdentifier: identifier,
+  IdentifierName: identifier,
+  IdentifierReference: identifier,
+  LabelIdentifier: identifier,
+});
 
 /** Sum identifier name lengths; TS `this` parameters have no name storage. */
 export function identLength() {

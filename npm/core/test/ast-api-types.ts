@@ -1,4 +1,4 @@
-import type { Node, Program, VariableDeclaration, VariableDeclarator } from "@swc-next/types";
+import type { Node, Program, VariableDeclaration, VariableDeclarator } from "@swc-next/ast2";
 import type { AstView, AstList, NodeView, NodeKind, AstNode, AstNodeInput, NodeDescriptor } from "@swc-next/ast2";
 import type { AstView as RuntimeView } from "../../../packages/ast2/index.ts";
 import type { AstList as RuntimeList } from "../../../packages/ast2/list.ts";
@@ -24,7 +24,7 @@ export type NodeJSON = IsTrue<ReturnType<NodeView["toJSON"]> extends ReturnType<
 export type CloneShape = IsTrue<ReturnType<AstView["cloneNode"]> extends AstNodeInput<Node> ? true : false>;
 export type CloneResult = IsTrue<ReturnType<AstView["clone"]> extends AstNode<Node> ? true : false>;
 export type DescriptorInput = IsTrue<NodeDescriptor extends AstNodeInput<VariableDeclarator>["init"] ? true : false>;
-export type DescriptorListInput = IsTrue<readonly NodeDescriptor[] extends AstNodeInput<VariableDeclaration>["declarations"] ? true : false>;
+export type DescriptorListInput = IsTrue<readonly NodeDescriptor[] extends AstNodeInput<VariableDeclaration>["declarators"] ? true : false>;
 export type ProgramMaterialized = IsTrue<ReturnType<AstView["materialize"]> extends Node ? true : false>;
 export type SpliceElision = IsTrue<null extends ReturnType<AstView["spliceList"]>[number] ? true : false>;
 
@@ -54,5 +54,5 @@ list.push(descriptor);
 list.unshift(descriptor);
 list.replace([descriptor]);
 const first: AstNode<VariableDeclaration> | undefined = list.get(0);
-view.spliceList(declarator, "declarations", 0, 0, descriptor);
+view.spliceList(declarator, "declarators", 0, 0, descriptor);
 void first;

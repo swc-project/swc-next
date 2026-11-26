@@ -13,20 +13,24 @@ function declarePattern(pattern, scope) {
   if (!pattern) { return; }
   const type = pattern.type;
   // Identifier patterns dominate declarations; keep them out of the switch.
-  if (type === 'Identifier') {
+  if (type === 'BindingIdentifier') {
     if (!scope.bindings.has(pattern.name)) { scope.bindings.set(pattern.name, { imported: undefined }); }
     return;
   }
   switch (type) {
+    case 'FormalParameter': declarePattern(pattern.pattern, scope); break;
     case 'AssignmentPattern': declarePattern(pattern.left, scope); break;
-    case 'RestElement': declarePattern(pattern.argument, scope); break;
-    case 'ArrayPattern': for (const element of pattern.elements) { declarePattern(element, scope); } break;
-    case 'ObjectPattern':
-      for (const property of pattern.properties) {
-        declarePattern(property.type === 'RestElement' ? property.argument : property.value, scope);
-      }
+    case 'BindingRestElement':
+    case 'FormalParameterRest': declarePattern(pattern.argument, scope); break;
+    case 'ArrayPattern':
+      for (const element of pattern.elements) { declarePattern(element, scope); }
+      declarePattern(pattern.rest, scope);
       break;
-    case 'TSParameterProperty': declarePattern(pattern.parameter, scope); break;
+    case 'ObjectPattern':
+      for (const property of pattern.properties) { declarePattern(property.value, scope); }
+      declarePattern(pattern.rest, scope);
+      break;
+    case 'TsParameterProperty': declarePattern(pattern.parameter, scope); break;
   }
 }
 
@@ -35,22 +39,21 @@ const scopeWalker = createWalker({
     const state = ctx.state;
     const type = ctx.type;
     // Identifiers dominate the walk; they only need a scope entry.
-    if (type === 'Identifier' || type === 'JSXIdentifier') {
+    if (type === 'IdentifierReference' || type === 'BindingIdentifier' || type === 'IdentifierName' ||
+        type === 'LabelIdentifier' || type === 'JsxIdentifier') {
       const scope = state.scope;
       if (scope !== undefined) { state.evaluator.scopeIds[ctx.nodeId] = scope.index + 1; }
       return;
     }
     let scope = state.scope;
-    const declaresId = type === 'FunctionDeclaration' || type === 'ClassDeclaration'
-      || type === 'TSDeclareFunction' || type === 'TSEnumDeclaration';
     const isFunction = functions.has(type);
-    const opens = type === 'Program' || isFunction || type === 'BlockStatement' || type === 'CatchClause'
-      || type === 'ForStatement' || type === 'ForInStatement' || type === 'ForOfStatement'
-      || type === 'SwitchStatement' || type === 'ClassDeclaration' || type === 'ClassExpression'
-      || type === 'StaticBlock';
-    // Field reads share one view per node; type-only nodes never create one.
-    const node = declaresId || isFunction || type === 'ClassExpression' || type === 'CatchClause'
+    const opens = type === 'Program' || isFunction || type === 'BlockStatement' || type === 'FunctionBody'
+      || type === 'CatchClause' || type === 'ForStatement' || type === 'ForInStatement' || type === 'ForOfStatement'
+      || type === 'SwitchStatement' || type === 'Class' || type === 'StaticBlock';
+    const node = isFunction || type === 'Class' || type === 'TsEnumDeclaration' || type === 'CatchClause'
       || type === 'ImportDeclaration' || type === 'VariableDeclarator' ? ctx.node : null;
+    const declaresId = node?.functionType === 'FunctionDeclaration' || node?.classType === 'ClassDeclaration'
+      || (type === 'TsFunction' && !node.isMethod) || type === 'TsEnumDeclaration';
     if (declaresId) { declarePattern(node.id, scope); }
     if (opens) {
       scope = { parent: scope, bindings: new Map(), function: isFunction || type === 'Program' || type === 'StaticBlock', index: state.evaluator.scopeTable.length };
@@ -59,14 +62,17 @@ const scopeWalker = createWalker({
     }
     if (isFunction) {
       declarePattern(node.id, scope);
-      for (const parameter of node.params) { declarePattern(parameter, scope); }
+      if (node.params) {
+        for (const parameter of node.params.items) { declarePattern(parameter, scope); }
+        declarePattern(node.params.rest, scope);
+      }
     }
-    if (type === 'ClassExpression') { declarePattern(node.id, scope); }
+    if (type === 'Class' && node.classType === 'ClassExpression') { declarePattern(node.id, scope); }
     if (type === 'CatchClause') { declarePattern(node.param, scope); }
     if (type === 'ImportDeclaration') {
       for (const specifier of node.specifiers) {
         declarePattern(specifier.local, scope);
-        if (node.source.value === 'react-intl' && node.importKind !== 'type' && specifier.importKind !== 'type') {
+        if (node.source.value === 'react-intl' && node.importKind !== 'Type' && specifier.importKind !== 'Type') {
           scope.bindings.get(specifier.local.name).imported = specifier.type === 'ImportNamespaceSpecifier'
             ? '*' : specifier.imported?.name ?? specifier.imported?.value;
         }
@@ -75,11 +81,11 @@ const scopeWalker = createWalker({
     if (type === 'VariableDeclarator') {
       let target = scope;
       const kind = ctx.parent.kind;
-      if (kind === 'var') { while (!target.function) { target = target.parent; } }
+      if (kind === 'Var') { while (!target.function) { target = target.parent; } }
       const pattern = node.id;
       declarePattern(pattern, target);
-      if (pattern.type === 'Identifier') {
-        const init = kind === 'var' ? NONE : ctx.ast.ref(ctx.nodeId, 'init');
+      if (pattern.type === 'BindingIdentifier') {
+        const init = kind === 'Var' ? NONE : ctx.ast.ref(ctx.nodeId, 'init');
         state.declarations.push({ binding: target.bindings.get(pattern.name), init: init === NONE ? null : init });
       }
     }

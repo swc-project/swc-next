@@ -24,14 +24,14 @@ test("buffer transfers preserve source types, strings, and options", () => {
     assertTransfer(ast, minified, 'const values=["雪🌍",1];');
     assertTransfer(ast, ascii, 'const values = ["\\u96EA\\u{1F30D}", 1];\n');
 
-    ast.program.body.get(0).declarations.get(0).init.elements.get(0).value = "a\uD800雪\uDC00";
+    ast.program.body.get(0).declarators.get(0).init.elements.get(0).value = "a\uD800雪\uDC00";
     assertTransfer(ast, ascii, 'const values = ["a\\uD800\\u96EA\\uDC00", 1];\n');
   }
 });
 
 test("buffer transfers preserve edits after arena growth", () => {
   const ast = parseSync("const values = [];");
-  const elements = ast.program.body.get(0).declarations.get(0).init.elements;
+  const elements = ast.program.body.get(0).declarators.get(0).init.elements;
   const expected = [];
   for (let index = 0; index < 2000; index++) {
     const node = ast.new_node(NodeKind.StringLiteral);
@@ -40,7 +40,7 @@ test("buffer transfers preserve edits after arena growth", () => {
     elements.push(node);
   }
   const generated = generateSync(ast.program, { minify: true }).code;
-  const roundtrip = parseSync(generated).program.body.get(0).declarations.get(0).init;
+  const roundtrip = parseSync(generated).program.body.get(0).declarators.get(0).init;
   assert.deepEqual(roundtrip.elements.map(element => element.value), expected);
   assertTransfer(ast, { minify: true }, generated);
 

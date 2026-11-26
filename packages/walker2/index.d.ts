@@ -19,7 +19,7 @@ export interface WalkContext<State = unknown, Node extends AstNode = AstNode> {
   readonly parentId: number;
   /** Backing AST view. */
   readonly ast: AstView;
-  /** Live projected type and native kind; neither getter creates a view. */
+  /** Live native type and kind; neither getter creates a view. */
   readonly type: NodeType;
   readonly kind: number;
   /** Current node, materialized on first access and updated by `replace`. */
@@ -79,7 +79,7 @@ type NodeOfType<
   : never;
 
 /**
- * Node-type hooks, `Function` / `Class` aliases, and global `enter` / `leave` hooks.
+ * Native node-type hooks and global `enter` / `leave` hooks.
  * Supply a discriminated node union for field-level typing. The walker only
  * accepts views from `@swc-next/ast2`; plain ESTree objects are not supported.
  */
@@ -88,21 +88,6 @@ export type WalkHooks<State = unknown, Node extends AstNode = AstNode> = {
 } & {
   enter?: WalkHandler<Node, State>;
   leave?: WalkHandler<Node, State>;
-  Function?: WalkHook<
-    NodeOfType<
-      Node,
-      | "FunctionDeclaration"
-      | "FunctionExpression"
-      | "ArrowFunctionExpression"
-      | "TSDeclareFunction"
-      | "TSEmptyBodyFunctionExpression"
-    >,
-    State
-  >;
-  Class?: WalkHook<
-    NodeOfType<Node, "ClassDeclaration" | "ClassExpression">,
-    State
-  >;
 };
 
 /**
@@ -113,7 +98,7 @@ export type WalkHooks<State = unknown, Node extends AstNode = AstNode> = {
  * Use {@link createWalker} to reuse compiled hooks across trees.
  *
  * @param root - A `NodeView` from an `AstView` (`ast.program` or `ast.node(id)`).
- * @param hooks - Node-type, alias, and/or global callbacks.
+ * @param hooks - Native node-type and/or global callbacks.
  * @param state - Optional value exposed as `ctx.state`.
  * @returns The original root view.
  * @throws {TypeError} For invalid hooks, unsupported roots, or non-undefined returns.
@@ -121,7 +106,7 @@ export type WalkHooks<State = unknown, Node extends AstNode = AstNode> = {
  *
  * @example
  * ```ts
- * import { parseSync, walk } from "@swc-next/core";
+ * import { parseSync, walk } from "@swc-next/core/ffi2";
  *
  * const { program } = parseSync("debugger; run();");
  * walk(program, {

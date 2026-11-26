@@ -20,6 +20,7 @@
     "dist",
     "index.d.ts",
     "node-kinds.d.ts",
+    "native-types.d.ts",
     "README.md"
   ],
   "dependencies": {

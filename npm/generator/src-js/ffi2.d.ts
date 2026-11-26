@@ -1,6 +1,5 @@
-import type { AstNode } from "@swc-next/ast2";
-import type { Program } from "@swc-next/types";
-export type * from "@swc-next/types";
+import type { AstNode, Program } from "@swc-next/ast2";
+export type * from "@swc-next/ast2";
 
 import type { GeneratorConfig, GenerateOutput } from "./binding.js";
 export type { GeneratorConfig, GenerateOutput } from "./binding.js";

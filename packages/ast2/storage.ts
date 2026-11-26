@@ -1,6 +1,6 @@
 import type { AstView } from "./index.ts";
 import type { FieldDescriptor } from "./types.ts";
-import { layouts, nativeExtraCounts } from "./schema.ts";
+import { layouts, nativeExtraCounts, nativeField } from "./schema.ts";
 import { initialFields } from "./protocol.ts";
 import { NONE, NONE as U32_MAX, ROW_SIZE, EXTRA_SIZE, UTF8_STRINGS } from "./layout.ts";
 
@@ -422,8 +422,8 @@ function align8(value: number) {
 }
 
 function initializeFields(ast: AstView, id: number, kind: number) {
-  for (const key of initialFields[kind]) {
-    const descriptor = layouts[kind].fields[key];
+  for (const fieldId of initialFields[kind]) {
+    const descriptor = nativeField(kind, fieldId)!;
     const field = fieldLocation(ast, id, descriptor, kind);
     if (descriptor[2] === "node" || descriptor[2] === "string" && descriptor[3]) { field.view.setUint32(field.offset, NONE, true); }
     else if (descriptor[2].startsWith("enum:") && descriptor[3]) { field.view.setUint8(field.offset, 255); }

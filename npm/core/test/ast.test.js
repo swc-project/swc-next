@@ -28,7 +28,7 @@ const typescript = { lang: "ts" };
 const jsx = { lang: "jsx" };
 const tsx = { lang: "tsx" };
 
-function expectProjection(source, options) {
+function expectRoundTrip(source, options) {
   const ast = parseSync(source, options);
   const code = generateSync(ast.program).code;
   assert.equal(generateBuffersSync(...ast.encode()).code, code);
@@ -46,8 +46,8 @@ test("AST buffers own the source and lazily create node views", () => {
   const statement = ast.program.body.get(0);
   assert.ok(statement.isSame(ast.program.body.get(0)));
   assert.equal(Array.isArray(ast.program.body), false);
-  const identifier = statement.declarations.get(0).id;
-  const again = statement.declarations.get(0).id;
+  const identifier = statement.declarators.get(0).id;
+  const again = statement.declarators.get(0).id;
   assert.notEqual(identifier, again);
   assert.ok(identifier.isSame(again));
   again.name = "renamed";
@@ -67,6 +67,13 @@ test("child fields read stored IDs without indexing parents", () => {
   assert.equal(value.name, "value");
   assert.equal(ast._arena, null);
   assert.throws(() => ast.node(ast.nodeCount + 1), RangeError);
+
+  const initialized = parseSync("const value = input;");
+  const declaration = initialized.program.body.get(0).declarators.get(0);
+  const before = initialized.materializedNodeCount;
+  const init = initialized.ref(declaration.nodeId, "init");
+  assert.equal(initialized.materializedNodeCount, before);
+  assert.equal(init, declaration.init.nodeId);
 });
 
 test("comment arrays preserve values and canonical offsets", () => {
@@ -79,7 +86,7 @@ test("comment arrays preserve values and canonical offsets", () => {
 test("UTF-16 offsets are computed in JS only when position fields are read", () => {
   const replaced = parseSync('"\ud800";');
   assert.equal(replaced.source, '"\ufffd";');
-  assert.equal(replaced.program.body.get(0).expression.value, "\ufffd");
+  assert.equal(replaced.program.directives.get(0).expression.value, "\ufffd");
 
   const source = '/* ascii */ const value = "text";';
   const ast = readAst(parseBufferSync(source));
@@ -91,7 +98,7 @@ test("UTF-16 offsets are computed in JS only when position fields are read", () 
   };
   const statement = ast.program.body.get(0);
   assert.equal(statement.type, "VariableDeclaration");
-  assert.equal(statement.declarations.get(0).id.name, "value");
+  assert.equal(statement.declarators.get(0).id.name, "value");
   assert.equal(ast.comments[0].value, " ascii ");
   assert.equal(conversions, 0);
   assert.equal(statement.start, source.indexOf("const"));
@@ -105,7 +112,7 @@ test("non-ASCII source strings preserve values", () => {
   const ast = readAst(parseBufferSync(source));
   const statement = ast.program.body.get(0);
   assert.equal(statement.type, "VariableDeclaration");
-  assert.equal(statement.declarations.get(0).id.name, "文");
+  assert.equal(statement.declarators.get(0).id.name, "文");
   assert.equal(ast.comments[0].value, " 中😀 ");
   const byteStart = Buffer.byteLength(source.slice(0, source.indexOf("const")));
   assert.equal(ast.byteStart(statement.nodeId), byteStart);
@@ -190,7 +197,7 @@ test("buffer views support unaligned offsets and lazy WTF-8 strings", () => {
   assert.equal(view.buffer.buffer, padded.buffer);
   assert.equal(view.buffer.byteOffset, 1);
   assert.equal(
-    view.program.body.get(0).declarations.get(0).init.value,
+    view.program.body.get(0).declarators.get(0).init.value,
     "\ud800a\udc00",
   );
   assert.equal(view.source, source);
@@ -218,28 +225,28 @@ test("buffer views use ordinary typed-array and DataView properties across realm
   }
 });
 
-test("literal fields and list fields match the canonical ESTree API", () => {
-  expectProjection("const value = [1, , 0xFFn, /x/gi, true, null];");
-  expectProjection("const text = `a${value}b`;");
-  expectProjection("tag`\\unicode`;");
-  expectProjection('"use strict"; function f() { "use strict"; return 1; }');
-  expectProjection("const {value, ...rest} = source;");
-  expectProjection("const [value, ...rest] = source;");
+test("native literal and list fields round-trip through both buffers", () => {
+  expectRoundTrip("const value = [1, , 0xFFn, /x/gi, true, null];");
+  expectRoundTrip("const text = `a${value}b`;");
+  expectRoundTrip("tag`\\unicode`;");
+  expectRoundTrip('"use strict"; function f() { "use strict"; return 1; }');
+  expectRoundTrip("const {value, ...rest} = source;");
+  expectRoundTrip("const [value, ...rest] = source;");
 });
 
-test("parameter and declaration projections preserve TypeScript ownership", () => {
-  expectProjection(
+test("parameter and declaration fields retain TypeScript ownership", () => {
+  expectRoundTrip(
     "function f(this: C, value?: string, other: number = 1, ...rest: string[]) {}",
     typescript,
   );
-  expectProjection("const value: number = 1;", typescript);
-  expectProjection("try {} catch (error: unknown) {}", typescript);
-  expectProjection("type F = <T>(this: C, x: T) => T;", typescript);
-  expectProjection(
+  expectRoundTrip("const value: number = 1;", typescript);
+  expectRoundTrip("try {} catch (error: unknown) {}", typescript);
+  expectRoundTrip("type F = <T>(this: C, x: T) => T;", typescript);
+  expectRoundTrip(
     "interface C { [key: string]: number; method(x: number): void; }",
     typescript,
   );
-  expectProjection(
+  expectRoundTrip(
     "class C { constructor(public value: number) {} }",
     typescript,
   );
@@ -248,110 +255,93 @@ test("parameter and declaration projections preserve TypeScript ownership", () =
 test("TS signature kinds decode from their own native fields", () => {
   const declarationAst = parseSync("declare function f(): void;", typescript);
   const declaration = declarationAst.program.body.get(0);
-  assert.equal(declaration.type, "TSDeclareFunction");
+  assert.equal(declaration.type, "TsFunction");
   assert.equal(declaration.get("isMethod"), false);
-  assert.equal(declarationAst.cloneNode(declaration).type, "TSDeclareFunction");
+  assert.equal(declarationAst.cloneNode(declaration).type, "TsFunction");
 
   const methodAst = parseSync("class C { m(): void; }", typescript);
   const method = methodAst.program.body.get(0).body.body.get(0).value;
-  assert.equal(method.type, "TSEmptyBodyFunctionExpression");
+  assert.equal(method.type, "TsFunction");
   assert.equal(method.get("isMethod"), true);
-  assert.equal(methodAst.cloneNode(method).type, "TSEmptyBodyFunctionExpression");
-  assert.equal(parseSync("class C { m(): void; }", typescript).program.body.get(0).body.body.get(0).value.type, "TSEmptyBodyFunctionExpression");
+  assert.equal(methodAst.cloneNode(method).type, "TsFunction");
+  assert.equal(parseSync("class C { m(): void; }", typescript).program.body.get(0).body.body.get(0).value.type, "TsFunction");
 });
 
-test("parameter views keep their native wrapper identity across shape changes", () => {
-  const ast = expectProjection("function f(value: T) {}", typescript);
-  const fn = ast.program.body.get(0), parameter = fn.params.get(0);
+test("parameter views expose their pattern and initializer independently", () => {
+  const ast = expectRoundTrip("function f(value: T) {}", typescript);
+  const fn = ast.program.body.get(0), parameter = fn.params.items.get(0);
   const id = parameter.nodeId;
   assert.equal(ast.kind(id), NodeKind.FormalParameter);
-  assert.equal(fn.params.nodeId(0), id);
-  assert.notEqual(parameter.get("pattern").nodeId, id);
-  assert.equal(parameter.get("typeAnnotation"), undefined);
-  assert.throws(() => parameter.set("typeAnnotation", null), TypeError);
+  assert.equal(parameter.initializer, null);
+  assert.equal(parameter.pattern.typeAnnotation.type, "TsTypeAnnotation");
 
   const initializer = ast.new_node(NodeKind.NumericLiteral);
   initializer.value = 1;
-  assert.throws(() => { parameter.initializer = initializer; }, TypeError);
-  assert.equal(parameter.get("initializer"), null);
-  parameter.set("initializer", initializer);
+  parameter.initializer = initializer;
   assert.equal(parameter.nodeId, id);
-  assert.equal(parameter.type, "AssignmentPattern");
-  assert.equal(parameter.right.value, 1);
-  const previous = parameter.left;
+  assert.equal(parameter.type, "FormalParameter");
+  assert.ok(parameter.initializer.isSame(initializer));
+
+  const previous = parameter.pattern;
   const replacement = ast.new_node(NodeKind.BindingIdentifier);
   replacement.name = "next";
-  parameter.left = replacement;
+  parameter.pattern = replacement;
   assert.equal(previous.name, "value");
-  assert.equal(parameter.left.name, "next");
-
-  parameter.set("initializer", null);
-  assert.equal(parameter.nodeId, id);
-  assert.equal(parameter.type, "Identifier");
-  assert.equal(parameter.name, "next");
-  assert.equal(parameter.left, undefined);
-  assert.equal(parameter.right, undefined);
+  assert.equal(parameter.pattern.name, "next");
 });
 
-test("parameter containers read their own items without function context", () => {
-  const ast = expectProjection("function f(this: T, value: T) {}", typescript);
-  const fn = ast.program.body.get(0), container = fn.get("params");
-  assert.equal(fn.params.length, 2);
-  assert.equal(ast.node(container.nodeId).length, 1);
-  assert.equal(ast.node(container.nodeId).get(0).nodeId, fn.params.get(1).nodeId);
+test("parameter containers expose their own items and rest field", () => {
+  const ast = expectRoundTrip("function f(this: T, value: T, ...rest: T[]) {}", typescript);
+  const fn = ast.program.body.get(0), container = fn.params;
+  assert.equal(fn.thisParam.type, "TsThisParameter");
+  assert.equal(container.type, "FormalParameters");
+  assert.equal(container.items.length, 1);
+  assert.ok(ast.node(container.nodeId).items.get(0).isSame(container.items.get(0)));
+  assert.equal(container.rest.type, "FormalParameterRest");
 });
 
-test("class, module and JSX projections round-trip through AST storage", () => {
-  expectProjection("@decorate class C { @field accessor value = 1; }");
-  expectProjection(
+test("class, module and JSX nodes round-trip through AST storage", () => {
+  expectRoundTrip("@decorate class C { @field accessor value = 1; }");
+  expectRoundTrip(
     "abstract class C { abstract method(): void; abstract value: number; }",
     typescript,
   );
-  expectProjection("declare function f(value: string): void;", typescript);
-  expectProjection('declare module "name";', typescript);
-  expectProjection("namespace N { export type T = string; }", typescript);
-  expectProjection("declare global { interface C {} }", typescript);
-  expectProjection(
+  expectRoundTrip("declare function f(value: string): void;", typescript);
+  expectRoundTrip('declare module "name";', typescript);
+  expectRoundTrip("namespace N { export type T = string; }", typescript);
+  expectRoundTrip("declare global { interface C {} }", typescript);
+  expectRoundTrip(
     "type T<X> = { readonly [K in keyof X]?: X[K] };",
     typescript,
   );
-  expectProjection('const element = <A data-id="a&amp;b">中{x}</A>;', jsx);
-  expectProjection("const element = <A<T> value={x as T} />;", tsx);
+  expectRoundTrip('const element = <A data-id="a&amp;b">中{x}</A>;', jsx);
+  expectRoundTrip("const element = <A<T> value={x as T} />;", tsx);
 });
 
-test("projected fields preserve language visibility, defaults and edits", () => {
-  const javascript = expectProjection("const value = input;");
-  const jsId = javascript.program.body.get(0).declarations.get(0).id;
-  assert.equal(jsId.optional, undefined);
-  assert.equal(jsId.typeAnnotation, undefined);
-  assert.equal(javascript.getField(jsId.nodeId, "constructor"), undefined);
-  assert.equal(javascript.getField(jsId.nodeId, "__proto__"), undefined);
+test("native field availability does not depend on the source language", () => {
+  const ast = expectRoundTrip("const value = input;");
+  const binding = ast.program.body.get(0).declarators.get(0).id;
+  assert.equal(binding.optional, false);
+  assert.equal(binding.typeAnnotation, null);
+  assert.equal(ast.getField(binding.nodeId, "constructor"), undefined);
+  assert.equal(ast.getField(binding.nodeId, "__proto__"), undefined);
+  assert.equal(binding.decorators, undefined);
 
-  const typed = expectProjection("function f(value: string) {}", typescript);
-  const tsId = typed.program.body.get(0).params.get(0);
-  assert.equal(tsId.optional, false);
-  assert.equal(tsId.typeAnnotation.type, "TSTypeAnnotation");
-  assert.deepEqual(tsId.decorators.toArray(), []);
-  assert.notEqual(tsId.decorators, tsId.decorators);
-  tsId.optional = true;
-  tsId.typeAnnotation = null;
-  assert.equal(tsId.optional, true);
-  assert.equal(tsId.typeAnnotation, null);
-
-  const program = typed.program;
-  program.body = [];
-  assert.deepEqual(typed.materialize().body, []);
-  assert.equal(javascript.program.body.length, 1);
+  const typed = expectRoundTrip("function f(value: string) {}", typescript);
+  const parameter = typed.program.body.get(0).params.items.get(0);
+  assert.deepEqual(parameter.decorators.toArray(), []);
+  assert.notEqual(parameter.decorators, parameter.decorators);
+  parameter.pattern.optional = true;
+  parameter.pattern.typeAnnotation = null;
+  assert.equal(parameter.pattern.optional, true);
+  assert.equal(parameter.pattern.typeAnnotation, null);
 });
 
 test("AST consumers can print and walk views or request independent snapshots", () => {
   const ast = parseSync("function f(value) { return value; }");
   const names = [];
-  walk(ast.program, {
-    Identifier(context) {
-      names.push(context.node.name);
-    },
-  });
+  const record = context => { names.push(context.node.name); };
+  walk(ast.program, { BindingIdentifier: record, IdentifierReference: record });
   assert.deepEqual(names, ["f", "value", "value"]);
   const editable = ast.materialize();
   editable.body.at(0).id.name = "renamed";
@@ -402,7 +392,7 @@ test("walk contexts isolate nested calls and release state after return or error
       retained = context;
       const ancestors = context.ancestors();
       walk(inner, {
-        Identifier(nested) {
+        IdentifierReference(nested) {
           assert.notEqual(nested, context);
           assert.equal(nested.state, "inner");
         },
@@ -477,7 +467,7 @@ test("deep AST access and materialization do not recurse through the whole tree"
   const ast = parseSync(source, typescript);
   let type = ast.program.body.get(0).typeAnnotation;
   for (let i = 0; i < 600; i++) { type = type.elementType; }
-  assert.equal(type.type, "TSStringKeyword");
+  assert.equal(type.type, "TsStringKeyword");
   assert.deepEqual(ast.materialize(), parseSync(source, typescript).materialize());
 });
 
@@ -514,7 +504,7 @@ test("buffer walkers preserve visitor order without materializing public lists",
 
 test("parent relationships belong to the active walker context", () => {
   const ast = parseSync("function f(value: T = 1) {}", typescript);
-  const parameter = ast.program.body.get(0).params.get(0);
+  const parameter = ast.program.body.get(0).params.items.get(0);
   assert.equal("parent" in parameter, false);
   assert.equal("parentId" in ast, false);
   assert.equal("_parents" in ast, false);
@@ -545,8 +535,8 @@ test("parent relationships belong to the active walker context", () => {
     return result;
   };
   assert.deepEqual(relationships(ast.program), relationshipsPlain(ast.materialize()));
-  parameter.left.name = "renamed";
-  assert.equal(parameter.left.name, "renamed");
+  parameter.pattern.name = "renamed";
+  assert.equal(parameter.pattern.name, "renamed");
   assert.equal("traverse" in ast, false);
   assert.equal("firstChildId" in ast, false);
   assert.equal("nextSiblingId" in ast, false);

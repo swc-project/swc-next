@@ -1,6 +1,6 @@
 export { readAst, AstView, NodeView, NodeKind, AstList } from "@swc-next/ast2";
 import type { AstView } from "@swc-next/ast2";
-export type * from "@swc-next/types";
+export type * from "@swc-next/ast2";
 
 import type { ParserConfig } from "./binding.js";
 

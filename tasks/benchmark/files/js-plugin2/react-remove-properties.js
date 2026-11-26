@@ -11,10 +11,10 @@ export function reactRemoveProperties(options = true) {
 export function createReactRemovePropertiesPlugin(patterns) {
   if (patterns === null) { return function reactRemovePropertiesPlugin() {}; }
   const walker = createWalker({
-    JSXOpeningElement(ctx) {
+    JsxOpeningElement(ctx) {
       const node = ctx.node;
-      const attributes = node.attributes.filter(attribute => attribute.type !== 'JSXAttribute'
-        || attribute.name.type !== 'JSXIdentifier'
+      const attributes = node.attributes.filter(attribute => attribute.type !== 'JsxAttribute'
+        || attribute.name.type !== 'JsxIdentifier'
         || !patterns.some(pattern => pattern.test(attribute.name.name)));
       node.attributes = attributes;
     },

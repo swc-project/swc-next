@@ -32,12 +32,12 @@ export function createFormatjsPlugin(settings) {
     for (const item of (jsx ? node.attributes : node.properties)) {
       let key, value;
       if (jsx) {
-        if (item.type !== 'JSXAttribute' || !item.value) { continue; }
-        key = item.name.type === 'JSXNamespacedName' ? item.name.name.name : item.name.name;
+        if (item.type !== 'JsxAttribute' || !item.value) { continue; }
+        key = item.name.type === 'JsxNamespacedName' ? item.name.name.name : item.name.name;
         if (!descriptorKeys.has(key)) { continue; }
-        value = item.value.type === 'JSXExpressionContainer' ? item.value.expression : item.value;
+        value = item.value.type === 'JsxExpressionContainer' ? item.value.expression : item.value;
       } else {
-        if (item.type !== 'Property' || item.kind !== 'init' || item.method) { continue; }
+        if (item.type !== 'ObjectProperty' || item.kind !== 'Init' || item.method) { continue; }
         key = evaluator.key(item);
         if (key === UNKNOWN) { fail(item, state); }
         if (!descriptorKeys.has(key)) { continue; }
@@ -126,23 +126,23 @@ export function createFormatjsPlugin(settings) {
   }
 
   function callName(callee, evaluator) {
-    if (callee.type === 'Identifier') { return evaluator.binding(callee)?.imported ?? callee.name; }
+    if (callee.type === 'IdentifierReference') { return evaluator.binding(callee)?.imported ?? callee.name; }
     if (callee.type === 'MemberExpression' && !callee.computed && !callee.optional) {
       const name = callee.property.name;
       if (functionNames.has(name)) { return name; }
-      if (callee.object.type === 'Identifier' && evaluator.binding(callee.object)?.imported === '*') { return name; }
+      if (callee.object.type === 'IdentifierReference' && evaluator.binding(callee.object)?.imported === '*') { return name; }
     }
   }
 
   const walker = createWalker({
     VariableDeclarator: { leave(ctx) {
       const node = ctx.node;
-      if (node.id.type === 'Identifier' && node.init) { ctx.state.evaluator.store(node.id, node.init); }
+      if (node.id.type === 'BindingIdentifier' && node.init) { ctx.state.evaluator.store(node.id, node.init); }
     } },
     AssignmentExpression: { leave(ctx) {
       const node = ctx.node;
       const { evaluator } = ctx.state;
-      if (node.left.type === 'Identifier' && node.operator === '=') { evaluator.store(node.left, node.right); }
+      if (node.left.type === 'IdentifierReference' && node.operator === 'Assign') { evaluator.store(node.left, node.right); }
       else { evaluator.invalidate(node.left); }
     } },
     UpdateExpression: { leave(ctx) { ctx.state.evaluator.invalidate(ctx.node.argument); } },
@@ -161,20 +161,20 @@ export function createFormatjsPlugin(settings) {
         if (name === 'defineMessage') { processDescriptor(first, state); }
         else {
           for (const field of first.properties) {
-            if (field.type === 'Property' && field.kind === 'init' && !field.method && !field.shorthand) { processDescriptor(field.value, state); }
+            if (field.type === 'ObjectProperty' && field.kind === 'Init' && !field.method && !field.shorthand) { processDescriptor(field.value, state); }
           }
         }
       } else if (functionNames.has(name)) { processDescriptor(node.arguments.get(0), state); }
     } },
-    JSXOpeningElement: { leave(ctx) {
+    JsxOpeningElement: { leave(ctx) {
       const node = ctx.node;
       const state = ctx.state;
       const { evaluator } = state;
       let name;
-      if (node.name.type === 'JSXIdentifier') {
-        // JSX identifiers use the same lexical scope lookup as regular identifiers.
+      if (node.name.type === 'JsxIdentifier') {
+        // Jsx identifiers use the same lexical scope lookup as regular identifiers.
         name = evaluator.binding(node.name)?.imported ?? node.name.name;
-      } else if (node.name.type === 'JSXMemberExpression') { name = node.name.property.name; }
+      } else if (node.name.type === 'JsxMemberExpression') { name = node.name.property.name; }
       if (componentNames.has(name)) { processDescriptor(node, state, true); }
     } },
   });
@@ -187,7 +187,8 @@ export function createFormatjsPlugin(settings) {
     const metadata = { messages: [], meta: pragmaMetadata(context.comments ?? [], settings.pragma) };
     context.metadata ??= {};
     context.metadata.formatjs = metadata;
-    if (program.sourceType === 'script' || program.sourceType === 'commonjs') { return; }
+    const { sourceType } = program.ast.meta;
+    if (sourceType === 'script' || sourceType === 'commonjs') { return; }
     const locate = settings.extractSourceLocation ? sourceLocator(context.source, filename) : undefined;
     const evaluator = new Evaluator(program);
 

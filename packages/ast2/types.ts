@@ -1,4 +1,5 @@
-import type { Lang, SourceType, Node } from "@swc-next/types";
+import type { Lang, SourceType } from "@swc-next/types";
+import type { Node } from "./native-types.d.ts";
 import type { NodeView } from "./node.ts";
 import type { AstView } from "./index.ts";
 import type { AstList, ListEntry } from "./list.ts";
@@ -9,7 +10,7 @@ export interface AstMeta {
 }
 
 export type BufferInput = ArrayBuffer | ArrayBufferView;
-export type EnumValue = string | boolean | null;
+export type EnumValue = string;
 export type FieldType =
   | "node"
   | "list"
@@ -31,9 +32,8 @@ export type FieldDescriptor = readonly [
 ];
 export interface NodeLayout {
   readonly name: string;
-  readonly type: string;
   readonly extra: number | null;
-  readonly fields: Readonly<Record<string, FieldDescriptor>>;
+  readonly fields: readonly (readonly [field: number, descriptorId: number])[];
 }
 
 export interface FieldOffset {
@@ -91,10 +91,3 @@ export type FieldInput<K extends string> = K extends UnionKeys<Node>
   : unknown;
 
 export type NodeList = AstList<ListEntry>;
-export interface ListCursor {
-  prefix: number;
-  suffix: number;
-  start0: number;
-  end0: number;
-  setRange(part: number, owner: number, start: number, end: number): void;
-}

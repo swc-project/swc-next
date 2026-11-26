@@ -24,7 +24,8 @@ export function identifier(name, original) {
 }
 
 export function property(name, value, original, stringKey = false) {
-  const key = stringKey ? literal(name, original) : identifier(name, original);
+  const key = stringKey ? literal(name, original) : allocate(NodeKind.IdentifierName, original);
+  if (!stringKey) { key.name = name; }
   const node = allocate(NodeKind.ObjectProperty, original);
   node.set('key', key);
   node.set('value', value);
@@ -47,7 +48,7 @@ export function jsxAttribute(name, value, original) {
 }
 
 export function jsxValue(value) {
-  if (value.type === 'Literal' && typeof value.value === 'string') {
+  if (value.type === 'StringLiteral') {
     if (value.raw.slice(1, -1) !== value.value) { value.set('raw', ''); }
   }
   return value;

@@ -18,8 +18,8 @@ export class EvaluatorBase {
     if (previous?.type === 'ObjectExpression' && next?.type !== 'ObjectExpression') {
       // React Compiler caches immutable object literals in $[number].
       if (next?.type === 'MemberExpression' && !next.optional && next.computed
-        && unwrap(next.object)?.type === 'Identifier' && unwrap(next.object).name === '$'
-        && unwrap(next.property)?.type === 'Literal' && typeof unwrap(next.property).value === 'number') { return; }
+        && unwrap(next.object)?.type === 'IdentifierReference' && unwrap(next.object).name === '$'
+        && unwrap(next.property)?.type === 'NumericLiteral') { return; }
       this.values.delete(binding);
     } else if (expression) { this.values.set(binding, expression.nodeId); }
     else { this.values.delete(binding); }
@@ -33,23 +33,29 @@ export class EvaluatorBase {
       while (unwrap(base)?.type === 'MemberExpression') { base = unwrap(base).object; }
       target = unwrap(base);
     }
-    if (target.type === 'Identifier') { this.values.delete(this.binding(target)); }
-    else if (target.type === 'ObjectPattern') { for (const p of target.properties) { this.invalidate(p.value ?? p.argument); } }
-    else if (target.type === 'ArrayPattern') { for (const p of target.elements) { this.invalidate(p); } }
+    if (target.type === 'IdentifierReference' || target.type === 'BindingIdentifier') { this.values.delete(this.binding(target)); }
+    else if (target.type === 'ObjectPattern') {
+      for (const p of target.properties) { this.invalidate(p.value); }
+      this.invalidate(target.rest);
+    }
+    else if (target.type === 'ArrayPattern') {
+      for (const p of target.elements) { this.invalidate(p); }
+      this.invalidate(target.rest);
+    }
     else if (target.type === 'AssignmentPattern') { this.invalidate(target.left); }
-    else if (target.type === 'RestElement') { this.invalidate(target.argument); }
+    else if (target.type === 'BindingRestElement') { this.invalidate(target.argument); }
   }
 
   object(expression, depth = 0) {
     if (depth > 16) { return; }
     const node = unwrap(expression);
     if (node?.type === 'ObjectExpression') { return node; }
-    if (node?.type === 'Identifier') { return this.object(this.resolve(this.values.get(this.binding(node))), depth + 1); }
+    if (node?.type === 'IdentifierReference') { return this.object(this.resolve(this.values.get(this.binding(node))), depth + 1); }
     if (node?.type === 'MemberExpression') { return this.object(this.member(node, depth + 1), depth + 1); }
   }
 
   key(node, depth = 0) {
-    if (!node.computed && (node.key ?? node.property)?.type === 'Identifier') { return (node.key ?? node.property).name; }
+    if (!node.computed && (node.key ?? node.property)?.type === 'IdentifierName') { return (node.key ?? node.property).name; }
     const value = this.value(node.key ?? node.property, depth + 1);
     return value === UNKNOWN ? UNKNOWN : String(value);
   }
@@ -61,11 +67,11 @@ export class EvaluatorBase {
     if (!object || key === UNKNOWN) { return; }
     for (let i = object.properties.length - 1; i >= 0; i--) {
       const property = object.properties.get(i);
-      if (property.type !== 'Property') { return; }
+      if (property.type !== 'ObjectProperty') { return; }
       const propertyKey = this.key(property, depth + 1);
       if (propertyKey === UNKNOWN) { return; }
       if (propertyKey !== key) { continue; }
-      if (property.kind !== 'init' || property.method) { return; }
+      if (property.kind !== 'Init' || property.method) { return; }
       return property.value;
     }
   }
@@ -75,15 +81,19 @@ export class EvaluatorBase {
     const node = unwrap(expression);
     if (!node) { return UNKNOWN; }
     switch (node.type) {
-      case 'Literal': return node.regex ? UNKNOWN : node.bigint ? BigInt(node.bigint) : node.value;
-      case 'Identifier': return this.value(this.resolve(this.values.get(this.binding(node))), depth + 1);
+      case 'StringLiteral':
+      case 'NumericLiteral':
+      case 'BooleanLiteral': return node.value;
+      case 'NullLiteral': return null;
+      case 'BigIntLiteral': return BigInt(node.raw.replaceAll('_', ''));
+      case 'IdentifierReference': return this.value(this.resolve(this.values.get(this.binding(node))), depth + 1);
       case 'MemberExpression': return this.value(this.member(node, depth + 1), depth + 1);
       case 'TemplateLiteral': {
         let result = '';
         for (let i = 0; i < node.quasis.length; i++) {
-          const cooked = node.quasis.get(i).value.cooked;
-          if (cooked === null) { return UNKNOWN; }
-          result += cooked;
+          const quasi = node.quasis.get(i);
+          if (quasi.isCookedUndefined) { return UNKNOWN; }
+          result += quasi.cooked;
           if (i < node.expressions.length) {
             const value = this.value(node.expressions.get(i), depth + 1);
             if (value === UNKNOWN) { return UNKNOWN; }
@@ -95,14 +105,14 @@ export class EvaluatorBase {
       case 'UnaryExpression': {
         const value = this.value(node.argument, depth + 1);
         if (value === UNKNOWN) { return UNKNOWN; }
-        if (node.operator === '!') { return !value; }
+        if (node.operator === 'LogicalNot') { return !value; }
         if (typeof value === 'string') { return UNKNOWN; }
-        if (node.operator === '-') { return -value; }
-        if (node.operator === '+' && typeof value !== 'bigint') { return +value; }
+        if (node.operator === 'Negate') { return -value; }
+        if (node.operator === 'Positive' && typeof value !== 'bigint') { return +value; }
         return UNKNOWN;
       }
       case 'BinaryExpression': {
-        if (node.operator !== '+') { return UNKNOWN; }
+        if (node.operator !== 'Add') { return UNKNOWN; }
         const left = this.value(node.left, depth + 1);
         const right = this.value(node.right, depth + 1);
         if (left === UNKNOWN || right === UNKNOWN) { return UNKNOWN; }
@@ -121,9 +131,9 @@ export class EvaluatorBase {
   description(object, forHash) {
     const entries = new Map();
     for (const property of object.properties) {
-      if (property.type !== 'Property' || property.computed || property.shorthand || property.method || property.kind !== 'init') { continue; }
+      if (property.type !== 'ObjectProperty' || property.computed || property.shorthand || property.method || property.kind !== 'Init') { continue; }
       const key = this.key(property);
-      const value = forHash ? this.value(property.value) : property.value.type === 'Literal' ? property.value.value : UNKNOWN;
+      const value = forHash ? this.value(property.value) : property.value.type === 'StringLiteral' ? property.value.value : UNKNOWN;
       if (key === UNKNOWN || value === UNKNOWN || (!forHash && typeof value !== 'string')) { continue; }
       if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') { entries.set(key, value); }
     }

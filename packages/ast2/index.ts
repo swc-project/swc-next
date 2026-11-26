@@ -1,21 +1,16 @@
-import type { Node, Program } from "@swc-next/types";
+import type { Node, Program } from "./native-types.d.ts";
 import type { DeltaArena } from "./storage.ts";
-import type { AstMeta, BufferInput, NodeList, FieldOffset, FieldDescriptor, ListCursor, NodeField, AstNode, AstNodeInput, EnumValue, NodeDescriptor } from "./types.ts";
-export type * from "@swc-next/types";
-import { layouts, enums, NodeKind } from "./schema.ts";
-import {
-  projectedField,
-  projectedKeys,
-  projectedList,
-  isProjectedValue,
-} from "./projection.ts";
+import type { AstMeta, BufferInput, NodeList, FieldOffset, FieldDescriptor, NodeField, AstNode, AstNodeInput, EnumValue, NodeDescriptor } from "./types.ts";
+export type * from "./native-types.d.ts";
+export type { Lang, SourceType } from "@swc-next/types";
+import { layouts, enums, nativeField, NodeKind } from "./schema.ts";
 import { NodeView, createNodeView, createNumericNodeView, NUMERIC_NODE_KIND } from "./node.ts";
 import { cloneNode as cloneNodeInto } from "./clone.ts";
-import { writeField, writeNativeField, finishEdits, writeStringAt, writeNodeAt, writeBoolAt, writeNumberAt, writeEnumAt } from "./writer.ts";
+import { writeType, writeSpan, writeNativeField, finishEdits, writeStringAt, writeNodeAt, writeBoolAt, writeNumberAt, writeEnumAt } from "./writer.ts";
 import { fieldLocation, isWellFormed, newNode } from "./storage.ts";
 import { AstList, isList, listAt } from "./list.ts";
 import type { ListEntry } from "./list.ts";
-import { parserMeta, staticTypes } from "./protocol.ts";
+import { fieldId, fieldNames, parserMeta } from "./protocol.ts";
 import { NONE, SPAN_SIZE, PAYLOAD_SIZE } from "./layout.ts";
 import { PositionCache } from "./position.ts";
 
@@ -77,13 +72,12 @@ export class AstView {
   _diagnostics = 0;
   _diagnosticCount = 0;
   _createdNodeCount = 0;
-  _isTs = false;
   _listVersion = 0;
   _positions: PositionCache = EMPTY_POSITION_CACHE;
   _arena: DeltaArena | null = null;
   _editor: { flags: number } | null = null;
   _editVersion = 0;
-  _listCapacities?: Map<number, Map<string, [start: number, capacity: number]>>;
+  _listCapacities?: Map<number, Map<number, [start: number, capacity: number]>>;
   constructor(input: BufferInput | typeof LAYOUT_TEMPLATE, source?: string) {
     if (input === LAYOUT_TEMPLATE) {
       this._bytes = new Uint8Array();
@@ -134,7 +128,6 @@ export class AstView {
     this._commentCount = commentCount;
     this._diagnostics = diagnostics;
     this._diagnosticCount = diagnosticCount;
-    this._isTs = (flags >> 2) === 1 || (flags >> 2) === 3 || (flags >> 2) === 4;
     this._positions = positions;
     if (source !== undefined) {
       if (typeof source !== "string") { throw new TypeError("source must be a string"); }
@@ -173,13 +166,13 @@ export class AstView {
   spliceList(node: NodeView | number, key: string, start: number, deleteCount: number, ...values: (ListEntry | NodeDescriptor)[]) {
     if (node instanceof NodeView && node.ast !== this) { throw new TypeError("Node belongs to another AST buffer"); }
     const id = node instanceof NodeView ? node.nodeId : node;
-    const list = this.getField(id, key);
+    const list = this.value(id, fieldId(key));
     if (!(list instanceof AstList)) { throw new TypeError("Expected an AST list"); }
     const removed = list.splice(start, deleteCount, ...values);
     return removed;
   }
   get meta() {
-    return this.#meta;
+    return this._editor === null ? this.#meta : parserMeta[this._editor.flags];
   }
   get buffer() {
     return this._bytes;
@@ -196,7 +189,7 @@ export class AstView {
   get sourceUtf16Length() {
     return this._positions.sourceUnits;
   }
-  get root(): NodeView | NodeList | null {
+  get root(): NodeView | null {
     return this.node(this.rootId);
   }
   get program(): AstNode<Program> {
@@ -209,12 +202,11 @@ export class AstView {
     return this._createdNodeCount;
   }
   getField<K extends string>(id: number, key: K, kind?: number): NodeField<K> {
-    return projectedField(this, id, key, kind) as NodeField<K>;
+    return this.value(id, fieldId(key), kind) as NodeField<K>;
   }
-  writeNativeField(id: number, key: string, value: unknown) { writeNativeField(this, id, key, value); }
-  setField(id: number, key: string, value: unknown) {
-    return writeField(this, id, key, value);
-  }
+  writeNativeField(id: number, field: number, value: unknown) { writeNativeField(this, id, field, value); }
+  _setType(id: number, value: string): void { writeType(this, id, value); }
+  _setSpan(id: number, isStart: boolean, value: number): void { writeSpan(this, id, isStart, value); }
   /** Internal fast paths for generated field setters with constant offsets. */
   _writeStringAt(id: number, offset: number, optional: boolean, value: unknown): void {
     writeStringAt(this, id, offset, optional, value);
@@ -237,7 +229,7 @@ export class AstView {
   cloneNode(node: object): Record<string, unknown> {
     if (!(node instanceof NodeView)) { return { ...node }; }
     const ast = node.ast;
-    const keys = projectedKeys(ast, node.nodeId);
+    const keys = ast.#keys(node.nodeId);
     return Object.fromEntries([...keys].map((key) => [key, (node as unknown as Record<string, unknown>)[key]]));
   }
   /**
@@ -275,7 +267,7 @@ export class AstView {
     return this._payloads + id * PAYLOAD_SIZE;
   }
   _typeAt(id: number, kind = this._kindAt(id)): string {
-    return staticTypes[kind] ?? this.getField(id, "type", kind) as string;
+    return layouts[kind].name;
   }
   byteStart(id: number): number {
     this.validateId(id);
@@ -299,11 +291,11 @@ export class AstView {
   utf16Offset(byte: number): number {
     return this._positions.utf16Offset(byte);
   }
-  /** Convert modified ESTree positions back to the original source's UTF-8 offsets. */
+  /** Convert modified UTF-16 positions back to the original source's UTF-8 offsets. */
   utf8Offset(position: number): number {
     return this._positions.utf8Offset(position);
   }
-  node(id: number): NodeView | NodeList | null {
+  node(id: number): NodeView | null {
     if (id === NONE) { return null; }
     if (id < this.#nodeCount) {
       if (!Number.isInteger(id) || id < 0) { throw new RangeError("Invalid AST node ID"); }
@@ -313,20 +305,14 @@ export class AstView {
     return this._nodeAt(id);
   }
   /** Child slots have already checked their numeric IDs. */
-  _nodeAt(id: number): NodeView | NodeList | null {
+  _nodeAt(id: number): NodeView | null {
     if (id === NONE) { return null; }
     const kind = id < this.#nodeCount
       ? this._view.getUint8(this._kinds + id)
       : this.kind(id);
     if (kind >= layouts.length) { throw new RangeError("Unknown AST node kind"); }
-    if (kind === NodeKind.FormalParameters) { return this.list(id, "params"); }
     this._createdNodeCount++;
     return kind === NUMERIC_NODE_KIND ? createNumericNodeView(this, id, kind) : new NodeView(this, id, kind);
-  }
-  nativeNode(id: number): NodeView {
-    const kind = this.kind(id);
-    this._createdNodeCount++;
-    return createNodeView(this, id, kind);
   }
   extraOffset(payload: number, pointer: number, slot: number, words = 1): number {
     const index = this._view.getUint32(payload + pointer, true) + slot;
@@ -344,13 +330,13 @@ export class AstView {
     if (value >= values.length) { throw new RangeError("Unknown AST enum value"); }
     return values[value];
   }
-  fieldOffset(id: number, key: string, kind = this.kind(id)): FieldOffset | null {
+  fieldOffset(id: number, field: number, kind = this.kind(id)): FieldOffset | null {
     const row = this.row(id);
     if (row !== -1) { kind = this._arena!.kind(id); }
-    const field = layouts[kind].fields[key];
-    if (!Array.isArray(field)) { return null; }
-    const { view, offset } = fieldLocation(this, id, field, kind);
-    return { view, offset, type: field[2], optional: field[3] };
+    const descriptor = nativeField(kind, field);
+    if (descriptor === undefined) { return null; }
+    const { view, offset } = fieldLocation(this, id, descriptor, kind);
+    return { view, offset, type: descriptor[2], optional: descriptor[3] };
   }
   childAt(id: number, offset: number, optional: boolean, view = this._view): number {
     const child = view.getUint32(offset, true);
@@ -362,13 +348,19 @@ export class AstView {
     return child;
   }
   ref(id: number, key: string, allowMissing = false): number {
-    const field = this.fieldOffset(id, key);
+    return this._ref(id, fieldId(key), allowMissing);
+  }
+  _ref(id: number, slot: number, allowMissing = false): number {
+    const field = this.fieldOffset(id, slot);
     if (!field) { return NONE; }
     if (field.type !== "node") { throw new TypeError("Expected a node reference"); }
     return this.childAt(id, field.offset, field.optional || allowMissing, field.view);
   }
   range(id: number, key: string): [number, number] {
-    const field = this.fieldOffset(id, key);
+    return this._range(id, fieldId(key));
+  }
+  _range(id: number, slot: number): [number, number] {
+    const field = this.fieldOffset(id, slot);
     if (!field || field.type !== "list")
       { throw new TypeError("Expected an AST list"); }
     const start = field.view.getUint32(field.offset, true),
@@ -382,24 +374,24 @@ export class AstView {
       { return this.childAt(owner, this._extra + index * 4, optional); }
     return this.childAt(owner, this._arena!.extraAddress(index), optional, this._arena!.view!);
   }
-  list(owner: number, field: string, native = false): NodeList { return new AstList(this, owner, field, native); }
+  list(owner: number, field: number): NodeList { return new AstList(this, owner, field); }
 
-  value(id: number, key: string, kind = this.kind(id), native = false): unknown {
+  value(id: number, field: number, kind = this.kind(id)): unknown {
     const row = this.row(id);
     if (row !== -1) { kind = this._arena!.kind(id); }
-    const descriptor = layouts[kind].fields[key];
-    if (!Array.isArray(descriptor)) { return undefined; }
-    return this._valueAt(id, key, descriptor, kind, native);
+    const descriptor = nativeField(kind, field);
+    if (descriptor === undefined) { return undefined; }
+    return this._valueAt(id, field, descriptor, kind);
   }
   /** Read a field with an already-resolved layout descriptor. */
-  _valueAt(id: number, key: string, descriptor: FieldDescriptor, kind: number, native = false): unknown {
+  _valueAt(id: number, field: number, descriptor: FieldDescriptor, kind: number): unknown {
     const { view, offset } = fieldLocation(this, id, descriptor, kind);
     const type = descriptor[2], optional = descriptor[3];
     if (type === "node") {
       const child = this.childAt(id, offset, optional, view);
-      return child === NONE ? null : native ? this.nativeNode(child) : this._nodeAt(child);
+      return this._nodeAt(child);
     }
-    if (type === "list") { return this.list(id, key, native); }
+    if (type === "list") { return this.list(id, field); }
     if (type === "string") { return this.stringAt(offset, optional, view); }
     if (type.startsWith("enum:")) { return this.enumAt(offset, type.slice(5), optional, view); }
     switch (type) {
@@ -498,7 +490,7 @@ export class AstView {
     return decodeUtf8OrWtf8(bytes.subarray(start, end));
   }
   bytesForString(id: number, fieldName: string) {
-    const field = this.fieldOffset(id, fieldName);
+    const field = this.fieldOffset(id, fieldId(fieldName));
     if (!field || field.type !== "string")
       { throw new TypeError("Field is not a native AST string"); }
     const start = field.view.getUint32(field.offset, true),
@@ -517,10 +509,10 @@ export class AstView {
     if (end > this._sourceLength) { throw new RangeError("Node source span out of bounds"); }
     return this.string(start, end);
   }
-  readListCursor(id: number, key: string, cursor: ListCursor) {
-    return projectedList(this, id, key, cursor);
+  #keys(id: number): string[] {
+    return ["type", "start", "end", ...layouts[this.kind(id)].fields.map(([field]) => fieldNames[field])];
   }
-  /** Explicitly create editable ESTree objects; this is the copying boundary. */
+  /** Explicitly create editable native-shaped objects; this is the copying boundary. */
   materialize<T extends Node>(root: T): T;
   materialize<T extends Node>(root: AstNode<T>): T;
   materialize(): Node;
@@ -532,7 +524,6 @@ export class AstView {
       if (value === null || typeof value !== "object") { return value; }
       const key = value instanceof NodeView && value.ast === this ? value.nodeId : value;
       if (copies.has(key)) { return copies.get(key); }
-      if (isProjectedValue(value)) { return copy(value.toJSON()); }
       if (value instanceof RegExp) {
         const result = new RegExp(value.source, value.flags);
         result.lastIndex = value.lastIndex;
@@ -550,7 +541,7 @@ export class AstView {
       if (value instanceof NodeView) {
         if (value.ast !== this)
           { throw new TypeError("Node belongs to another AST buffer"); }
-        for (const key of projectedKeys(this, value.nodeId))
+        for (const key of this.#keys(value.nodeId))
           { (output as Record<string, unknown>)[key] = copy((value as unknown as Record<string, unknown>)[key]); }
       } else if (isList(value)) {
         for (let i = 0; i < value.length; i++) { (output as unknown[])[i] = copy(listAt(value, i)); }

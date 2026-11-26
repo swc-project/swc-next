@@ -67,7 +67,7 @@ cargo bench -p benchmark --bench js-plugin
 
 The `js-plugin` group runs `files/js-plugin/` with FFI1 via `@swc-next/core`.
 The `js-plugin2` group runs `files/js-plugin2/` with FFI2 via
-`@swc-next/core/ffi2` and `@swc-next/walker2`. Both groups process the same
+`@swc-next/core/ffi2` and `@swc-next/walker2` using native AST fields. Both groups process the same
 JavaScript, JSX, TypeScript and TSX fixtures in persistent Node processes.
 Each iteration measures `parse` (Rust parse, AST encode, root/comments decode),
 `plugin` (JS traversal and transform), and `print` (JS encode, native decode
