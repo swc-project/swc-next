@@ -140,13 +140,9 @@ fn is_es_module_decl(ast: &Ast<'_>, statement: Stmt) -> bool {
 /// element or fragment needs them. Leading pragma comments add their roots.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L186>.
 fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<SymbolId> {
-    let mut id_usage = HashSet::new();
     let jsx = &options.jsx;
-    let pragma = jsx.pragma.as_deref().unwrap_or("React.createElement");
-    let pragma_frag = jsx.pragma_frag.as_deref().unwrap_or("React.Fragment");
-    for factory in [pragma, pragma_frag] {
-        id_usage.extend(id_for_jsx(ast, resolver, factory));
-    }
+    let mut automatic = jsx.automatic;
+    let mut pragmas = Vec::new();
     let program = ast.root_program();
     // SWC's module span starts at its first token; Next's program span starts
     // at byte zero, so include the first directive/body attachment explicitly.
@@ -172,15 +168,32 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
             }
             let mut words = line.split_whitespace();
             while let Some(directive) = words.next() {
-                let value = words.next();
-                if matches!(directive, "@jsx" | "@jsxFrag")
-                    && let Some(value) = value
-                    && let Some(id) = id_for_jsx(ast, resolver, value)
-                {
-                    id_usage.insert(id);
+                let Some(value) = words.next() else {
+                    break;
+                };
+                match directive {
+                    "@jsx" | "@jsxFrag" => pragmas.push(value.to_owned()),
+                    "@jsxRuntime" => match value {
+                        "automatic" => automatic = true,
+                        "classic" => automatic = false,
+                        _ => {}
+                    },
+                    _ => {}
                 }
             }
         }
+    }
+    if automatic {
+        return HashSet::new();
+    }
+    let mut id_usage = HashSet::new();
+    let pragma = jsx.pragma.as_deref().unwrap_or("React.createElement");
+    let pragma_frag = jsx.pragma_frag.as_deref().unwrap_or("React.Fragment");
+    for factory in [pragma, pragma_frag] {
+        id_usage.extend(id_for_jsx(ast, resolver, factory));
+    }
+    for factory in &pragmas {
+        id_usage.extend(id_for_jsx(ast, resolver, factory));
     }
     id_usage
 }

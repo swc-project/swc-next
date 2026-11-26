@@ -206,13 +206,15 @@ impl Transformer {
                 None => false,
             };
             if jsx_enabled && let Some(jsx) = &options.jsx {
+                typescript.jsx.automatic = jsx.runtime == Some(jsx::JsxRuntime::Automatic);
                 typescript.jsx.pragma = jsx.pragma.clone();
                 typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
             }
+            let tsx = context.ast.lang().is_jsx();
             diagnostics.extend(typescript::typescript(
                 context.ast,
                 typescript,
-                jsx_enabled,
+                tsx,
                 options.module.r#type,
                 context.state.resolver,
             ));
