@@ -34,14 +34,6 @@ export function compare(summaries) {
   });
 }
 
-export function validateRepeatability(rows) {
-  assert(rows.length > 0, "no same-SHA comparisons");
-  for (const row of rows) {
-    assert(row.base.min <= row.head.max && row.head.min <= row.base.max,
-      `same-SHA ranges do not overlap: ${row.name}`);
-  }
-}
-
 export function render(rows) {
   const groups = new Map();
   for (const row of rows) {
