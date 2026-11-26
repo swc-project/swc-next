@@ -3925,7 +3925,6 @@ dependencies = [
  "indexmap",
  "insta",
  "memchr",
- "regex",
  "rustc-hash",
  "serde_json",
  "sha1",
