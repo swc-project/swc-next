@@ -1778,6 +1778,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let operator = Span::new(start, start + token.len() as u32);
         let split = comments.partition_point(|comment| comment.span.end <= operator.start);
         let (mut before, mut after) = comments.split_at(split);
+        let mut after_start = operator.end;
         if let TypeBoundaryTarget::Alias(node) = &target
             && matches!(node.data, TsTypeData::TsUnionType(union) if union.types(self.ast).len() > 1)
             && before
@@ -1790,6 +1791,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             before = &comments[..0];
             after = comments;
+            // The relocated run still uses its original source start for layout.
+            after_start = gap.start;
         }
         let mut left_mode = ContentMode::Formatted;
         let mut right_mode = ContentMode::Formatted;
@@ -1814,7 +1817,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
                 break 'layout TypeOperatorLayout::Formatted {
                     before: self.prepare_comment_boundary(before, gap.start, operator.start),
-                    after: self.prepare_comment_boundary(after, operator.end, gap.end),
+                    after: self.prepare_comment_boundary(after, after_start, gap.end),
                 };
             }
             let packet_owner = match &target {
