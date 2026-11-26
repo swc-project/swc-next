@@ -116,7 +116,12 @@ struct TypeScriptReact<'a> {
 }
 
 impl TypeScriptReact<'_> {
-    fn process(&self, ast: &mut Ast<'_>, resolver: &mut Resolver, header_end: u32) -> Vec<Diagnostic> {
+    fn process(
+        &self,
+        ast: &mut Ast<'_>,
+        resolver: &mut Resolver,
+        header_end: u32,
+    ) -> Vec<Diagnostic> {
         let options = self.typescript.config;
         let id_usage = if matches!(ast.source_type(), SourceType::Module | SourceType::CommonJs)
             && !options.verbatim_module_syntax
