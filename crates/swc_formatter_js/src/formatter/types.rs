@@ -563,11 +563,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if continuation
                         && (after.is_empty()
                             || self.continuation_type_layout(node.node.span(self.ast), layout)
-                                == TypeLayout::ContinuationRoot
-                                && matches!(
-                                    self.comment_boundary_binding(&after, node.node.span(self.ast)),
-                                    CommentBinding::Unbound
-                                ))
+                                == TypeLayout::ContinuationRoot)
                     {
                         self.format_type_comment_gap(&after, FlatSeparator::Space, writer)?;
                         let span = node.node.span(self.ast);
@@ -4357,6 +4353,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             trailing_unbound,
             source,
         } = parentheses;
+        if matches!(context, TypeContext::ArrowReturn)
+            && !self.comments.in_range(span).is_empty()
+            && arrow_return_pair_needs_source_syntax(child.node, self.ast)
+        {
+            self.format_verbatim(span, writer)?;
+            return Ok(TypeOutput::closed());
+        }
         if movable && !context.preserves_union_head(child.node, self.ast) {
             return self.format_type_body_after_head(
                 context,
@@ -5566,10 +5569,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         head: BinaryTypeHead<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        let span = node.node.span(self.ast);
+        let layout = self.continuation_type_layout(span, TypeLayout::Root);
         if after.is_empty() && matches!(head.0, BinaryTypeHeadLayout::Direct) {
             after.gap().write(writer, FlatSeparator::Empty, |_| {});
-            let span = node.node.span(self.ast);
-            let layout = self.continuation_type_layout(span, TypeLayout::Root);
             self.format_type_body_before_continuation(span, writer, |formatter, writer| {
                 formatter.format_prepared_type_body(node, context, layout, writer)
             })
@@ -5577,12 +5580,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.comment_boundary_binding(after, node.node.span(self.ast)),
             CommentBinding::Unbound
         ) {
-            let span = node.node.span(self.ast);
-            let layout = self.continuation_type_layout(span, TypeLayout::Root);
             self.format_type_body_before_continuation(span, writer, |formatter, writer| {
                 formatter.format_binary_type_rhs_head_body_with_layout(
                     node, context, after, head, layout, writer,
                 )
+            })
+        } else if layout == TypeLayout::ContinuationRoot && node.source_owner.is_none() {
+            self.format_comment_boundary_after_separator(after, writer)?;
+            after
+                .gap()
+                .write(writer, FlatSeparator::Space, Writer::space);
+            self.format_type_body_before_continuation(span, writer, |formatter, writer| {
+                formatter.format_prepared_type_body(node, context, layout, writer)
             })
         } else {
             self.format_binary_type_rhs_head_body(node, context, after, head, writer)
@@ -5721,7 +5730,7 @@ pub(super) fn raw_type_has_open_end(node: TsType, ast: &Ast<'_>) -> bool {
 }
 
 pub(super) fn raw_type_terminal(node: TsType, ast: &Ast<'_>) -> RawTypeTerminal {
-    match terminal_type_data(node, ast, false) {
+    match terminal_type_data(ast.ts_type_data(node), ast, false) {
         TsTypeData::TsJsDocUnknownType(_) => RawTypeTerminal::TypeContinuation,
         TsTypeData::TsOptionalType(_) | TsTypeData::TsJsDocNullableType(_) => {
             RawTypeTerminal::PostfixQuestion
@@ -5731,7 +5740,8 @@ pub(super) fn raw_type_terminal(node: TsType, ast: &Ast<'_>) -> RawTypeTerminal 
 }
 
 pub(super) fn type_tail_is_bare_abstract(node: TsType, ast: &Ast<'_>) -> bool {
-    let TsTypeData::TsTypeReference(node) = terminal_type_data(node, ast, true) else {
+    let TsTypeData::TsTypeReference(node) = terminal_type_data(ast.ts_type_data(node), ast, true)
+    else {
         return false;
     };
     node.type_arguments(ast).is_none()
@@ -5741,10 +5751,9 @@ pub(super) fn type_tail_is_bare_abstract(node: TsType, ast: &Ast<'_>) -> bool {
         )
 }
 
-fn terminal_type_data(mut node: TsType, ast: &Ast<'_>, unwrap_pairs: bool) -> TsTypeData {
+fn terminal_type_data(mut data: TsTypeData, ast: &Ast<'_>, unwrap_pairs: bool) -> TsTypeData {
     loop {
-        let data = ast.ts_type_data(node);
-        node = match data {
+        let node = match data {
             TsTypeData::TsParenthesizedType(node) if unwrap_pairs => node.type_annotation(ast),
             TsTypeData::TsJsDocNullableType(node) if !node.postfix(ast) => {
                 node.type_annotation(ast)
@@ -5821,5 +5830,33 @@ fn terminal_type_data(mut node: TsType, ast: &Ast<'_>, unwrap_pairs: bool) -> Ts
             | TsTypeData::TsTypeLiteral(_)
             | TsTypeData::TsMappedType(_) => return data,
         };
+        data = ast.ts_type_data(node);
+    }
+}
+
+/// A retained outer pair can look like a function-parameter list after its
+/// nested pair or leading union/intersection operator is removed.
+fn arrow_return_pair_needs_source_syntax(mut node: TsType, ast: &Ast<'_>) -> bool {
+    let mut disambiguating_syntax = false;
+    loop {
+        node = match ast.ts_type_data(node) {
+            TsTypeData::TsParenthesizedType(node) => node.type_annotation(ast),
+            TsTypeData::TsUnionType(node) if node.types(ast).len() == 1 => {
+                ast.get_node_in_sub_range(node.types(ast).first().unwrap())
+            }
+            TsTypeData::TsIntersectionType(node) if node.types(ast).len() == 1 => {
+                ast.get_node_in_sub_range(node.types(ast).first().unwrap())
+            }
+            TsTypeData::TsTypeReference(node) => {
+                return disambiguating_syntax
+                    && node.type_arguments(ast).is_none()
+                    && matches!(
+                        ast.ts_type_name_data(node.type_name(ast)),
+                        TsTypeNameData::IdentifierReference(_)
+                    );
+            }
+            _ => return false,
+        };
+        disambiguating_syntax = true;
     }
 }

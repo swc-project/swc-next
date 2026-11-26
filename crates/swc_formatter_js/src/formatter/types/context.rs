@@ -16,6 +16,8 @@ pub(in crate::formatter) enum TypeContext {
     },
     Parenthesized,
     ArrowReturn,
+    BeforeFunctionBody,
+    AngleAssertion,
     PostfixOperand,
     ModifierOperand,
     ModifierClosedOperand,
@@ -178,6 +180,15 @@ impl TypeContext {
                     };
             }
             Self::ArrowReturn => return matches!(data, TsTypeData::TsFunctionType(_)),
+            Self::BeforeFunctionBody => {
+                return matches!(
+                    super::terminal_type_data(data, ast, true),
+                    TsTypeData::TsJsDocUnknownType(_)
+                );
+            }
+            Self::AngleAssertion => {
+                return conditional_assertion_type_can_start_arrow(data, ast, MAX_RECURSION_DEPTH);
+            }
             Self::ConditionalCheck => {
                 return matches!(
                     data,
@@ -304,6 +315,31 @@ impl TypeContext {
         };
         precedence < minimum
     }
+}
+
+/// TypeScript can read the parameters of a conditional branch as a generic
+/// arrow's parameters when the conditional immediately follows an opening angle.
+fn conditional_assertion_type_can_start_arrow(
+    data: TsTypeData,
+    ast: &Ast<'_>,
+    remaining: usize,
+) -> bool {
+    if remaining == 0 {
+        return false;
+    }
+    let TsTypeData::TsConditionalType(conditional) = data else {
+        return false;
+    };
+    [conditional.true_type(ast), conditional.false_type(ast)]
+        .into_iter()
+        .any(|mut branch| {
+            while let TsTypeData::TsParenthesizedType(node) = ast.ts_type_data(branch) {
+                branch = node.type_annotation(ast);
+            }
+            let branch = ast.ts_type_data(branch);
+            matches!(branch, TsTypeData::TsFunctionType(_))
+                || conditional_assertion_type_can_start_arrow(branch, ast, remaining - 1)
+        })
 }
 
 // An enclosing type pair speculates a function when a single identifier-like

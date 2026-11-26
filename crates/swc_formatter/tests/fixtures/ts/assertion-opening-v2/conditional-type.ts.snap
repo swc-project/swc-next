@@ -1,0 +1,9 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = <T extends A ? U : ((c: C) => D)>y;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const x = <(T extends A ? U : (c: C) => D)>y;

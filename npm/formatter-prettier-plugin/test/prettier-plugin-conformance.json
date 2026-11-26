@@ -32588,6 +32588,16 @@
         "prettierNative": "left <<\r\n\t(<T>(\r\n\t\t/* head */ receiver.method() /* tail */()\r\n\t));\r\n"
       }
     ],
+    "ts/assertion-opening-v2/conditional-type.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = <(T extends A ? U : (c: C) => D)>y;\n",
+        "prettierNative": "const x = <T extends A ? U : (c: C) => D>y;\n"
+      }
+    ],
     "ts/assertion-opening-v2/diagnostic-angle/input.ts": [
       {
         "options": {
@@ -46168,6 +46178,16 @@
         "prettierNative": "type T=( A . B ) // prettier-ignore\n;[\n  K,\n]\n"
       }
     ],
+    "ts/type-annotation-heads/annotated-parameter-union.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function g({\n  a,\n}: /*#__PURE__*/ (\n  | A\n  | B\n  // note\n)) {}\n",
+        "prettierNative": "function g({\n  a,\n}:\n  | /*#__PURE__*/ A\n  | B) {}\n  // note\n"
+      }
+    ],
     "ts/type-annotation-heads/binding.ts": [
       {
         "options": {
@@ -46733,6 +46753,43 @@
         "prettierNative": "type A<\n  T extends // a\n  B,\n> = 1;\n"
       }
     ],
+    "ts/type-callable/compound-predicate-comments.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f(v: unknown): // head\nv is (\n  A & B\n  // tail\n) {\n  return true;\n}\n",
+        "prettierNative": "function f(v: unknown): // head\nv is A &\n  B {\n  // tail\n  return true;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f(\n  v: unknown,\n): // head\nv is (\n  A & B\n  // tail\n) {\n  return true;\n}\n",
+        "prettierNative": "function f(\n  v: unknown,\n): // head\nv is A &\n  B {\n  // tail\n  return true;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f(\n  v: unknown,\n): // head\nv is (\n  A &\n    B\n  // tail\n) {\n  return true\n}\n",
+        "prettierNative": "function f(\n  v: unknown,\n): // head\nv is A &\n  B {\n  // tail\n  return true\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "function f(\r\n\tv: unknown\r\n): // head\r\nv is (\r\n\tA & B\r\n\t// tail\r\n) {\r\n\treturn true;\r\n}\r\n",
+        "prettierNative": "function f(\r\n\tv: unknown\r\n): // head\r\nv is A &\r\n\tB {\r\n\t// tail\r\n\treturn true;\r\n}\r\n"
+      }
+    ],
     "ts/type-callable/empty-head.ts": [
       {
         "options": {
@@ -46768,6 +46825,80 @@
         },
         "swcPlugin": "type F = <\r\n\tT extends 12.0\r\n>\r\n/* prettier-ignore */\r\n()=>13.00;\r\n",
         "prettierNative": "type F = <\r\n\tT extends 12.0\r\n>() /* prettier-ignore */\r\n=>13.00;\r\n"
+      }
+    ],
+    "ts/type-callable/jsdoc-return-types.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f = (): (| A /* note */) => x;\n\nfunction g(): (?) {\n  return x;\n}\n",
+        "prettierNative": "const f = (): A /* note */ => x;\n\nfunction g(): ? {\n  return x;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const f =\n  (): (| A /* note */) =>\n    x;\n\nfunction g(): (?) {\n  return x;\n}\n",
+        "prettierNative": "const f =\n  (): A /* note */ =>\n    x;\n\nfunction g(): ? {\n  return x;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const f =\n  (): (| A /* note */) =>\n    x\n\nfunction g(): (?) {\n  return x\n}\n",
+        "prettierNative": "const f =\n  (): A /* note */ =>\n    x\n\nfunction g(): ? {\n  return x\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "const f =\r\n\t(): (| A /* note */) =>\r\n\t\tx;\r\n\r\nfunction g(): (?) {\r\n\treturn x;\r\n}\r\n",
+        "prettierNative": "const f =\r\n\t(): A /* note */ =>\r\n\t\tx;\r\n\r\nfunction g(): ? {\r\n\treturn x;\r\n}\r\n"
+      }
+    ],
+    "ts/type-compound/annotated-return-comment.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f(): /*#__PURE__*/ (\n  | A\n  | B\n  // note\n) {}\n",
+        "prettierNative": "function f():\n  | /*#__PURE__*/ A\n  | B {}\n  // note\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "function f(): /*#__PURE__*/ (\n  | A\n  | B\n  // note\n) {}\n",
+        "prettierNative": "function f():\n  | /*#__PURE__*/ A\n  | B {}\n  // note\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function f(): /*#__PURE__*/ (\n  | A\n  | B\n  // note\n) {}\n",
+        "prettierNative": "function f():\n  | /*#__PURE__*/ A\n  | B {}\n  // note\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "function f(): /*#__PURE__*/ (\r\n\t| A\r\n\t| B\r\n\t// note\r\n) {}\r\n",
+        "prettierNative": "function f():\r\n\t| /*#__PURE__*/ A\r\n\t| B {}\r\n\t// note\r\n"
       }
     ],
     "ts/type-compound/head-ownership/array-line-head.ts": [
@@ -47075,6 +47206,43 @@
         },
         "swcPlugin": "type A =\r\n\t/* outer */\r\n\t/* inner */\r\n\tLeft & Right;\r\n",
         "prettierNative": "type A =\r\n\t/* outer */ /* inner */\r\n\tLeft & Right;\r\n"
+      }
+    ],
+    "ts/type-compound/non-null-annotated-union.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(x as /*#__PURE__*/ (\n  | A\n  | B\n  // note\n))!;\n",
+        "prettierNative": "(x as\n  | /*#__PURE__*/ A\n  | B)!;\n  // note\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "(x as /*#__PURE__*/ (\n  | A\n  | B\n  // note\n))!;\n",
+        "prettierNative": "(x as\n  | /*#__PURE__*/ A\n  | B)!;\n  // note\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": ";(x as /*#__PURE__*/ (\n  | A\n  | B\n  // note\n))!\n",
+        "prettierNative": ";(x as\n  | /*#__PURE__*/ A\n  | B)!\n  // note\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "(x as /*#__PURE__*/ (\r\n\t| A\r\n\t| B\r\n\t// note\r\n))!;\r\n",
+        "prettierNative": "(x as\r\n\t| /*#__PURE__*/ A\r\n\t| B)!;\r\n\t// note\r\n"
       }
     ],
     "ts/type-compound/nullable-head/annotations/input.ts": [
