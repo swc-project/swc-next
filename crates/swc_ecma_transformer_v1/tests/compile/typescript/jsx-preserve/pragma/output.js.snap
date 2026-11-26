@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer_v1/tests/compile.rs
+---
+import { h } from "preact";
+export const App = (props) => <div>{props.name}</div>;

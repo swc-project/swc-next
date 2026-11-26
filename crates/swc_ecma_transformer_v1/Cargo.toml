@@ -26,4 +26,7 @@ swc_next_ecma_ast  = { workspace = true }
 getrandom = { workspace = true }
 
 [dev-dependencies]
-swc_next_ecma_parser  = { workspace = true }
+insta                = { workspace = true, features = ["glob"] }
+serde_json           = { workspace = true }
+swc_next             = { workspace = true, features = ["js_transformer_v1", "serde"] }
+swc_next_ecma_parser = { workspace = true }

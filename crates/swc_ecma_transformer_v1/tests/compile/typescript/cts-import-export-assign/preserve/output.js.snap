@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer_v1/tests/compile.rs
+---
+const x = require("x");
+module.exports = x;
