@@ -35,7 +35,10 @@ pub struct JsTransformerConfig {
     /// Overrides the API's shared filename when set.
     pub filename: Option<String>,
     /// Target environment for ECMAScript lowering.
-    #[cfg_attr(feature = "bridge", bridge(ts_type = "string | Array<string> | Record<string, string>"))]
+    #[cfg_attr(
+        feature = "bridge",
+        bridge(ts_type = "string | Array<string> | Record<string, string>")
+    )]
     pub target: Option<JsTarget>,
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
     ///
@@ -56,7 +59,12 @@ pub struct JsTransformerConfig {
     #[cfg_attr(feature = "bridge", bridge(ts_type = "ModuleConfig"))]
     pub module: Option<JsModuleConfig>,
     /// Per-feature overrides. `true` enables a transform; `false` disables it.
-    #[cfg_attr(feature = "bridge", bridge(ts_type = "Partial<Record<\"class-static-block\" | \"optional-catch-binding\", boolean>>"))]
+    #[cfg_attr(
+        feature = "bridge",
+        bridge(
+            ts_type = "Partial<Record<\"class-static-block\" | \"optional-catch-binding\", boolean>>"
+        )
+    )]
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
     #[cfg_attr(feature = "bridge", bridge(ts_type = "Assumptions"))]
@@ -121,7 +129,10 @@ pub struct JsModuleConfig {
     /// Output module format.
     ///
     /// @default "preserve"
-    #[cfg_attr(feature = "bridge", bridge(ts_type = "\"preserve\" | \"commonjs\" | \"amd\" | \"umd\" | \"systemjs\""))]
+    #[cfg_attr(
+        feature = "bridge",
+        bridge(ts_type = "\"preserve\" | \"commonjs\" | \"amd\" | \"umd\" | \"systemjs\"")
+    )]
     pub r#type: Option<JsModuleType>,
 }
 

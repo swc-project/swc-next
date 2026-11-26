@@ -90,13 +90,21 @@ impl<'a> Reader<'a> {
     }
 
     fn read_u16(&mut self) -> Option<u16> {
-        let slice: [u8; 2] = self.bytes.get(self.offset..self.offset + 2)?.try_into().ok()?;
+        let slice: [u8; 2] = self
+            .bytes
+            .get(self.offset..self.offset + 2)?
+            .try_into()
+            .ok()?;
         self.offset += 2;
         Some(u16::from_le_bytes(slice))
     }
 
     fn read_u32(&mut self) -> Option<u32> {
-        let slice: [u8; 4] = self.bytes.get(self.offset..self.offset + 4)?.try_into().ok()?;
+        let slice: [u8; 4] = self
+            .bytes
+            .get(self.offset..self.offset + 4)?
+            .try_into()
+            .ok()?;
         self.offset += 4;
         Some(u32::from_le_bytes(slice))
     }
@@ -444,7 +452,8 @@ pub unsafe fn transform_to_buffer(
     source_utf16_len: u32,
     options: &[u8],
 ) -> Result<Vec<u8>, String> {
-    let options = decode_options(options).ok_or_else(|| "invalid bridge value for `options`".to_owned())?;
+    let options =
+        decode_options(options).ok_or_else(|| "invalid bridge value for `options`".to_owned())?;
     let source = unsafe { std::str::from_utf8_unchecked(source) };
     let output = transform_js::<true>(source, options.unwrap_or_default().into());
     let Ok(buffer) = {

@@ -176,9 +176,7 @@ fn rewrite_struct_field_bridge_attrs(structure: &mut syn::ItemStruct) -> syn::Re
                 let args: proc_macro2::TokenStream = attr.parse_args()?;
                 *attr = parse_quote!(#[cfg_attr(not(target_family = "wasm"), napi(#args))]);
             } else if attr.path().is_ident("cfg_attr") {
-                let parsed = attr.parse_args_with(
-                    Punctuated::<Meta, Token![,]>::parse_terminated,
-                );
+                let parsed = attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated);
                 if let Ok(items) = parsed
                     && items.len() == 2
                     && let Meta::List(list) = &items[1]
