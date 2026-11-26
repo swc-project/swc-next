@@ -1373,6 +1373,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 boundary = boundary.with_source_packet(packet.span.end);
                 packet.span.end
             } else if let Some(tail) = annotation_tail {
+                if boundary.end() < statement_span.end {
+                    let comments = self
+                        .comments
+                        .between(Span::new(boundary.end(), statement_span.end))?;
+                    self.comments.claim(comments)?;
+                    self.format_comment_run(
+                        comments,
+                        CommentRunLayout::SourceLineTail(boundary.end()),
+                        writer,
+                    )?;
+                }
                 if let Some(next) = pending.as_mut()
                     && tail.suppression.following == ContentMode::Verbatim
                 {
