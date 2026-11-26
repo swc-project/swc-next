@@ -2416,6 +2416,25 @@
         "prettierNative": "class Sample extends Parent /* eslint-disable-next-line no-undef */ {\n  first = visible();\n  other = visible();\n  second = hidden();\n  last = visible();\n}\n"
       }
     ],
+    "js/classes/member-terminators/ignored-field-after-tail.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  value = a; // inner\n  // tail\n  // prettier-ignore\n  next=  1;\n}\n",
+        "prettierNative": "class C {\n  value = a; // inner // tail\n  // prettier-ignore\n  next=  1;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "class C {\n  value = a; // inner\n  // tail\n  // prettier-ignore\n  next=  1;\n}\n",
+        "prettierNative": "class C {\n  value = a // inner // tail\n  // prettier-ignore\n  next=  1\n}\n"
+      }
+    ],
     "js/classes/member-terminators/ignored-field-before-quoted-method.js": [
       {
         "options": {
@@ -4213,6 +4232,44 @@
         },
         "swcPlugin": "try {\r\n  present()\r\n} /* eslint-disable-next-line no-undef */\r\nfinally { missing() }\r\n",
         "prettierNative": "try {\r\n  present()\r\n} finally {\r\n  /* eslint-disable-next-line no-undef */\r\n  missing()\r\n}\r\n"
+      }
+    ],
+    "js/compound-statements/for-test-tail-comments.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "for (\n  ;\n  a // inner\n  // tail\n  // prettier-ignore\n;\n) {}\n",
+        "prettierNative": "for (\n  ;\n  a; // inner\n  // tail\n)\n// prettier-ignore\n{}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "for (\n  ;\n  a // inner\n  // tail\n  // prettier-ignore\n;\n) {}\n",
+        "prettierNative": "for (\n  ;\n  a; // inner\n  // tail\n)\n// prettier-ignore\n{}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "tab",
+          "trailingCommas": "none"
+        },
+        "swcPlugin": "for (\n\t;\n\ta // inner\n\t// tail\n\t// prettier-ignore\n;\n) {}\n",
+        "prettierNative": "for (\n\t;\n\ta; // inner\n\t// tail\n)\n// prettier-ignore\n{}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "for (\r\n  ;\r\n  a // inner\r\n  // tail\r\n  // prettier-ignore\r\n;\r\n) {}\r\n",
+        "prettierNative": "for (\r\n  ;\r\n  a; // inner\r\n  // tail\r\n)\r\n// prettier-ignore\r\n{}\r\n"
       }
     ],
     "js/compound-statements/switch-body-header.js": [
@@ -23440,7 +23497,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const element = <div></div>; /* block */ // tail\n",
+        "swcPlugin": "const element = (\n  <div></div /* block */ // tail\n  >\n);\n",
         "prettierNative": "const element = (\n  <div></div /* block */> // tail\n);\n"
       },
       {
@@ -23448,7 +23505,7 @@
           "lineWidth": 40,
           "indentStyle": "space"
         },
-        "swcPlugin": "const element = <div></div>; /* block */ // tail\n",
+        "swcPlugin": "const element = (\n  <div></div /* block */ // tail\n  >\n);\n",
         "prettierNative": "const element = (\n  <div></div /* block */> // tail\n);\n"
       },
       {
@@ -23457,7 +23514,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const element = <div></div> /* block */ // tail\n",
+        "swcPlugin": "const element = (\n  <div></div /* block */ // tail\n  >\n)\n",
         "prettierNative": "const element = (\n  <div></div /* block */> // tail\n)\n"
       }
     ],
@@ -28542,6 +28599,43 @@
         "prettierNative": ";({\n  m(\n    a=1+2 /* prettier-ignore */,\n  ) {\n    // prettier-ignore\n    return 1+2\n    f(3 + 4)\n  },\n})\n"
       }
     ],
+    "js/statements/if/condition-comment-enclosure.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "if (!(\n  a && b\n  // note\n  /* block:\n&& false //*/\n))\n  f();\n",
+        "prettierNative": "if (!(\n  a &&\n  b /* block:\n  // note\n&& false //*/\n))\n  f();\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (!(\n  a && b\n  // note\n  /* block:\n&& false //*/\n))\n  f()\n",
+        "prettierNative": "if (!(\n  a &&\n  b /* block:\n  // note\n&& false //*/\n))\n  f()\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "if (!(\n  a && b\n  // note\n  /* block:\n&& false //*/\n))\n  f()\n",
+        "prettierNative": "if (!(\n  a &&\n  b /* block:\n  // note\n&& false //*/\n))\n  f()\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "indentWidth": 4
+        },
+        "swcPlugin": "if (!(\n\ta && b\n\t// note\n\t/* block:\n&& false //*/\n))\n\tf();\n",
+        "prettierNative": "if (!(\n\ta &&\n\tb /* block:\n\t// note\n&& false //*/\n))\n\tf();\n"
+      }
+    ],
     "js/statements/if/condition-comment-owners.js": [
       {
         "options": {
@@ -31133,8 +31227,8 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const text = `${\n  (left = right)\n  // tail\n}`;\n",
-        "prettierNative": "const text = `${(left =\n  right)\n  // tail\n}`;\n"
+        "swcPlugin": "const text = `${\n  (left = right)\n  // tail\n}`;\n\nconst s = `a${(t = // note\n  1 + 2)}\n`;\n",
+        "prettierNative": "const text = `${(left =\n  right)\n  // tail\n}`;\n\nconst s = `a${(t = // note\n  1 + 2)}\n`;\n"
       },
       {
         "options": {
@@ -31143,8 +31237,8 @@
           "semicolons": "as-needed",
           "trailingCommas": "none"
         },
-        "swcPlugin": "const text = `${\n  (left = right)\n  // tail\n}`\n",
-        "prettierNative": "const text = `${(left =\n  right)\n  // tail\n}`\n"
+        "swcPlugin": "const text = `${\n  (left = right)\n  // tail\n}`\n\nconst s = `a${(t = // note\n  1 + 2)}\n`\n",
+        "prettierNative": "const text = `${(left =\n  right)\n  // tail\n}`\n\nconst s = `a${(t = // note\n  1 + 2)}\n`\n"
       },
       {
         "options": {
@@ -31152,8 +31246,8 @@
           "indentStyle": "space",
           "lineEnding": "crlf"
         },
-        "swcPlugin": "const text = `${\r\n  (left = right)\r\n  // tail\r\n}`;\r\n",
-        "prettierNative": "const text = `${(left =\r\n  right)\r\n  // tail\r\n}`;\r\n"
+        "swcPlugin": "const text = `${\r\n  (left = right)\r\n  // tail\r\n}`;\r\n\r\nconst s = `a${(t = // note\r\n  1 + 2)}\r\n`;\r\n",
+        "prettierNative": "const text = `${(left =\r\n  right)\r\n  // tail\r\n}`;\r\n\r\nconst s = `a${(t = // note\r\n  1 + 2)}\r\n`;\r\n"
       }
     ],
     "js/templates/slot-binary-own-line.js": [
@@ -35027,6 +35121,24 @@
         },
         "swcPlugin": "class Value {\n  first() {}\n\n  // ordinary head\n  // @ts-expect-error\n  protectedValue = MissingOne + MissingTwo;\n  outsideValue =\n    OutsideValue;\n}\n",
         "prettierNative": "class Value {\n  first() {}\n\n  // ordinary head\n  // @ts-expect-error\n  protectedValue =\n    MissingOne +\n    MissingTwo;\n  outsideValue =\n    OutsideValue;\n}\n"
+      }
+    ],
+    "ts/class-member-modifiers/decorator-expression-comment.tsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  @a\n  // note\n  /* block */\n  m() {}\n}\n",
+        "prettierNative": "class C {\n  @a\n  // note\n  /* block */ m() {}\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "class C {\n  @a\n  // note\n  /* block */\n  m() {}\n}\n",
+        "prettierNative": "class C {\n  @a\n  // note\n  /* block */ m() {}\n}\n"
       }
     ],
     "ts/class-member-modifiers/line-boundaries/async-block.ts": [
@@ -41713,6 +41825,24 @@
         },
         "swcPlugin": "declare const flag: boolean;\ndeclare const React: any;\nconst covered =\n\tflag ? // @ts-expect-error\n\t<Missing><Child /><Other /></Missing> : null;\nconst uncovered = flag ? (\n\t<Missing />\n) : null;\nconst logical = flag && // @ts-expect-error\n<Missing><Child /><Other /></Missing>;\nconst logicalUncovered = flag && (\n\t<Missing />\n);\nconst sourcePair =\n\tflag ? // @ts-expect-error\n\t<Missing><Child /><Other /></Missing> : null;\nconst ignored = flag // prettier-ignore\n? (\n\t<Missing value={1}>\n\t\t<Child />\n\t\t<Other />\n\t</Missing>\n) : null;\n",
         "prettierNative": "declare const flag: boolean;\ndeclare const React: any;\nconst covered = flag ? ( // @ts-expect-error\n\t<Missing>\n\t\t<Child />\n\t\t<Other />\n\t</Missing>\n) : null;\nconst uncovered = flag ? (\n\t<Missing />\n) : null;\nconst logical = flag && ( // @ts-expect-error\n\t<Missing>\n\t\t<Child />\n\t\t<Other />\n\t</Missing>\n);\nconst logicalUncovered = flag && (\n\t<Missing />\n);\nconst sourcePair = flag ? ( // @ts-expect-error\n\t<Missing>\n\t\t<Child />\n\t\t<Other />\n\t</Missing>\n) : null;\nconst ignored = flag ? ( // prettier-ignore\n\t<Missing value={1}>\n\t\t<Child />\n\t\t<Other />\n\t</Missing>\n) : null;\n"
+      }
+    ],
+    "ts/jsx/conditional-branches/consequent-closing-tag-comment.tsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x = v /* @ts-ignore */ ? (<A></A // note\n  >) : (<B>text</B>);\n",
+        "prettierNative": "const x = v /* @ts-ignore */ ? (\n  <A></A> // note\n) : (\n  <B>text</B>\n);\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const x =\n  v /* @ts-ignore */ ? (<A></A // note\n    >) : (<B>text</B>);\n",
+        "prettierNative": "const x =\n  v /* @ts-ignore */ ? (\n    <A></A> // note\n  ) : (\n    <B>text</B>\n  );\n"
       }
     ],
     "ts/jsx/conditional-branches/consequent-outer-block-diagnostic.tsx": [

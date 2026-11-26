@@ -370,12 +370,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     // A last operand's tail stays in the binary continuation group,
                     // even after its source parentheses have been removed.
                     let tail = self.format_binary_enclosed(owner.binary, writer)?;
-                    self.format_expression_tail(tail, writer)?;
-                    self.format_expression_tail(
+                    let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
+                    self.format_expression_tail_after(
                         Some(ExpressionTail {
                             source_end: owner.tail.source_end,
                             comments: owner.tail.comments,
                         }),
+                        adjacency,
                         writer,
                     )
                 } else {
@@ -427,11 +428,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         .trailing
                         .partition_point(|comment| comment.span.end <= tail_end);
                     let trailing = &source.trailing[already_leased..];
-                    self.format_expression_tail(tail, writer)?;
+                    let adjacency = self.format_expression_tail_adjacency(tail, writer)?;
                     self.comments.claim(trailing)?;
-                    self.format_comment_run(
+                    self.format_comment_run_after(
                         trailing,
                         CommentRunLayout::SourceAfter(tail_end),
+                        adjacency,
                         writer,
                     )
                 }

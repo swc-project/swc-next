@@ -401,6 +401,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         self.format_prepared_delimited_source_gap(gap, writer)
     }
 
+    pub(super) fn start_source_gap_on_new_line(
+        &self,
+        gap: &mut DelimitedSourceGap,
+        writer: &mut Writer<'ast>,
+    ) {
+        let source = self.source(gap.source);
+        gap.source.start = gap.source.end
+            - source
+                .trim_start_matches(is_source_horizontal_whitespace)
+                .len() as u32;
+        writer.hard_line();
+    }
+
     pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
         if self
             .trailing_suppression_from_comments(span, self.comments.in_range(span), terminal)

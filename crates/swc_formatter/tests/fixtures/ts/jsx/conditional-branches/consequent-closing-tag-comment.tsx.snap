@@ -1,0 +1,18 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+const x = v /* @ts-ignore */ ? <A></A // note
+> : <B>text</B>;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+const x = v /* @ts-ignore */ ? (<A></A // note
+  >) : (<B>text</B>);
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+const x =
+  v /* @ts-ignore */ ? (<A></A // note
+    >) : (<B>text</B>);

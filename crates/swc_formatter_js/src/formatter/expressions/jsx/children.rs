@@ -892,9 +892,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             JsxBraceRole::Child,
                             writer,
                         ),
-                        JsxChildData::JsxElement(element) => self
-                            .format_jsx_element(element, super::TailOwner::Expression, writer)
-                            .map(|_| ()),
+                        JsxChildData::JsxElement(element) => {
+                            self.format_jsx_element(element, writer)
+                        }
                         JsxChildData::JsxFragment(fragment) => {
                             self.format_jsx_fragment(fragment, writer)
                         }

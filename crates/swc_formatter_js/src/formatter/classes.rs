@@ -1467,14 +1467,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_node_head(head, ExpressionStart::None, None, writer)?;
                 Ok((end, ClassMemberEnd::Token))
             }
-            ClassMemberBoundaryLayout::Source(gap) => {
+            ClassMemberBoundaryLayout::Source(mut gap) => {
                 debug_assert!(pending.is_none() && operator_tail.is_none());
                 let has_content = gap.source.start != gap.source.end;
                 let supplied = terminal == ClassMemberEnd::LineComment
                     && (following || has_content)
                     && !gap.leading_line;
                 if supplied {
-                    writer.hard_line();
+                    self.start_source_gap_on_new_line(&mut gap, writer);
                 }
                 let gap = self.format_prepared_delimited_source_gap(gap, writer)?;
                 if following && (!supplied || has_content) {
@@ -1859,6 +1859,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let own_line = before
             .as_ref()
             .is_some_and(|tail| self.comment_run_has_own_line_tail(tail.comments, tail.source_end));
+        let pending_line = before.as_ref().is_some_and(|tail| {
+            tail.comments
+                .last()
+                .is_some_and(|comment| comment.kind == CommentKind::Line)
+        }) && !own_line
+            && self.source_line_breaks(span.start, span.end) == 0;
         self.format_expression_tail(before, writer)?;
         if own_line {
             let source = self.source(span);
@@ -1868,7 +1874,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer.hard_line();
             }
         }
-        self.format_class_member_source(span, writer)
+        let end = self.format_class_member_source(span, writer)?;
+        Ok(if pending_line {
+            ClassMemberEnd::LineComment
+        } else {
+            end
+        })
     }
 
     fn format_class_member_source(

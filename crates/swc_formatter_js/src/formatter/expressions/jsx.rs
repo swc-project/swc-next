@@ -19,7 +19,7 @@ use super::{
     ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext, OperandIndent,
     ParenthesesOwner, TailOwner,
 };
-use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTail, NodeHead};
+use crate::formatter::comments::{CommentBinding, CommentRunLayout, NodeHead};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::ContentMode;
 use crate::formatter::types::generics::TypeListKind;
@@ -143,9 +143,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_jsx_element(
         &mut self,
         node: JsxElement,
-        tail_owner: TailOwner,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
         let opening = node.opening_element(ast);
         let children = node.children(ast);
@@ -153,14 +152,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if !children.is_empty() || node.closing_element(ast).is_some() {
                 return Err(self.unsupported("self-closing JSX children", node));
             }
-            return self.format_jsx_opening(opening, writer).map(|()| None);
+            return self.format_jsx_opening(opening, writer);
         }
         let closing = node
             .closing_element(ast)
             .ok_or_else(|| self.unsupported("JSX closing element", node))?;
         if children.is_empty() {
             self.format_jsx_opening(opening, writer)?;
-            return self.format_jsx_closing(closing, tail_owner, writer);
+            return self.format_jsx_closing(closing, writer);
         }
         let (opening_doc, opening_layout) = self.record_jsx_opening(opening, writer)?;
         let span = node.span(ast);
@@ -181,7 +180,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             opening_constraint.write(writer, FlatSeparator::Empty, |_| {});
             writer.write_fragment(children_doc);
             closing_constraint.write(writer, FlatSeparator::Empty, |_| {});
-            return self.format_jsx_closing(closing, tail_owner, writer);
+            return self.format_jsx_closing(closing, writer);
         }
         let expand = children_layout.has_content
             && (opening_layout.multiple_attributes
@@ -205,16 +204,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     children_layout.trailing_line.write(writer);
                 }
             });
-            self.format_jsx_closing(closing, tail_owner, writer)
+            self.format_jsx_closing(closing, writer)
         })
     }
 
     fn format_jsx_closing(
         &mut self,
         closing: JsxClosingElement,
-        tail_owner: TailOwner,
         writer: &mut Writer<'ast>,
-    ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
+    ) -> Result<(), FormatError> {
         let ast = self.ast;
         let name = closing.name(ast);
         let name_span = name.span(ast);
@@ -235,25 +233,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_source_token_gap(slash + 1, prefix.end, false, writer)?;
             self.format_jsx_name(name, writer)?;
         }
-        let tail = self
-            .comments
-            .between(Span::new(name_span.end, span.end - 1))?;
-        let trailing =
-            self.prepare_delimited_trailing_run(tail, name_span.end, span.end - 1, false, None);
-        // A JS expression consumer owns punctuation after the closing tag. Direct
-        // JSX children and attribute values must keep native comments in the tag.
-        if tail_owner == TailOwner::ParentOperation
-            && trailing.is_some_and(|run| run.len() == tail.len())
-        {
-            writer.text(">");
-            return Ok(Some(ExpressionTail {
-                source_end: name_span.end,
-                comments: tail,
-            }));
-        }
+        // A line suffix outside this tag could flush into a subsequent JSX child.
         self.format_source_token_gap(name_span.end, span.end - 1, false, writer)?;
         writer.text(">");
-        Ok(None)
+        Ok(())
     }
 
     pub(super) fn format_jsx_fragment(
@@ -897,9 +880,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             JsxAttributeValueData::JsxExpressionContainer(container) => {
                 self.format_jsx_container(container, JsxBraceRole::Attribute, writer)?
             }
-            JsxAttributeValueData::JsxElement(element) => self
-                .format_jsx_element(element, TailOwner::Expression, writer)
-                .map(|_| ())?,
+            JsxAttributeValueData::JsxElement(element) => {
+                self.format_jsx_element(element, writer)?
+            }
             JsxAttributeValueData::JsxFragment(fragment) => {
                 self.format_jsx_fragment(fragment, writer)?
             }
