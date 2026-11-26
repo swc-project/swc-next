@@ -109,6 +109,13 @@ pub(super) const KNOWN_DIVERGENCES: Divergences = Divergences(&[
         ],
     },
     Divergence {
+        reason: "Keep closing-tag line comments inside JSX",
+        fixtures: &[fixture(
+            "jsx/comments/in-end-tag.js",
+            &["bracketSameLine: true"],
+        )],
+    },
+    Divergence {
         reason: "Keep source parentheses around commented curried arrow bodies",
         fixtures: &[fixture(
             "js/arrow-function/currying-4.js",
