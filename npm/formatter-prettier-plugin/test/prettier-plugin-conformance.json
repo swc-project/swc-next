@@ -4234,6 +4234,16 @@
         "prettierNative": "switch (\r\n  x\r\n) {\r\n  case 1:\r\n    f(\r\n      1,\r\n    )\r\n  /* prettier-ignore */ case 2: g( 2 );\r\n}\r\n"
       }
     ],
+    "js/compound-statements/switch-colon-comments/input.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "switch (value) {\n  case 0: /* first */ {\n    break;\n  }\n  default: /* last */ {\n    break;\n  }\n}\n\nswitch (x) {\n  case 1:\n    if (a) b(); // c\n  case 2:\n    break;\n}\n\nswitch (x) {\n  default:\n    if (a) b(); /* c */\n}\n\nswitch (x) {\n  case 1:\n    // @ts-ignore\n    f(); /* prettier-ignore */ default: g(); }\n",
+        "prettierNative": "switch (value) {\n  case 0: /* first */ {\n    break;\n  }\n  default: /* last */ {\n    break;\n  }\n}\n\nswitch (x) {\n  case 1:\n    if (a) b(); // c\n  case 2:\n    break;\n}\n\nswitch (x) {\n  default:\n    if (a) b(); /* c */\n}\n\nswitch (x) {\n  case 1:\n    // @ts-ignore\n    f(); /* prettier-ignore */\n  default:\n    g();\n}\n"
+      }
+    ],
     "js/compound-statements/switch-condition-header.js": [
       {
         "options": {
