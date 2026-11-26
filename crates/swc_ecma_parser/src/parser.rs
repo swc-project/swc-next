@@ -13880,7 +13880,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ) {
             None
         } else {
-            Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
+            // The operand is its own AssignmentExpression, so a typed arrow
+            // there keeps its return type even in a conditional consequent, as
+            // in TypeScript.
+            let ts_context = self.ts_context;
+            self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+            let argument = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
+            self.ts_context = ts_context;
+            Some(argument?)
         };
         if delegate && argument.is_none() {
             self.report_expected(
