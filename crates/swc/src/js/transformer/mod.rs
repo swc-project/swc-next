@@ -1,11 +1,15 @@
 use std::collections::BTreeMap;
 
+#[cfg(feature = "bridge")]
+use swc_next_bridge::bridge;
+#[cfg(all(feature = "bridge", not(target_family = "wasm")))]
+use swc_next_bridge::napi;
 #[cfg(any(feature = "js_transformer_v1", feature = "js_transformer_v2"))]
 use swc_next_ecma_ast::{Diagnostic, Severity};
 
 use crate::BoolOr;
 
-#[cfg(feature = "bridge")]
+#[cfg(all(feature = "bridge", feature = "js_transformer_v1"))]
 pub mod bridge;
 #[cfg(feature = "js_transformer_v1")]
 mod v1;
@@ -19,6 +23,7 @@ pub use v1::transform_js as transform_js_v1;
 pub use v2::transform_js as transform_js_v2;
 
 /// JavaScript and TypeScript transform options.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "TransformerConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -30,24 +35,31 @@ pub struct JsTransformerConfig {
     /// Overrides the API's shared filename when set.
     pub filename: Option<String>,
     /// Target environment for ECMAScript lowering.
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "string | Array<string> | Record<string, string>"))]
     pub target: Option<JsTarget>,
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
     ///
     /// @default enabled when `lang` is `"ts"`, `"tsx"`, or `"dts"`
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "boolean | TypeScriptConfig"))]
     pub typescript: Option<BoolOr<JsTypeScriptConfig>>,
     /// JSX transform. `false` keeps JSX syntax in the output.
     ///
     /// @default enabled with the automatic runtime when `lang` is `"jsx"` or `"tsx"`
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "boolean | JsxConfig"))]
     pub jsx: Option<BoolOr<JsxConfig>>,
     /// Decorator transform. `false` keeps decorator syntax in the output.
     ///
     /// @default false
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "boolean | DecoratorConfig"))]
     pub decorators: Option<BoolOr<JsDecoratorConfig>>,
     /// Module output format. Defaults to preserving ECMAScript modules.
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "ModuleConfig"))]
     pub module: Option<JsModuleConfig>,
     /// Per-feature overrides. `true` enables a transform; `false` disables it.
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "Partial<Record<\"class-static-block\" | \"optional-catch-binding\", boolean>>"))]
     pub features: Option<BTreeMap<JsFeature, bool>>,
     /// Babel-compatible assumptions.
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "Assumptions"))]
     pub assumptions: Option<JsAssumptions>,
     // pub define: Option<BTreeMap<String, String>>, // Global expression replacements.
     // pub helpers: Option<JsHelpers>, // Defaults to inline helpers.
@@ -67,6 +79,7 @@ pub enum JsTarget {
 }
 
 /// Decorator transform options.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "DecoratorConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -77,6 +90,7 @@ pub struct JsDecoratorConfig {
     /// Decorator proposal version.
     ///
     /// @default "2023-11"
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "\"2023-11\" | \"legacy\""))]
     pub version: Option<JsDecoratorVersion>,
     /// Emit `Reflect.metadata` design-type metadata. Legacy decorators only.
     ///
@@ -96,6 +110,7 @@ pub enum JsDecoratorVersion {
 }
 
 /// Module output configuration.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "ModuleConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -106,6 +121,7 @@ pub struct JsModuleConfig {
     /// Output module format.
     ///
     /// @default "preserve"
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "\"preserve\" | \"commonjs\" | \"amd\" | \"umd\" | \"systemjs\""))]
     pub r#type: Option<JsModuleType>,
 }
 
@@ -134,6 +150,7 @@ pub enum JsFeature {
 }
 
 /// TypeScript transform options.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "TypeScriptConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -150,12 +167,14 @@ pub struct JsTypeScriptConfig {
     ///
     /// @default false
     #[cfg(feature = "js_transformer_v2")]
+    #[cfg_attr(feature = "bridge", bridge(skip))]
     pub preserve_const_enums: Option<bool>,
     /// JSX runtime used to determine which factory imports to retain when JSX
     /// syntax is preserved. Does not enable JSX lowering. When JSX lowering is
     /// enabled, its runtime takes precedence.
     ///
     /// @default "classic"
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "\"classic\" | \"automatic\""))]
     pub jsx_runtime: Option<JsxRuntime>,
     /// Classic JSX factory used to preserve its value import when JSX syntax
     /// is retained.
@@ -179,6 +198,7 @@ pub enum JsxRuntime {
 }
 
 /// JSX options targeting Babel 8. `useSpread` and `useBuiltIns` are not supported.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "JsxConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -187,6 +207,7 @@ pub enum JsxRuntime {
 #[derive(Clone, Debug, Default)]
 pub struct JsxConfig {
     /// @default "automatic"
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "\"classic\" | \"automatic\""))]
     pub runtime: Option<JsxRuntime>,
     /// @default false
     pub development: Option<bool>,
@@ -217,10 +238,12 @@ pub struct JsxConfig {
     /// React Refresh. `true` uses default options.
     ///
     /// @default false
+    #[cfg_attr(feature = "bridge", bridge(ts_type = "boolean | ReactRefreshConfig"))]
     pub refresh: Option<BoolOr<JsReactRefreshConfig>>,
 }
 
 /// React Refresh options.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "ReactRefreshConfig"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
@@ -237,6 +260,7 @@ pub struct JsReactRefreshConfig {
 }
 
 /// Babel assumptions. All default to false.
+#[cfg_attr(feature = "bridge", bridge(object, js_name = "Assumptions"))]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",

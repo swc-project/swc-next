@@ -22,10 +22,73 @@ test("transform transports nested configurations", () => {
   };
   for (const transform of [transformSync, transformStandalone, transformProtocol]) {
     const output = transform('/* comment */ const value: string = "雪🌍";', options);
-    assert.deepEqual(output, { code: 'const value:string="\\u96EA\\u{1F30D}";', diagnostics: [] });
+    assert.deepEqual(output, { code: 'const value="\\u96EA\\u{1F30D}";', diagnostics: [] });
+
+    const preserved = transform('/* comment */ const value: string = "雪🌍";', {
+      ...options,
+      transformer: { typescript: false },
+    });
+    assert.deepEqual(preserved, {
+      code: 'const value:string="\\u96EA\\u{1F30D}";',
+      diagnostics: [],
+    });
 
     const defaults = transform("const value = 1;");
     assert.deepEqual(defaults, { code: "const value = 1;\n", diagnostics: [] });
+  }
+});
+
+test("transform forwards transformer v1 options", () => {
+  for (const transform of [transformSync, transformStandalone, transformProtocol]) {
+    const tsx = transform("export const App = (props: { x: number }) => <div {...props} />;", {
+      filename: "App.tsx",
+      transformer: {
+        jsx: { runtime: "classic", pragma: "h" },
+        module: { type: "commonjs" },
+      },
+    });
+    assert.equal(tsx.diagnostics.length, 0);
+    assert.match(tsx.code, /Object\.defineProperty\(exports, "App"/);
+    assert.match(tsx.code, /h\("div", props\)/);
+
+    const lowered = transform("class A { static { console.log(1); } }", {
+      transformer: {
+        target: "es2021",
+        assumptions: { setPublicClassFields: true },
+      },
+    });
+    assert.equal(lowered.diagnostics.length, 0);
+    assert.doesNotMatch(lowered.code, /static \{/);
+
+    const feature = transform("try {} catch {}", {
+      transformer: { features: { "optional-catch-binding": true } },
+    });
+    assert.equal(feature.diagnostics.length, 0);
+    assert.match(feature.code, /catch \([^)]+\)/);
+
+    const engineTarget = transform("a ?? b;", {
+      transformer: { target: { node: "12" } },
+    });
+    assert.equal(engineTarget.diagnostics.length, 0);
+    assert.doesNotMatch(engineTarget.code, /\?\?/);
+
+    const queryList = transform("a?.b;", {
+      transformer: { target: ["chrome 70", "chrome 120"] },
+    });
+    assert.equal(queryList.diagnostics.length, 0);
+    assert.doesNotMatch(queryList.code, /\?\./);
+
+    const decorators = transform("@dec class A {}", {
+      transformer: { decorators: { version: "legacy" } },
+    });
+    assert.equal(decorators.diagnostics.length, 0);
+    assert.doesNotMatch(decorators.code, /@dec/);
+
+    const invalidTarget = transform("const x = 1;", {
+      transformer: { target: "not-a-browser 1" },
+    });
+    assert.equal(invalidTarget.code, "");
+    assert.equal(invalidTarget.diagnostics[0].severity, "error");
   }
 });
 
@@ -53,6 +116,15 @@ test("transform validates configuration values", () => {
     assert.throws(() => transform("", { parser: { lang: "invalid" } }), TypeError);
 
     assert.throws(() => transform("", { generator: { minify: 1 } }), TypeError);
+
+    assert.throws(() => transform("", { transformer: true }), TypeError);
+
+    assert.throws(() => transform("", { transformer: { unknownOption: true } }), TypeError);
+
+    assert.throws(
+      () => transform("", { transformer: { typescript: { preserveConstEnums: true } } }),
+      TypeError,
+    );
   }
 });
 

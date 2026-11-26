@@ -139,7 +139,23 @@ fn expand_bridge(item: Item, arguments: Vec<Meta>) -> syn::Result<proc_macro2::T
         Item::Enum(enumeration) => expand_enum(enumeration, arguments),
         Item::Fn(function) => expand_function(function, arguments),
         Item::Impl(implementation) => expand_wire_impl(implementation, arguments),
-        Item::Struct(structure) => {
+        Item::Struct(mut structure) => {
+            rewrite_struct_field_bridge_attrs(&mut structure)?;
+            let mut arguments = arguments;
+            if arguments.iter().any(|arg| arg.path().is_ident("object")) {
+                if !arguments
+                    .iter()
+                    .any(|arg| arg.path().is_ident("object_from_js"))
+                {
+                    arguments.push(parse_quote!(object_from_js = false));
+                }
+                if !arguments
+                    .iter()
+                    .any(|arg| arg.path().is_ident("object_to_js"))
+                {
+                    arguments.push(parse_quote!(object_to_js = false));
+                }
+            }
             let napi = napi_meta(&arguments);
             Ok(quote! {
                 #[cfg_attr(not(target_family = "wasm"), #napi)]
@@ -151,6 +167,33 @@ fn expand_bridge(item: Item, arguments: Vec<Meta>) -> syn::Result<proc_macro2::T
             "#[bridge] supports functions, enums, structs, and bridge wire impls",
         )),
     }
+}
+
+fn rewrite_struct_field_bridge_attrs(structure: &mut syn::ItemStruct) -> syn::Result<()> {
+    for field in &mut structure.fields {
+        for attr in &mut field.attrs {
+            if attr.path().is_ident("bridge") {
+                let args: proc_macro2::TokenStream = attr.parse_args()?;
+                *attr = parse_quote!(#[cfg_attr(not(target_family = "wasm"), napi(#args))]);
+            } else if attr.path().is_ident("cfg_attr") {
+                let parsed = attr.parse_args_with(
+                    Punctuated::<Meta, Token![,]>::parse_terminated,
+                );
+                if let Ok(items) = parsed
+                    && items.len() == 2
+                    && let Meta::List(list) = &items[1]
+                    && list.path.is_ident("bridge")
+                {
+                    let pred = items.first().unwrap().clone();
+                    let args = list.tokens.clone();
+                    *attr = parse_quote!(
+                        #[cfg_attr(all(#pred, not(target_family = "wasm")), napi(#args))]
+                    );
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 fn expand_wire_impl(

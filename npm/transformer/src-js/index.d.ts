@@ -1,21 +1,26 @@
 import type { TransformApiOptions, JsOutput } from "./binding.js";
 
 export type {
+  Assumptions,
   CommentMode,
+  DecoratorConfig,
   Diagnostic,
   DiagnosticLabel,
   GeneratorConfig,
+  JsOutput,
+  JsxConfig,
   Lang,
+  ModuleConfig,
   ParserConfig,
+  ReactRefreshConfig,
   SourceType,
   TransformApiOptions,
-  JsOutput,
+  TransformerConfig,
+  TypeScriptConfig,
 } from "./binding.js";
 
-/** Parse and print source synchronously.
- * Built-in transformations, including TypeScript type erasure and JSX lowering,
- * are not currently implemented by this API.
- * Syntax errors are returned in diagnostics.
+/** Transform JavaScript or TypeScript source synchronously.
+ * Syntax and transform diagnostics are returned in `diagnostics`.
  * Options encoding is not reentrant. Option getters and Proxy traps must not
  * call this transformSync again while it is encoding options.
  */

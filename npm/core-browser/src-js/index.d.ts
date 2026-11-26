@@ -11,14 +11,21 @@ import type {
 } from "./binding.js";
 
 export type {
+  Assumptions,
   CommentMode,
+  DecoratorConfig,
   Diagnostic,
   DiagnosticLabel,
-  ParserConfig,
   GeneratorConfig,
   GenerateOutput,
-  TransformApiOptions,
   JsOutput,
+  JsxConfig,
+  ModuleConfig,
+  ParserConfig,
+  ReactRefreshConfig,
+  TransformApiOptions,
+  TransformerConfig,
+  TypeScriptConfig,
 } from "./binding.js";
 
 export type GenerateApiOptions = GeneratorConfig;
@@ -61,10 +68,8 @@ export declare function generateSync(
 export declare function langFromPath(path: string): Lang;
 export declare function sourceTypeFromPath(path: string): SourceType;
 
-/** Parse and print source synchronously.
- * Built-in transformations, including TypeScript type erasure and JSX lowering,
- * are not currently implemented by this API.
- * Syntax errors are returned in diagnostics.
+/** Transform JavaScript or TypeScript source synchronously.
+ * Syntax and transform diagnostics are returned in `diagnostics`.
  * Options encoding is not reentrant. Option getters and Proxy traps must not
  * call this transformSync again while it is encoding options.
  */
