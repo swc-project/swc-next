@@ -464,7 +464,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<(), FormatError> {
         let comments = self.comments.between(span)?;
         self.comments.claim(comments)?;
-        writer.literal_text(self.source(span));
+        self.write_verbatim_source(span, writer);
         Ok(())
     }
 }

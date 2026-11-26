@@ -8,8 +8,8 @@ use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, JsxAttribute, JsxAttributeItemData,
     JsxAttributeName, JsxAttributeNameData, JsxAttributeValueData, JsxClosingElement, JsxElement,
     JsxElementName, JsxElementNameData, JsxExpressionContainer, JsxExpressionData, JsxFragment,
-    JsxMemberExpression, JsxMemberExpressionObjectData, JsxNamespacedName, JsxOpeningElement, Span,
-    StringLiteral,
+    JsxMemberExpression, JsxMemberExpressionObjectData, JsxNamespacedName, JsxOpeningElement,
+    NodeId, NodeKindData, Span, StringLiteral,
 };
 
 use super::arrows::ArrowLayout;
@@ -46,6 +46,62 @@ struct JsxBraceEnd {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(in crate::formatter) fn write_verbatim_source(
+        &self,
+        span: Span,
+        writer: &mut Writer<'ast>,
+    ) {
+        let source = self.source(span);
+        let ending = self.options.line_ending;
+        if !self.ast.is_jsx() || jsx_attribute_lines_match(source, ending) {
+            writer.literal_text(source);
+            return;
+        }
+        let ast = self.ast;
+        let attributes = self.jsx_verbatim_attributes.get_or_init(|| {
+            // The flat AST locates attribute values without interpreting quotes in raw source.
+            let mut attributes = Vec::new();
+            for index in 0..ast.node_count() {
+                if let NodeKindData::JsxAttribute(attribute) =
+                    ast.kind_data(NodeId::from_usize(index))
+                    && let Some(value) = attribute.value(ast)
+                    && let JsxAttributeValueData::StringLiteral(literal) =
+                        ast.jsx_attribute_value_data(value)
+                {
+                    let span = literal.span(ast);
+                    if !jsx_attribute_lines_match(self.source(span), ending) {
+                        attributes.push(span);
+                    }
+                }
+            }
+            attributes.sort_unstable_by_key(|span| (span.start, span.end));
+            attributes.dedup();
+            attributes
+        });
+        let first = attributes.partition_point(|attribute| attribute.end <= span.start);
+        let mut start = span.start;
+        for attribute in &attributes[first..] {
+            if attribute.start >= span.end {
+                break;
+            }
+            let begin = attribute.start.max(start);
+            let end = attribute.end.min(span.end);
+            writer.literal_text(self.source(Span::new(start, begin)));
+            let text = self.source(Span::new(begin, end));
+            let mut offset = 0;
+            for (index, byte) in text.bytes().enumerate() {
+                if let Some(entity) = jsx_line_entity(char::from(byte)) {
+                    writer.text(&text[offset..index]);
+                    writer.text(entity);
+                    offset = index + 1;
+                }
+            }
+            writer.text(&text[offset..]);
+            start = end;
+        }
+        writer.literal_text(self.source(Span::new(start, span.end)));
+    }
+
     pub(super) fn jsx_expression_needs_parentheses(position: ExpressionPosition) -> bool {
         matches!(
             position,
@@ -1505,13 +1561,22 @@ fn jsx_attribute_string<'text>(
     for character in decoded.chars() {
         match character {
             character if character == quote => output.push_str(entity),
-            '\r' if encode_lines => output.push_str("&#13;"),
-            '\n' if encode_lines => output.push_str("&#10;"),
+            character if encode_lines && let Some(entity) = jsx_line_entity(character) => {
+                output.push_str(entity);
+            }
             character => output.push(character),
         }
     }
     output.push(quote);
     Cow::Owned(output)
+}
+
+fn jsx_line_entity(character: char) -> Option<&'static str> {
+    match character {
+        '\r' => Some("&#13;"),
+        '\n' => Some("&#10;"),
+        _ => None,
+    }
 }
 
 /// A literal document line uses the selected output EOL. Attribute values are

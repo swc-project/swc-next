@@ -31837,6 +31837,78 @@
         "prettierNative": "<div>\n  {\n    '  '\n  }{' '}\n</div>;\n"
       }
     ],
+    "jsx/whitespace-expression-values/numeric-references.jsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<A>x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x</A>;\n",
+        "prettierNative": "<A>x &#32;</A>;\n\n<A>x &#32;</A>;\n\n<A>&#x9; x</A>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "<A>x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x</A>;\n",
+        "prettierNative": "<A>x &#32;</A>;\n\n<A>x &#32;</A>;\n\n<A>&#x9; x</A>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<A>\n  x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x\n</A>;\n",
+        "prettierNative": "<A>\n  x &#32;\n</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>\n  &#x9; x\n</A>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "<A>\n  x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x\n</A>;\n",
+        "prettierNative": "<A>\n  x &#32;\n</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>\n  &#x9; x\n</A>;\n"
+      }
+    ],
+    "jsx/whitespace-expression-values/numeric-references.tsx": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<A>x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x</A>;\n",
+        "prettierNative": "<A>x &#32;</A>;\n\n<A>x &#32;</A>;\n\n<A>&#x9; x</A>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "<A>x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x</A>;\n",
+        "prettierNative": "<A>x &#32;</A>;\n\n<A>x &#32;</A>;\n\n<A>&#x9; x</A>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "<A>\n  x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x\n</A>;\n",
+        "prettierNative": "<A>\n  x &#32;\n</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>\n  &#x9; x\n</A>;\n"
+      },
+      {
+        "options": {
+          "lineWidth": 12,
+          "indentStyle": "space",
+          "quoteStyle": "single"
+        },
+        "swcPlugin": "<A>\n  x &#32;</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>&#x9; x\n</A>;\n",
+        "prettierNative": "<A>\n  x &#32;\n</A>;\n\n<A>\n  x &#32;\n</A>;\n\n<A>\n  &#x9; x\n</A>;\n"
+      }
+    ],
     "ts/ambient-declarations/alias-tail.ts": [
       {
         "options": {

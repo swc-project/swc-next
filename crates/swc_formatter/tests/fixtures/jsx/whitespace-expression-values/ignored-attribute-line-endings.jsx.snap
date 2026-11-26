@@ -1,0 +1,49 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+// prettier-ignore
+const x=<div title="ab" />;
+
+// prettier-ignore
+const y=<div title="a
+b" />;
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+// prettier-ignore
+const x=<div title="a&#13;b" />;
+
+// prettier-ignore
+const y=<div title="a
+b" />;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"quoteStyle":"single"}
+---------- Output ----------
+// prettier-ignore
+const x=<div title="a&#13;b" />;
+
+// prettier-ignore
+const y=<div title="a
+b" />;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":12}
+---------- Output ----------
+// prettier-ignore
+const x=<div title="a&#13;b" />;
+
+// prettier-ignore
+const y=<div title="a
+b" />;
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":12,"quoteStyle":"single"}
+---------- Output ----------
+// prettier-ignore
+const x=<div title="a&#13;b" />;
+
+// prettier-ignore
+const y=<div title="a
+b" />;
