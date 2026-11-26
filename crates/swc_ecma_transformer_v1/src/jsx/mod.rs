@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, mem};
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::*;
 
 use crate::common::resolver::context::Resolver;
@@ -82,13 +82,14 @@ pub(crate) fn transform(
     ast: &mut Ast<'_>,
     options: &JsxOptions,
     filename: Option<&str>,
+    header_end: u32,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
     if options.runtime == Some(JsxRuntime::Preserve) {
         return Vec::new();
     }
 
-    jsx(ast, options, filename, resolver)
+    jsx(ast, options, filename, header_end, resolver)
 }
 
 /// SWC JSX hook construction: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L212>.
@@ -97,6 +98,7 @@ fn jsx(
     ast: &mut Ast<'_>,
     options: &JsxOptions,
     filename: Option<&str>,
+    header_end: u32,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
@@ -117,16 +119,12 @@ fn jsx(
     let source_self = development && options.source_self.unwrap_or(true);
     let pure = options.pure.unwrap_or(true);
     let display_name = options.display_name.unwrap_or(true);
-    let mut comments: FxHashMap<u32, Vec<Comment>> = FxHashMap::default();
-    for &comment in ast.comments() {
-        if comment.kind != CommentKind::Block || comment.position != CommentPosition::Leading {
-            continue;
-        }
-        comments
-            .entry(comment.attached_to)
-            .or_default()
-            .push(comment);
-    }
+    let header_comments: Vec<Comment> = ast
+        .comments()
+        .iter()
+        .copied()
+        .filter(|comment| comment.span.end <= header_end && comment.kind == CommentKind::Block)
+        .collect();
     let mut jsx = Jsx {
         resolver,
         runtime: options.runtime.unwrap_or_default(),
@@ -147,7 +145,7 @@ fn jsx(
         source: source_self.then(|| JsxSrc::new(ast.source())),
         self_ctx: JsxSelfCtx::default(),
         method_functions: FxHashSet::default(),
-        comments,
+        header_comments,
         diagnostics,
         top_level_node: true,
         pure_positions: FxHashSet::default(),
@@ -194,8 +192,8 @@ struct Jsx<'r, 'ast> {
     source: Option<JsxSrc>,
     self_ctx: JsxSelfCtx,
     method_functions: FxHashSet<NodeId>,
-    // JSX directives are only read from leading block comments.
-    comments: FxHashMap<u32, Vec<Comment>>,
+    // JSX directives are only read from file-header block comments.
+    header_comments: Vec<Comment>,
     diagnostics: Vec<Diagnostic>,
     top_level_node: bool,
     pure_positions: FxHashSet<u32>,
@@ -231,21 +229,7 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<Program> {
         let ast = &*ctx.ast;
-        self.parse_directives(ast, program.span(ast).start);
-        // Directives are statements in SWC and a separate list in Next.
-        let directives = program
-            .directives(ast)
-            .iter()
-            .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
-        let statements = program
-            .body(ast)
-            .iter()
-            .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
-        for offset in directives.chain(statements) {
-            if self.parse_directives(ast, offset) {
-                break;
-            }
-        }
+        self.parse_directives(ast);
         if ctx.ast.is_module() {
             if self.pure {
                 self.pure_annotations
@@ -1068,20 +1052,16 @@ impl JsxDirectives {
 
 impl Jsx<'_, '_> {
     /// SWC directive application: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1143>.
-    pub(super) fn parse_directives(&mut self, ast: &Ast<'_>, offset: u32) -> bool {
-        let Some(comments) = self.comments.get(&offset) else {
-            return false;
-        };
+    pub(super) fn parse_directives(&mut self, ast: &Ast<'_>) {
+        if self.header_comments.is_empty() {
+            return;
+        }
         let JsxDirectives {
             runtime,
             import_source,
             pragma,
             pragma_frag,
-        } = JsxDirectives::from_comments(ast, comments, &mut self.diagnostics);
-        let found = runtime.is_some()
-            || import_source.is_some()
-            || pragma.is_some()
-            || pragma_frag.is_some();
+        } = JsxDirectives::from_comments(ast, &self.header_comments, &mut self.diagnostics);
         if let Some(runtime) = runtime {
             self.runtime = runtime;
         }
@@ -1106,7 +1086,6 @@ impl Jsx<'_, '_> {
             }
             self.pragma_frag = pragma;
         }
-        found
     }
 }
 

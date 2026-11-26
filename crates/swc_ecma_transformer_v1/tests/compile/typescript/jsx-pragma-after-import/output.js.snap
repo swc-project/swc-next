@@ -1,6 +1,6 @@
 ---
 source: crates/swc_ecma_transformer_v1/tests/compile.rs
 ---
-import React from "react";
+import { jsx as _jsx } from "react/jsx-runtime";
 /** @jsxRuntime classic */
-export const view = /* #__PURE__ */ React.createElement("div", null);
+export const view = /* #__PURE__ */ _jsx("div", {});

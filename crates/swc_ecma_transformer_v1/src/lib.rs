@@ -70,7 +70,7 @@
 //! };
 //! ```
 
-use swc_next_ecma_ast::{AstCtx, Diagnostic, TraverseMutCtx};
+use swc_next_ecma_ast::{AstCtx, Diagnostic, GetSpan, TraverseMutCtx};
 
 use self::{
     common::{TraverseCtx, resolver::context::Resolver},
@@ -197,6 +197,17 @@ impl Transformer {
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
         let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
+        let header_end = {
+            let program = context.ast.root_program();
+            let mut boundary = u32::MAX;
+            if let Some(directive) = program.directives(context.ast).get_node(context.ast, 0) {
+                boundary = boundary.min(directive.span(context.ast).start);
+            }
+            if let Some(statement) = program.body(context.ast).get_node(context.ast, 0) {
+                boundary = boundary.min(statement.span(context.ast).start);
+            }
+            boundary
+        };
         if let Some(decorators) = options.decorators {
             decorators::transform(context.ast, &mut context.state, decorators);
         }
@@ -215,6 +226,7 @@ impl Transformer {
                 context.ast,
                 typescript,
                 tsx,
+                header_end,
                 options.module.r#type,
                 context.state.resolver,
             ));
@@ -224,6 +236,7 @@ impl Transformer {
                 context.ast,
                 jsx,
                 options.filename.as_deref(),
+                header_end,
                 context.state.resolver,
             ));
         }

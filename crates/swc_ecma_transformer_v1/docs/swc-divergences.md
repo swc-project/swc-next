@@ -26,3 +26,9 @@
 - **Legacy SWC transformer:** Defaults to legacy experimental decorators when decorators are enabled without an explicit version.
 - **v1 transformer:** Defaults `decorators.version` to `"2023-11"`. Legacy decorators and `emitDecoratorMetadata` remain available via `version: "legacy"`.
 - **Rationale:** Matches the TC39 Stage 3 decorator specification and TypeScript 5+ default decorator semantics.
+
+## ADR-004: File-header-only JSX pragma comment scanning
+
+- **Legacy SWC transformer:** JSX lowering scans leading comments on subsequent top-level statements after the first statement until a `@jsx*` directive is found, while TypeScript TSX import retention only scans file-header comments.
+- **v1 transformer:** Both TypeScript TSX import retention and JSX lowering only scan file-header leading block comments before the first directive or statement.
+- **Rationale:** Matches `tsc` and SWC Next v2, and ensures TypeScript factory import retention and JSX lowering always agree on per-file pragma directives.

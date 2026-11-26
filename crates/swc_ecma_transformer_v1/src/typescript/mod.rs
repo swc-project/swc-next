@@ -2,7 +2,6 @@
 
 use std::collections::HashSet;
 
-use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::*;
 
 use crate::{common::resolver::context::Resolver, module::ModuleType};
@@ -26,6 +25,7 @@ pub(crate) fn typescript(
     ast: &mut Ast<'_>,
     mut options: TypeScriptOptions,
     tsx: bool,
+    header_end: u32,
     module_type: ModuleType,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
@@ -36,7 +36,7 @@ pub(crate) fn typescript(
     }
     let pass = TypeScript { config: &options };
     if tsx {
-        TypeScriptReact { typescript: pass }.process(ast, resolver)
+        TypeScriptReact { typescript: pass }.process(ast, resolver, header_end)
     } else {
         pass.process(ast, resolver, HashSet::new())
     }
@@ -116,12 +116,12 @@ struct TypeScriptReact<'a> {
 }
 
 impl TypeScriptReact<'_> {
-    fn process(&self, ast: &mut Ast<'_>, resolver: &mut Resolver) -> Vec<Diagnostic> {
+    fn process(&self, ast: &mut Ast<'_>, resolver: &mut Resolver, header_end: u32) -> Vec<Diagnostic> {
         let options = self.typescript.config;
         let id_usage = if matches!(ast.source_type(), SourceType::Module | SourceType::CommonJs)
             && !options.verbatim_module_syntax
         {
-            jsx_usage(ast, options, resolver)
+            jsx_usage(ast, options, resolver, header_end)
         } else {
             HashSet::new()
         };
@@ -144,77 +144,41 @@ fn is_es_module_decl(ast: &Ast<'_>, statement: Stmt) -> bool {
 /// SWC TSX conservatively retains both configured factory roots, even when no
 /// element or fragment needs them. Leading pragma comments add their roots.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L186>.
-fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<SymbolId> {
+fn jsx_usage(
+    ast: &Ast<'_>,
+    options: &TypeScriptOptions,
+    resolver: &Resolver,
+    header_end: u32,
+) -> HashSet<SymbolId> {
     let jsx = &options.jsx;
     let mut automatic = jsx.automatic;
     let mut pragmas = Vec::new();
-    let program = ast.root_program();
-    let mut comments_by_offset: FxHashMap<u32, Vec<Comment>> = FxHashMap::default();
-    for &comment in ast.comments() {
-        if comment.position == CommentPosition::Leading && comment.kind == CommentKind::Block {
-            comments_by_offset
-                .entry(comment.attached_to)
-                .or_default()
-                .push(comment);
+    // Only scan file-header comments before the original first directive or statement,
+    // matching tsc and Jsx::enter_program.
+    for comment in ast.comments() {
+        if comment.span.end > header_end || comment.kind != CommentKind::Block {
+            continue;
         }
-    }
-    let mut scan_offset = |offset: u32| -> bool {
-        let Some(comments) = comments_by_offset.get(&offset) else {
-            return false;
-        };
-        let mut found = false;
-        for comment in comments {
-            for line in ast.get_utf8(comment.value(ast.source().as_bytes())).lines() {
-                let line = line.trim().trim_start_matches('*').trim();
-                if !line.starts_with("@jsx") {
-                    continue;
-                }
-                let mut words = line.split_whitespace();
-                while let Some(directive) = words.next() {
-                    let Some(value) = words.next() else {
-                        break;
-                    };
-                    match directive {
-                        "@jsx" | "@jsxFrag" => {
-                            pragmas.push(value.to_owned());
-                            found = true;
-                        }
-                        "@jsxRuntime" => match value {
-                            "automatic" => {
-                                automatic = true;
-                                found = true;
-                            }
-                            "classic" => {
-                                automatic = false;
-                                found = true;
-                            }
-                            _ => {}
-                        },
-                        "@jsxImportSource" => {
-                            found = true;
-                        }
+        for line in ast.get_utf8(comment.value(ast.source().as_bytes())).lines() {
+            let line = line.trim().trim_start_matches('*').trim();
+            if !line.starts_with("@jsx") {
+                continue;
+            }
+            let mut words = line.split_whitespace();
+            while let Some(directive) = words.next() {
+                let Some(value) = words.next() else {
+                    break;
+                };
+                match directive {
+                    "@jsx" | "@jsxFrag" => pragmas.push(value.to_owned()),
+                    "@jsxRuntime" => match value {
+                        "automatic" => automatic = true,
+                        "classic" => automatic = false,
                         _ => {}
-                    }
+                    },
+                    _ => {}
                 }
             }
-        }
-        found
-    };
-
-    // Match Jsx::enter_program: scan program-level comments first, then
-    // directives and top-level statements until the first JSX directive.
-    scan_offset(program.span(ast).start);
-    let directives = program
-        .directives(ast)
-        .iter()
-        .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
-    let statements = program
-        .body(ast)
-        .iter()
-        .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
-    for offset in directives.chain(statements) {
-        if scan_offset(offset) {
-            break;
         }
     }
 
