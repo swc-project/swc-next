@@ -2,125 +2,41 @@
 
 use swc_next_ecma_ast::{
     Ast, AstNode, BinaryExpression, BinaryOperator, Expr, ExprData, GetSpan, NodeId, NodeKind,
-    Precedence, UnaryOperator, is_ident_continue_ascii, is_identifier,
+    Precedence, StringLiteral, UnaryOperator,
 };
 
-use crate::{printer::Options, util::next_code_point};
+use super::super::{Options, Printer, PrinterMode};
 
-/// Conservatively checks whether the AST can emit a comparison and a committing close.
-pub(super) fn needs_trace(ast: &Ast<'_>, options: &Options) -> bool {
+pub(super) enum Risk {
+    None,
+    Single(BinaryExpression),
+    Multiple,
+}
+
+/// Conservatively finds up to two runtime closes that can commit a type-argument trial.
+pub(super) fn comparison_risk(ast: &Ast<'_>, options: &Options) -> Risk {
     if !binary_expressions(ast).any(|binary| binary.operator(ast) == BinaryOperator::LessThan) {
-        return false;
+        return Risk::None;
     }
     // Explicit type lists balance their own closing angles. A value trial
     // therefore also needs a runtime close with a committing printed follower.
     // Keep the no-LT scan cheap even when a TS file contains many GT operators.
     let mut comments_ordered = None;
-    binary_expressions(ast).any(|binary| match binary.operator(ast) {
+    let mut candidates = binary_expressions(ast).filter(|&binary| match binary.operator(ast) {
         BinaryOperator::GreaterThan
         | BinaryOperator::RightShift
         | BinaryOperator::UnsignedRightShift => {
             close_may_commit(ast, binary, options, &mut comments_ordered)
         }
         _ => false,
-    })
-}
-
-/// Checks the first token and intervening line terminators in the printed output.
-pub(super) fn printed_follower_can_commit(code: &[u8], mut index: usize) -> bool {
-    let mut newline = false;
-    loop {
-        match code.get(index) {
-            Some(b' ' | b'\t' | b'\x0b' | b'\x0c') => index += 1,
-            Some(b'\n' | b'\r') => {
-                newline = true;
-                index += 1;
-            }
-            Some(0xe2)
-                if code.get(index + 1) == Some(&0x80)
-                    && matches!(code.get(index + 2), Some(0xa8 | 0xa9)) =>
-            {
-                newline = true;
-                index += 3;
-            }
-            Some(b'/') if code.get(index + 1) == Some(&b'*') => {
-                index += 2;
-                while index < code.len() && code.get(index..index + 2) != Some(b"*/") {
-                    newline |= matches!(code[index], b'\n' | b'\r')
-                        || matches!(code.get(index..index + 3), Some([0xe2, 0x80, 0xa8 | 0xa9]));
-                    index += 1;
-                }
-                index += 2;
-            }
-            Some(b'/') if code.get(index + 1) == Some(&b'/') => {
-                index += 2;
-                while index < code.len()
-                    && !matches!(code[index], b'\n' | b'\r')
-                    && !matches!(code.get(index..index + 3), Some([0xe2, 0x80, 0xa8 | 0xa9]))
-                {
-                    index += 1;
-                }
-            }
-            _ => break,
-        }
-    }
-    can_follow_type_arguments(code.get(index..).unwrap_or_default(), newline)
-}
-
-fn can_follow_type_arguments(code: &[u8], newline: bool) -> bool {
-    match code {
-        [b'+' | b'-', b'=', ..] | [b'<', b'<' | b'=', ..] | [b'!', b'=', ..] => true,
-        [b'+', b'+', ..] | [b'-', b'-', ..] => newline,
-        // Match the parser's unconditional rejections before applying the line break.
-        [b'<' | b'>' | b'+' | b'-', ..] => false,
-        _ if newline => true,
-        [b'a' | b'i' | b's', ..] => binary_keyword_follows(code),
-        // The remaining emitted expression starts require a preceding line break.
-        [b'.', b'0'..=b'9', ..] | [b'.', b'.', b'.', ..] => false,
-        [
-            b'a'..=b'z'
-            | b'A'..=b'Z'
-            | b'0'..=b'9'
-            | b'_'
-            | b'$'
-            | b'\\'
-            | 0x80..=0xff
-            | b'\''
-            | b'"'
-            | b'!'
-            | b'~'
-            | b'['
-            | b'{'
-            | b'#'
-            | b'@',
-            ..,
-        ] => false,
-        _ => true,
-    }
-}
-
-fn binary_keyword_follows(code: &[u8]) -> bool {
-    let end = if code.starts_with(b"as") {
-        2
-    } else if code.starts_with(b"satisfies") {
-        9
-    } else if code.starts_with(b"instanceof") {
-        10
-    } else if code.starts_with(b"in") {
-        2
-    } else {
-        return false;
+    });
+    let Some(first) = candidates.next() else {
+        return Risk::None;
     };
-    match code.get(end) {
-        Some(b'\\') => false,
-        Some(byte) if byte.is_ascii() => !is_ident_continue_ascii(*byte),
-        Some(_) => {
-            let (_, width) = next_code_point(code, end);
-            // The final ASCII letter supplies a valid identifier start, so
-            // the shared Unicode predicate tests just this continuation.
-            !is_identifier(&code[end - 1..end + width])
-        }
-        None => true,
+    if candidates.next().is_some() {
+        Risk::Multiple
+    } else {
+        Risk::Single(first)
     }
 }
 
@@ -130,6 +46,7 @@ enum Follower {
     Reject,
     // An expression-start token rejects the trial unless trivia adds a line break.
     Value(u32),
+    CompactString(StringLiteral, u32),
     Unknown,
 }
 
@@ -145,7 +62,7 @@ fn close_follower(
         match ast.expr_data(expr) {
             ExprData::IdentifierReference(identifier) => {
                 let name = ast.get_utf8(identifier.name(ast));
-                return if matches!(name, "" | "as" | "satisfies") {
+                return if matches!(name, "" | "as" | "satisfies" | "in" | "instanceof") {
                     Follower::Unknown
                 } else {
                     Follower::Value(leading)
@@ -154,9 +71,31 @@ fn close_follower(
             ExprData::ThisExpression(_)
             | ExprData::Super(_)
             | ExprData::BooleanLiteral(_)
-            | ExprData::NullLiteral(_) => return Follower::Value(leading),
-            // Compact strings may be re-quoted as tagged-template followers.
-            ExprData::StringLiteral(_) if !options.minify => return Follower::Value(leading),
+            | ExprData::NullLiteral(_)
+            | ExprData::ArrayExpression(_)
+            | ExprData::ObjectExpression(_)
+            | ExprData::Function(_)
+            | ExprData::Class(_)
+            | ExprData::PrivateIdentifier(_)
+            | ExprData::MetaProperty(_) => return Follower::Value(leading),
+            ExprData::StringLiteral(string) => {
+                return if options.minify {
+                    Follower::CompactString(string, leading)
+                } else {
+                    Follower::Value(leading)
+                };
+            }
+            ExprData::UpdateExpression(update)
+                if update.prefix(ast) && level <= Precedence::Prefix =>
+            {
+                return Follower::Value(leading);
+            }
+            ExprData::AwaitExpression(_) if level <= Precedence::Prefix => {
+                return Follower::Value(leading);
+            }
+            ExprData::NewExpression(_) if level <= Precedence::New => {
+                return Follower::Value(leading);
+            }
             ExprData::NumericLiteral(_) | ExprData::BigIntLiteral(_)
                 if level < Precedence::Prefix =>
             {
@@ -230,7 +169,7 @@ fn close_may_commit(
         options,
     ) {
         Follower::Reject => false,
-        Follower::Unknown => true,
+        Follower::CompactString(..) | Follower::Unknown => true,
         Follower::Value(end) => {
             if !options.comments || ast.comments().is_empty() {
                 return false;
@@ -256,6 +195,42 @@ fn close_may_commit(
                 .is_some_and(|comment| comment.span.end <= end)
         }
     }
+}
+
+/// Checks a runtime close at its printed precedence. The preflight only tests
+/// for possible trivia and defers compact re-quoting to this check.
+pub(super) fn close_can_commit<M: PrinterMode>(
+    printer: &Printer<'_, M>,
+    binary: BinaryExpression,
+    right_level: Precedence,
+    comments_ordered: bool,
+) -> bool {
+    let ast = printer.ast;
+    let end = match close_follower(ast, binary.right(ast), right_level, &printer.options) {
+        Follower::Reject => return false,
+        Follower::Unknown => return true,
+        Follower::Value(end) => end,
+        Follower::CompactString(string, end) => {
+            if printer.string_quote(ast.get_wtf8(string.value(ast)), true) == b'`' {
+                return true;
+            }
+            end
+        }
+    };
+    let start = binary.span(ast).start.max(binary.left(ast).span(ast).start);
+    if end <= start || printer.comments.is_empty() {
+        return false;
+    }
+    if !comments_ordered {
+        return true;
+    }
+    let next = printer
+        .comments
+        .partition_point(|comment| comment.span.end <= start);
+    printer.comments[next..]
+        .iter()
+        .take_while(|comment| comment.span.end <= end)
+        .any(|comment| printer.comment_has_line_terminator(*comment))
 }
 
 fn binary_expressions<'a>(ast: &'a Ast<'_>) -> impl Iterator<Item = BinaryExpression> + 'a {

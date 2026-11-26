@@ -7,15 +7,7 @@ use swc_next_ecma_ast::{
 
 use crate::printer::{Printer, PrinterMode};
 
-impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
-    #[inline]
-    pub(in crate::printer) fn syntax_value_container(&mut self, expression: Expr) -> bool {
-        M::CAPTURE
-            && self.trace.state_mut().has_pending_here()
-            && self.syntax_rejects_type(expression)
-            && self.trace.state_mut().begin_value()
-    }
-
+impl<'a, M: PrinterMode> Printer<'a, M> {
     pub(in crate::printer) fn syntax_rejects_type(&self, mut expr: Expr) -> bool {
         // Complete type forms compose through tuple elements, property types,
         // template holes, type operators and function returns. Computed keys
@@ -213,18 +205,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             || !self.is_type_operator_head(call.callee(self.ast))
     }
 
-    pub(in crate::printer) fn call_rejects_type(&self, call: CallExpression) -> bool {
-        self.call_has_value_head(call)
-            || match self
-                .ast
-                .argument_data(call.arguments(self.ast).get_node(self.ast, 0).unwrap())
-            {
-                ArgumentData::Expr(argument) => self.syntax_rejects_type(argument),
-                ArgumentData::SpreadElement(_) => false,
-            }
-    }
-
-    pub(in crate::printer) fn is_type_operator_head(&self, mut callee: Expr) -> bool {
+    fn is_type_operator_head(&self, mut callee: Expr) -> bool {
         loop {
             match self.ast.expr_data(callee) {
                 ExprData::IdentifierReference(identifier) => {

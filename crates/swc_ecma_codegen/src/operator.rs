@@ -1,6 +1,6 @@
 use swc_next_ecma_ast::{
-    Ast, BinaryExpression, BinaryOperator, Expr, LogicalExpression, LogicalOperator, Precedence,
-    UnaryOperator, UpdateOperator,
+    Ast, BinaryExpression, BinaryOperator, Expr, ExprData, LogicalExpression, LogicalOperator,
+    Precedence, UnaryOperator, UpdateOperator,
 };
 
 #[derive(Clone, Copy)]
@@ -39,13 +39,6 @@ pub(crate) enum BinaryishOperator {
 }
 
 impl BinaryishOperator {
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::Binary(op) => op.as_str(),
-            Self::Logical(op) => op.as_str(),
-        }
-    }
-
     pub(crate) fn precedence(self) -> Precedence {
         match self {
             Self::Binary(op) => op.precedence(),
@@ -81,16 +74,27 @@ impl BinaryishOperator {
         context
     }
 
-    pub(crate) fn is_keyword(self) -> bool {
-        matches!(
-            self,
-            Self::Binary(BinaryOperator::In | BinaryOperator::Instanceof)
-        )
+    pub(crate) fn needs_group(self, level: Precedence, forbid_in: bool) -> bool {
+        level > self.precedence() || forbid_in && self == Self::Binary(BinaryOperator::In)
     }
 
-    pub(crate) fn is_right_associative(self) -> bool {
-        self == Self::Binary(BinaryOperator::Exponent)
+    pub(crate) fn operand_levels(self) -> (Precedence, Precedence) {
+        let level = self.precedence();
+        if self == Self::Binary(BinaryOperator::Exponent) {
+            (level.next(), level)
+        } else {
+            (level, level.next())
+        }
     }
+}
+
+// `??` cannot directly contain `||` or `&&` without parentheses.
+pub(crate) fn needs_nullish_wrap(ast: &Ast<'_>, operand: Expr) -> bool {
+    matches!(
+        ast.expr_data(operand),
+        ExprData::LogicalExpression(logical)
+            if matches!(logical.operator(ast), LogicalOperator::And | LogicalOperator::Or)
+    )
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -109,22 +113,12 @@ pub(crate) enum OperatorCode {
 // heap-backed stack avoids overflowing the native stack for deeply nested ASTs.
 #[derive(Clone, Copy)]
 pub(crate) struct BinaryExprVisitor {
-    // Inputs
     pub(crate) e: Binaryish,
-    pub(crate) level: Precedence,
-    pub(crate) flags: bool,
-    // Carry grouping context through the rightmost ungrouped operand.
-    pub(crate) context: ExprContext,
-
-    // Input for visiting the left child
-    pub(crate) left_level: Precedence,
-    pub(crate) left_flags: bool,
-    pub(crate) left_context: ExprContext,
-
-    // Local variables passed from `prepare` to
-    // `visit_right_and_finish`
     pub(crate) operator: BinaryishOperator,
+    pub(crate) forbid_in: bool,
     pub(crate) wrap: bool,
+    pub(crate) left_level: Precedence,
+    pub(crate) left_context: ExprContext,
     pub(crate) right_level: Precedence,
     pub(crate) right_context: ExprContext,
 }
@@ -137,7 +131,6 @@ bitflags::bitflags! {
         const WRAP_TS_CAST = 1 << 1;
         const NO_INSTANTIATION = 1 << 2;
         const OMIT_NESTED_NEW_ARGS = 1 << 3;
-        const EXPLICIT_GROUP = 1 << 4;
     }
 }
 

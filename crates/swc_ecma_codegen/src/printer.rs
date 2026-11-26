@@ -5,7 +5,9 @@ use memchr::memchr3;
 use swc_next_allocator::wtf8::Wtf8;
 use swc_next_ecma_ast::*;
 
-use crate::operator::{BinaryExprVisitor, Binaryish, BinaryishOperator, ExprContext, OperatorCode};
+use crate::operator::{
+    BinaryExprVisitor, Binaryish, BinaryishOperator, ExprContext, OperatorCode, needs_nullish_wrap,
+};
 use crate::util::{next_code_point, push_code_point_escape, push_u16_escape, quote_into};
 
 use crate::{
@@ -122,36 +124,33 @@ struct JavaScript;
 #[derive(Default)]
 struct Typed;
 
-// A compile-time mode selects typed expression context, layout and tracing.
-// JavaScript retains its formatting without TS context or syntax capture.
-trait PrinterMode<'a>: Default {
+// Keep the comparison plan out of the ordinary JS and TS printer modes.
+trait PrinterMode: Default {
     const TYPESCRIPT: bool;
+    const PLANNED_COMPARISONS: bool = false;
 
-    const CAPTURE: bool = false;
+    fn groups_comparison(&self, _comparison: BinaryExpression) -> bool {
+        false
+    }
 
-    fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
-        unreachable!("this printer mode has no syntax trace")
+    fn enter_top_level_statement(&mut self, _statement: Stmt) {}
+
+    fn observe_binary(&mut self, _binary: Binaryish) {}
+
+    fn missed_comparison_region(&self) -> bool {
+        false
     }
 }
 
-impl PrinterMode<'_> for JavaScript {
+impl PrinterMode for JavaScript {
     const TYPESCRIPT: bool = false;
 }
 
-impl PrinterMode<'_> for Typed {
+impl PrinterMode for Typed {
     const TYPESCRIPT: bool = true;
 }
 
-impl<'a> PrinterMode<'a> for ts_grouping::State<'a> {
-    const TYPESCRIPT: bool = true;
-    const CAPTURE: bool = true;
-    fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
-        self
-    }
-}
-
-// Untraced modes are zero sized and keep the ordinary binary-stack layout.
-struct Printer<'a, M: PrinterMode<'a>> {
+struct Printer<'a, M: PrinterMode> {
     ast: &'a Ast<'a>,
     options: Options,
     js: Vec<u8>,
@@ -178,7 +177,7 @@ struct Printer<'a, M: PrinterMode<'a>> {
     prev_token_end_requiring_space: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
-    trace: M,
+    mode: M,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -235,89 +234,55 @@ pub fn generate<'a>(tree: &'a AstCtx<'a>, options: Options) -> GenerateResult<'a
 }
 
 impl BinaryExprVisitor {
-    fn prepare<'a, M: PrinterMode<'a>>(&mut self, p: &mut Printer<'a, M>) {
-        let e = self.e;
-
+    fn start<'a, M: PrinterMode>(
+        e: Binaryish,
+        level: Precedence,
+        forbid_in: bool,
+        context: ExprContext,
+        p: &mut Printer<'a, M>,
+    ) -> Self {
         let operator = e.operator(p.ast);
-        let precedence = operator.precedence();
-
-        self.operator = operator;
-        self.wrap = self.level > precedence
-            || (self.flags && operator == BinaryishOperator::Binary(BinaryOperator::In));
-
-        let syntax_rejects = M::CAPTURE
-            && matches!(
-                operator,
-                BinaryishOperator::Binary(BinaryOperator::LessThan)
-            )
-            && p.syntax_rejects_type(e.right(p.ast));
-
-        let syntax_explicit = self.context.contains(ExprContext::EXPLICIT_GROUP);
-
-        if M::CAPTURE
-            && matches!(
-                operator,
-                BinaryishOperator::Binary(BinaryOperator::LessThan)
-            )
-        {
-            p.trace.state_mut().begin_binary(
-                ts_grouping::Shape {
-                    wrapped: self.wrap || syntax_explicit,
-                    rejects: syntax_rejects,
-                },
-                p.js.len(),
-            );
+        if M::PLANNED_COMPARISONS {
+            p.mode.observe_binary(e);
         }
+        let wrap = operator.needs_group(level, forbid_in)
+            || (M::PLANNED_COMPARISONS
+                && operator == BinaryishOperator::Binary(BinaryOperator::LessThan)
+                && matches!(e, Binaryish::Binary(comparison) if p.mode.groups_comparison(comparison)));
 
-        if self.wrap {
-            p.print("(");
+        debug_assert_eq!(p.forbid_in, forbid_in);
+        if wrap {
+            p.js.push(b'(');
+            p.forbid_in = false;
         }
-
-        let local_forbid_in = self.flags && !self.wrap;
-        p.forbid_in = local_forbid_in;
-
-        self.left_level = if operator.is_right_associative() {
-            precedence.next()
-        } else {
-            precedence
-        };
-        self.right_level = if operator.is_right_associative() {
-            precedence
-        } else {
-            precedence.next()
-        };
-        self.left_flags = local_forbid_in;
-        self.left_context = if M::TYPESCRIPT {
-            operator.following_context()
-        } else {
-            ExprContext::empty()
-        };
-        self.right_context = if M::TYPESCRIPT {
-            self.context.inside_group(self.wrap)
-                & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION)
-        } else {
-            ExprContext::empty()
+        let (left_level, right_level) = operator.operand_levels();
+        let mut visitor = Self {
+            e,
+            operator,
+            forbid_in,
+            wrap,
+            left_level,
+            right_level,
+            left_context: if M::TYPESCRIPT {
+                operator.following_context()
+            } else {
+                ExprContext::empty()
+            },
+            right_context: if M::TYPESCRIPT {
+                context.inside_group(wrap)
+                    & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION)
+            } else {
+                ExprContext::empty()
+            },
         };
 
         match operator {
             BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
-                // "??" cannot directly contain "||" or "&&" without
-                // parentheses.
-                let needs_nullish_wrap = |child| {
-                    matches!(
-                        p.ast.expr_data(child),
-                        ExprData::LogicalExpression(logical)
-                            if matches!(
-                                logical.operator(p.ast),
-                                LogicalOperator::And | LogicalOperator::Or
-                            )
-                    )
-                };
-                if needs_nullish_wrap(e.left(p.ast)) {
-                    self.left_level = Precedence::Prefix;
+                if needs_nullish_wrap(p.ast, e.left(p.ast)) {
+                    visitor.left_level = Precedence::Prefix;
                 }
-                if needs_nullish_wrap(e.right(p.ast)) {
-                    self.right_level = Precedence::Prefix;
+                if needs_nullish_wrap(p.ast, e.right(p.ast)) {
+                    visitor.right_level = Precedence::Prefix;
                 }
             }
             BinaryishOperator::Binary(BinaryOperator::Exponent) => {
@@ -329,7 +294,7 @@ impl BinaryExprVisitor {
                         | ExprData::AwaitExpression(_)
                         | ExprData::TsTypeAssertion(_)
                 ) {
-                    self.left_level = Precedence::Call;
+                    visitor.left_level = Precedence::Call;
                 }
             }
             BinaryishOperator::Binary(BinaryOperator::LeftShift) if M::TYPESCRIPT => {
@@ -342,10 +307,10 @@ impl BinaryExprVisitor {
                         assertion.expression(p.ast),
                         assertion.type_annotation(p.ast),
                     ),
-                    _ => return,
+                    _ => return visitor,
                 };
                 if !p.ts_type_can_precede_left_shift(type_annotation) {
-                    return;
+                    return visitor;
                 }
                 // Keep grouping if the cast's operand would absorb the shift.
                 loop {
@@ -355,76 +320,51 @@ impl BinaryExprVisitor {
                         ExprData::BinaryExpression(binary)
                             if binary.operator(p.ast).precedence() < Precedence::Shift =>
                         {
-                            return;
+                            return visitor;
                         }
                         ExprData::LogicalExpression(logical)
                             if logical.operator(p.ast).precedence() < Precedence::Shift =>
                         {
-                            return;
+                            return visitor;
                         }
                         _ => break,
                     };
                 }
-                self.left_level = Precedence::Compare;
+                visitor.left_level = Precedence::Compare;
             }
             _ => {}
         }
+        visitor
     }
 
-    fn visit_right_and_finish<'a, M: PrinterMode<'a>>(self, p: &mut Printer<'a, M>) {
-        let syntax_left_end = p.js.len();
+    fn visit_right_and_finish<'a, M: PrinterMode>(self, p: &mut Printer<'a, M>) {
         p.print_space();
-        if self.operator.is_keyword() {
-            p.print_space_before_identifier();
-            p.print(self.operator.as_str());
-            p.print_space();
-        } else {
-            match self.operator {
-                BinaryishOperator::Binary(operator) => {
-                    let operator_code = OperatorCode::Binary(operator);
-                    p.print_operator(operator_code, operator.as_str());
-
-                    if M::CAPTURE {
-                        match operator {
-                            BinaryOperator::LessThan => {
-                                p.trace.state_mut().operator(1, syntax_left_end)
-                            }
-                            // The second `<` of a shift would have to begin a
-                            // generic function type with parameters and a real
-                            // `=>`. Value precedence groups an arrow operand,
-                            // so a complete such head cannot come from `<<`.
-                            BinaryOperator::LeftShift => p.trace.state_mut().type_break(),
-                            _ => {}
-                        }
-                    }
-                }
-                BinaryishOperator::Logical(_) => p.print(self.operator.as_str()),
+        match self.operator {
+            BinaryishOperator::Binary(
+                operator @ (BinaryOperator::In | BinaryOperator::Instanceof),
+            ) => {
+                p.print_space_before_identifier();
+                p.print(operator.as_str());
             }
+            BinaryishOperator::Binary(operator) => {
+                p.print_operator(OperatorCode::Binary(operator), operator.as_str());
+            }
+            BinaryishOperator::Logical(operator) => p.print(operator.as_str()),
         }
-        if !self.operator.is_keyword() {
-            p.print_space();
-        }
+        p.print_space();
 
-        p.forbid_in = self.flags && !self.wrap;
+        // The left operand has restored the context set when its parent began.
+        debug_assert_eq!(p.forbid_in, self.forbid_in && !self.wrap);
         p.print_expr_with_context(self.e.right(p.ast), self.right_level, self.right_context);
 
         if self.wrap {
-            p.print(")");
+            p.js.push(b')');
+            p.forbid_in = self.forbid_in;
         }
-
-        if M::CAPTURE
-            && matches!(
-                self.operator,
-                BinaryishOperator::Binary(BinaryOperator::LessThan)
-            )
-        {
-            p.trace.state_mut().end_binary(p.js.len());
-        }
-        p.forbid_in = self.flags;
     }
 }
 
-impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
+impl<'a, M: PrinterMode> Printer<'a, M> {
     fn init(ast: &'a Ast<'a>, options: Options) -> Self {
         // Formatting must use the comments that will actually be emitted.
         // Keep legal-comment metadata independent of this printing view.
@@ -460,7 +400,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             prev_token_end_requiring_space: usize::MAX,
             forbid_in: false,
             int_to_bytes_buffer: [0; 64],
-            trace: M::default(),
+            mode: M::default(),
         }
     }
 
@@ -475,10 +415,8 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             options,
             js,
             builder,
-            trace,
             ..
         } = self;
-        drop(trace);
         let map = if let Some(path) = options.source_map_path {
             let path = path.into_os_string().into_encoded_bytes();
             let chunk = builder.generate_chunk(js.as_slice());
@@ -505,11 +443,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     #[inline]
     fn add_source_mapping(&mut self, original_offset: u32) {
         if self.options.source_map_path.is_some() {
-            if M::CAPTURE && self.trace.state_mut().has_records() {
-                let state = self.trace.state_mut();
-                state.mapping(self.js.len(), original_offset, &[]);
-                return;
-            }
             self.builder
                 .add_source_mapping(original_offset, &[], self.js.as_slice());
         }
@@ -518,11 +451,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     #[inline]
     fn add_source_mapping_for_name(&mut self, original_offset: u32, original_name: &'a str) {
         if self.options.source_map_path.is_some() {
-            if M::CAPTURE && self.trace.state_mut().has_records() {
-                let state = self.trace.state_mut();
-                state.mapping(self.js.len(), original_offset, original_name.as_bytes());
-                return;
-            }
             self.builder.add_source_mapping(
                 original_offset,
                 original_name.as_bytes(),
@@ -533,10 +461,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
 
     #[inline(always)]
     fn print(&mut self, text: &str) {
-        if M::CAPTURE {
-            let state = self.trace.state_mut();
-            state.syntax(text.as_bytes(), self.js.len());
-        }
         self.js.extend_from_slice(text.as_bytes());
     }
 
@@ -561,7 +485,13 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         }
         for (index, id) in program.body(self.ast).iter().enumerate() {
             let statement = self.ast.get_node_in_sub_range(id);
+            if M::PLANNED_COMPARISONS {
+                self.mode.enter_top_level_statement(statement);
+            }
             self.print_stmt_with_context(statement, index == 0);
+            if M::PLANNED_COMPARISONS && self.mode.missed_comparison_region() {
+                return;
+            }
             self.print_semicolon_if_needed();
         }
         let last_statement_end = program
@@ -835,14 +765,14 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     #[inline]
     fn print_space(&mut self) {
         if !self.options.minify {
-            self.print(" ");
+            self.js.push(b' ');
         }
     }
 
     #[inline]
     fn print_newline(&mut self) {
         if !self.options.minify {
-            self.print("\n");
+            self.js.push(b'\n');
         }
     }
 
@@ -1736,7 +1666,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.print("(");
         }
 
-        let syntax_body = M::CAPTURE && self.trace.state_mut().begin_value();
         self.print_space_before_identifier();
         self.add_source_mapping(f.span(self.ast).start);
         if f.r#async(self.ast) {
@@ -1761,10 +1690,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         self.print_space();
         self.print_function_body(f.body(self.ast));
         self.print_attached_trailing_comments(f.body(self.ast).span(self.ast).end);
-
-        if syntax_body {
-            self.trace.state_mut().end_value();
-        }
         if wrap {
             self.print(")");
         }
@@ -1855,11 +1780,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             let old_forbid_in = self.forbid_in;
             self.forbid_in = false;
 
-            if M::CAPTURE {
-                // A value-parameter initializer cannot continue a type-argument
-                // list begun in this parameter frame. Ancestor trials remain.
-                self.trace.state_mut().type_break();
-            }
             self.print_space();
             self.print("=");
             self.print_space();
@@ -2211,18 +2131,31 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     }
 
     fn print_expr_leading_comments(&mut self, expr: Expr) {
-        let is_at_stmt_start = self.js.len() == self.stmt_start;
-        let is_at_export_default_start = self.js.len() == self.export_default_start;
-        let is_at_for_init_start = self.js.len() == self.for_init_start;
-        self.print_comments_before(expr.span(self.ast).start, false, true);
+        let Some(comment) = self.comments.get(self.next_comment) else {
+            return;
+        };
+        let offset = expr.span(self.ast).start;
+        if comment.span.end <= offset {
+            self.print_expr_comments(offset);
+        }
+    }
+
+    #[cold]
+    fn print_expr_comments(&mut self, offset: u32) {
+        let start = self.js.len();
+        let is_at_stmt_start = self.stmt_start == start;
+        let is_at_export_default_start = self.export_default_start == start;
+        let is_at_for_init_start = self.for_init_start == start;
+        self.print_comments_before_slow(offset, false, true);
+        let end = self.js.len();
         if is_at_stmt_start {
-            self.stmt_start = self.js.len();
+            self.stmt_start = end;
         }
         if is_at_export_default_start {
-            self.export_default_start = self.js.len();
+            self.export_default_start = end;
         }
         if is_at_for_init_start {
-            self.for_init_start = self.js.len();
+            self.for_init_start = end;
         }
     }
 
@@ -2340,9 +2273,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                 self.print_space();
                 let operator = e.operator(self.ast);
 
-                if M::CAPTURE {
-                    self.trace.state_mut().type_break();
-                }
                 self.print_operator(OperatorCode::Assignment, operator.as_str());
                 self.print_space();
                 self.print_expr(e.right(self.ast), Precedence::Assignment);
@@ -2371,18 +2301,12 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                 self.print_expr_with_context(test, Precedence::Conditional.next(), test_context);
                 self.print_space();
 
-                if M::CAPTURE {
-                    self.trace.state_mut().type_break();
-                }
                 self.print("?");
                 self.print_space();
                 self.forbid_in = false;
                 self.print_expr(consequent, Precedence::Yield);
                 self.print_space();
 
-                if M::CAPTURE {
-                    self.trace.state_mut().type_break();
-                }
                 self.print(":");
                 self.print_space();
                 self.forbid_in = old_forbid_in && !wrap;
@@ -2446,10 +2370,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                 let tag = e.tag(self.ast);
                 let type_arguments = e.type_arguments(self.ast);
 
-                let syntax_value = M::CAPTURE
-                    && self.trace.state_mut().is_active()
-                    && (type_arguments.is_some() || !self.is_type_operator_head(tag))
-                    && self.trace.state_mut().begin_value();
                 let tag_level = if type_arguments.is_some() {
                     Precedence::Call
                 } else {
@@ -2468,33 +2388,16 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                     self.print_ts_type_args(args);
                 }
                 self.print_template(e.quasi(self.ast), true);
-
-                if syntax_value {
-                    self.trace.state_mut().end_value();
-                }
             }
             ExprData::ArrowFunctionExpression(e) => self.print_arrow(e, level),
             ExprData::ArrayExpression(e) => self.print_array(e),
             ExprData::ObjectExpression(e) => self.print_object(e, level),
             ExprData::ParenthesizedExpression(e) => {
-                let syntax_value = self.syntax_value_container(e.expression(self.ast));
                 self.print("(");
 
-                self.print_expr_with_context(
-                    e.expression(self.ast),
-                    Precedence::Lowest,
-                    if M::CAPTURE {
-                        ExprContext::EXPLICIT_GROUP
-                    } else {
-                        ExprContext::empty()
-                    },
-                );
+                self.print_expr(e.expression(self.ast), Precedence::Lowest);
                 self.print_comments_before(e.span(self.ast).end, false, true);
                 self.print(")");
-
-                if syntax_value {
-                    self.trace.state_mut().end_value();
-                }
             }
             ExprData::Function(e) => self.print_function(e),
             ExprData::Class(e) => self.print_class(e, false),
@@ -2592,52 +2495,30 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
                 let wrap =
                     level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
 
-                let syntax_value = M::CAPTURE
-                    && wrap
-                    && self.trace.state_mut().has_pending_here()
-                    && self.trace.state_mut().begin_value();
                 if wrap {
                     self.print("(");
                 }
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
 
-                if M::CAPTURE {
-                    self.trace.state_mut().type_break();
-                }
                 self.print(" as ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
-                }
-
-                if syntax_value {
-                    self.trace.state_mut().end_value();
                 }
             }
             ExprData::TsSatisfiesExpression(e) => {
                 let wrap =
                     level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
 
-                let syntax_value = M::CAPTURE
-                    && wrap
-                    && self.trace.state_mut().has_pending_here()
-                    && self.trace.state_mut().begin_value();
                 if wrap {
                     self.print("(");
                 }
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
 
-                if M::CAPTURE {
-                    self.trace.state_mut().type_break();
-                }
                 self.print(" satisfies ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
-                }
-
-                if syntax_value {
-                    self.trace.state_mut().end_value();
                 }
             }
             ExprData::TsTypeAssertion(e) => self.print_ts_type_assertion(e, level, context),
@@ -2692,27 +2573,11 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     fn print_binaryish(&mut self, e: Binaryish, level: Precedence, context: ExprContext) {
         // Binary-expression printing is iterative instead of recursive to
         // avoid overflowing the call stack for deeply nested ASTs.
-        let operator = e.operator(self.ast);
-        let mut visitor = BinaryExprVisitor {
-            e,
-            level,
-            flags: self.forbid_in,
-            context,
-            left_level: Precedence::Lowest,
-            left_flags: false,
-            left_context: ExprContext::empty(),
-            operator,
-            wrap: false,
-            right_level: Precedence::Lowest,
-            right_context: ExprContext::empty(),
-        };
-
         // Use a single stack to reduce allocation overhead.
         let stack_bottom = self.expr_visitor_stack.len();
+        let mut visitor = BinaryExprVisitor::start(e, level, self.forbid_in, context, self);
 
         loop {
-            visitor.prepare(self);
-
             let left = visitor.e.left(self.ast);
             let left_binaryish = match self.ast.expr_data(left) {
                 ExprData::BinaryExpression(e) => Some(Binaryish::Binary(e)),
@@ -2730,19 +2595,13 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             // Only allocate heap memory on the stack for nested binary-ish
             // expressions.
             self.expr_visitor_stack.push(visitor);
-            visitor = BinaryExprVisitor {
-                e: left_binaryish,
-                level: visitor.left_level,
-                flags: visitor.left_flags,
-                context: visitor.left_context,
-                left_level: Precedence::Lowest,
-                left_flags: false,
-                left_context: ExprContext::empty(),
-                operator: visitor.operator,
-                wrap: false,
-                right_level: Precedence::Lowest,
-                right_context: ExprContext::empty(),
-            };
+            visitor = BinaryExprVisitor::start(
+                left_binaryish,
+                visitor.left_level,
+                visitor.forbid_in && !visitor.wrap,
+                visitor.left_context,
+                self,
+            );
         }
 
         // Process all binary operations from the deepest-visited node back
@@ -2908,10 +2767,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     }
 
     fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
-        let syntax_value = M::CAPTURE
-            && self.trace.state_mut().has_pending_here()
-            && self.call_rejects_type(e)
-            && self.trace.state_mut().begin_value();
         let print_pure = self.options.comments && e.pure(self.ast);
         let wrap = level > Precedence::Call
             || in_new_callee
@@ -2960,10 +2815,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         );
         if wrap {
             self.print(")");
-        }
-
-        if syntax_value {
-            self.trace.state_mut().end_value();
         }
     }
 
@@ -3051,7 +2902,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     }
 
     fn print_array(&mut self, e: ArrayExpression) {
-        let syntax_value = self.syntax_value_container(Expr::ArrayExpression(e));
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         self.add_source_mapping(e.span(self.ast).start);
@@ -3085,14 +2935,9 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         self.add_source_mapping(close_offset);
         self.print("]");
         self.forbid_in = old_forbid_in;
-
-        if syntax_value {
-            self.trace.state_mut().end_value();
-        }
     }
 
     fn print_object(&mut self, e: ObjectExpression, _level: Precedence) {
-        let syntax_value = self.syntax_value_container(Expr::ObjectExpression(e));
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         let wrap = self.js.len() == self.stmt_start || self.js.len() == self.arrow_expr_start;
@@ -3154,10 +2999,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.print(")");
         }
         self.forbid_in = old_forbid_in;
-
-        if syntax_value {
-            self.trace.state_mut().end_value();
-        }
     }
 
     fn print_object_property(&mut self, p: ObjectProperty) {
@@ -3302,7 +3143,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     }
 
     fn print_template(&mut self, e: TemplateLiteral, is_tagged: bool) {
-        let syntax_value = self.syntax_value_container(Expr::TemplateLiteral(e));
         if !is_tagged {
             self.add_source_mapping(e.span(self.ast).start);
         }
@@ -3342,10 +3182,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             }
         }
         self.print("`");
-
-        if syntax_value {
-            self.trace.state_mut().end_value();
-        }
     }
 
     fn print_arrow(&mut self, e: ArrowFunctionExpression, level: Precedence) {
@@ -3385,11 +3221,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         };
         if let Some(identifier) = bare_parameter {
             self.print_binding_identifier(identifier);
-
-            if M::CAPTURE {
-                let state = self.trace.state_mut();
-                state.type_break();
-            }
         } else {
             self.print_formal_parameters(params, None);
         }
@@ -3444,7 +3275,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.print("(");
         }
 
-        let syntax_class = M::CAPTURE && self.trace.state_mut().begin_value();
         if declaration {
             self.print_indent();
         }
@@ -3515,9 +3345,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         self.print("}");
         self.forbid_in = old_forbid_in;
 
-        if syntax_class {
-            self.trace.state_mut().end_value();
-        }
         if wrap {
             self.print(")");
         }
@@ -4450,7 +4277,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         d: TsTypeParameterDeclaration,
         trailing_comma: bool,
     ) {
-        let syntax_type = M::CAPTURE && self.trace.state_mut().begin_type();
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -4483,14 +4309,9 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.print(",");
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
-
-        if syntax_type {
-            self.trace.state_mut().end_type();
-        }
     }
 
     fn print_ts_type_args(&mut self, d: TsTypeParameterInstantiation) {
-        let syntax_type = M::CAPTURE && self.trace.state_mut().begin_type();
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -4500,10 +4321,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.print_ts_type(self.ast.get_node_in_sub_range(id), TsTypePrecedence::Lowest);
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
-
-        if syntax_type {
-            self.trace.state_mut().end_type();
-        }
     }
 
     fn print_ts_type_assertion_prefix(&mut self, ty: TsType, source_offset: u32) {
@@ -5526,7 +5343,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     }
 
     fn print_jsx_element(&mut self, e: JsxElement) {
-        let syntax_value = M::CAPTURE && self.trace.state_mut().begin_value();
         let o = e.opening_element(self.ast);
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
@@ -5568,9 +5384,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.add_source_mapping(o.span(self.ast).end.saturating_sub(2));
             self.print("/>");
 
-            if syntax_value {
-                self.trace.state_mut().end_value();
-            }
             return;
         }
         self.print(">");
@@ -5591,14 +5404,9 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
             self.print_comments_before(c.span(self.ast).end, false, false);
             self.print(">");
         }
-
-        if syntax_value {
-            self.trace.state_mut().end_value();
-        }
     }
 
     fn print_jsx_fragment(&mut self, e: JsxFragment) {
-        let syntax_value = M::CAPTURE && self.trace.state_mut().begin_value();
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
         self.print(">");
@@ -5607,10 +5415,6 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
         }
         self.add_source_mapping(e.span(self.ast).end.saturating_sub(3));
         self.print("</>");
-
-        if syntax_value {
-            self.trace.state_mut().end_value();
-        }
     }
 
     fn print_jsx_name(&mut self, n: JsxElementName) {
@@ -5752,7 +5556,7 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     }
 }
 
-impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
+impl<'a, M: PrinterMode> Printer<'a, M> {
     fn binding_pattern_identifier_name(&self, binding: BindingPattern) -> Option<&str> {
         match self.ast.binding_pattern_data(binding) {
             BindingPatternData::BindingIdentifier(identifier) => {
@@ -5799,22 +5603,17 @@ impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
 }
 
 fn is_legal_comment(ast: &Ast, comment: Comment) -> bool {
-    let value = ast
-        .get_utf8(comment.value(ast.source().as_bytes()))
-        .as_bytes();
-    if ast
-        .source()
-        .as_bytes()
+    let source = ast.source().as_bytes();
+    if source
         .get(comment.span.start as usize..comment.span.start as usize + 3)
         .is_some_and(|prefix| prefix == b"/*!" || prefix == b"//!")
     {
         return true;
     }
 
-    value.iter().enumerate().any(|(index, &byte)| {
-        byte == b'@'
-            && value
-                .get(index..)
-                .is_some_and(|rest| rest.starts_with(b"@license") || rest.starts_with(b"@preserve"))
+    let value = ast.get_utf8(comment.value(source)).as_bytes();
+    memchr::memchr_iter(b'@', value).any(|index| {
+        let rest = &value[index..];
+        rest.starts_with(b"@license") || rest.starts_with(b"@preserve")
     })
 }

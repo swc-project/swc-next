@@ -3,7 +3,10 @@ use crate::{
     expect_generated_ts_pair,
 };
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{Lang, TsModuleBody};
+use swc_next_ecma_ast::{
+    Ast, BinaryExpression, BinaryOperator, Lang, SetSpan, Span, TsModuleBody, VisitMut,
+    VisitMutWith,
+};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
@@ -283,6 +286,93 @@ fn test_comparison_grouping() {
     );
 }
 
+#[test]
+fn test_comparison_lists() {
+    expect_comparison(
+        "[(a<b), c > (()=>d)];",
+        "[(a < b), c > (() => d)];\n",
+        "[(a<b),c>(()=>d)];",
+    );
+
+    expect_comparison(
+        "new F((a<b), c > (()=>d));",
+        "new F((a < b), c > (() => d));\n",
+        "new F((a<b),c>(()=>d));",
+    );
+
+    expect_comparison(
+        "import((a<b), c > (()=>d));",
+        "import((a < b), c > (() => d));\n",
+        "import((a<b),c>(()=>d));",
+    );
+
+    expect_comparison(
+        "const x = ((a<b), c > (()=>d));",
+        "const x = ((a < b), c > (() => d));\n",
+        "const x=((a<b),c>(()=>d));",
+    );
+
+    expect_comparison(
+        "f((a<b), [c > (()=>d)]);",
+        "f(a < b, [c > (() => d)]);\n",
+        "f(a<b,[c>(()=>d)]);",
+    );
+
+    expect_generated_ts_pair(
+        r#"f((a < b), c > "a\"'");"#,
+        "f(a < b, c > \"a\\\"'\");\n",
+        "f((a<b),c>`a\"'`);",
+    );
+}
+
+#[test]
+fn test_comparison_planning_with_edited_ast() {
+    struct MoveCloseSpan<'visit, 'ast>(&'visit mut Ast<'ast>);
+
+    impl<'ast> VisitMut<'ast> for MoveCloseSpan<'_, 'ast> {
+        fn ast(&mut self) -> &mut Ast<'ast> {
+            self.0
+        }
+
+        fn visit_mut_binary_expression(
+            &mut self,
+            comparison: BinaryExpression,
+        ) -> Option<BinaryExpression> {
+            if comparison.operator(self.0) == BinaryOperator::GreaterThan {
+                comparison.set_span(self.0, Span::new(0, 4));
+            }
+            comparison.visit_mut_children_with(self)
+        }
+    }
+
+    let parse = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let print = GeneratorOptions {
+        minify: true,
+        source_map_path: Some("input.ts".into()),
+        ..GeneratorOptions::default()
+    };
+    let allocator = Allocator::new();
+    let source = "g(a); f((a<b), c>as);";
+    let baseline = Parser::init(&allocator, source, parse, NoTokenParserConfig).parse();
+    let mut parsed = Parser::init(&allocator, source, parse, NoTokenParserConfig).parse();
+    assert!(parsed.diagnostics.is_empty());
+    let expected = generate(&baseline.ast, print.clone());
+    // SAFETY: This edit only changes spans of nodes reached in this AST.
+    let ast = unsafe { parsed.ast.ast_mut() };
+    ast.root_program().visit_mut_with(&mut MoveCloseSpan(ast));
+
+    let output = generate(&parsed.ast, print);
+    assert_eq!(output.code, "g(a);f((a<b),c>as);");
+    assert_eq!(output.code, expected.code);
+    let (map, expected_map) = (output.map.unwrap(), expected.map.unwrap());
+    assert_eq!(map.names(), expected_map.names());
+    assert_eq!(map.mappings(), expected_map.mappings());
+}
+
 #[track_caller]
 fn expect_syntax_mapping(source: &str, identifier: &str) {
     let allocator = Allocator::new();
@@ -329,6 +419,8 @@ fn test_comparison_mappings() {
     expect_syntax_mapping("f((a < b), (c < d), e > (()=>g));", "c");
 
     expect_syntax_mapping("f((あ < b), (c < d), e > (()=>g));", "c");
+
+    expect_syntax_mapping("[(a < b), c > (()=>index)];", "index");
 
     expect_syntax_mapping("a < (((c), d) > (()=>e));", "c");
 
@@ -446,25 +538,25 @@ fn test_comparison_values() {
     expect_comparison(
         "f(a < b, function(){ return (c < d) > `x`; });",
         "f(a < b, function() {\n  return (c < d) > `x`;\n});\n",
-        "f(a<b,function(){return( c<d)>`x`});",
+        "f(a<b,function(){return(c<d)>`x`});",
     );
 
     expect_comparison(
         "(a < ((x = function(){ return (c < d) > `x`; }) => T)) > (()=>e);",
         "(a < ((x = function() {\n  return (c < d) > `x`;\n}) => T)) > (() => e);\n",
-        "(a<((x=function(){return( c<d)>`x`})=>T))>(()=>e);",
+        "(a<((x=function(){return(c<d)>`x`})=>T))>(()=>e);",
     );
 
     expect_comparison(
         "f((a < b), function<T>(x:T){ return (c < d) > `x`; });",
         "f(a < b, function<T>(x: T) {\n  return (c < d) > `x`;\n});\n",
-        "f(a<b,function<T>(x:T){return( c<d)>`x`});",
+        "f(a<b,function<T>(x:T){return(c<d)>`x`});",
     );
 
     expect_comparison(
         "f((a < b), function(x=(p < q), y=r>(()=>s)){ return (c < d) > `x`; });",
         "f(a < b, function(x = p < q, y = r > (() => s)) {\n  return (c < d) > `x`;\n});\n",
-        "f(a<b,function(x=p<q,y=r>(()=>s)){return( c<d)>`x`});",
+        "f(a<b,function(x=p<q,y=r>(()=>s)){return(c<d)>`x`});",
     );
 
     expect_comparison(
