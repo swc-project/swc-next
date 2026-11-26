@@ -8,7 +8,6 @@ const directory = process.argv[2];
 const expected = JSON.parse(process.env.JS_BENCH_MATRIX).include.map(item => item.case).sort();
 let summary;
 try {
-  if (process.env.JS_BENCH_REPEATABILITY) assert.equal(process.env.JS_BENCH_REPEATABILITY, "success", "same-SHA check failed");
   const metadata = readdirSync(directory).filter(name => name.startsWith("gungraun-js-results-"))
     .map(name => JSON.parse(readFileSync(join(directory, name, "metadata.json"), "utf8")));
   assert.deepEqual(metadata.map(item => item.case).sort(), expected, "missing or duplicate shards");

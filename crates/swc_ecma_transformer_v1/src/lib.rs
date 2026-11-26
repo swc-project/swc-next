@@ -23,7 +23,7 @@
 //!     es2021::ES2021Options,
 //!     es2022::{ClassPropertiesOptions, ES2022Options},
 //!     jsx::{JsxOptions, JsxRuntime, ReactRefreshOptions},
-//!     modules::{ModuleType, ModulesOptions},
+//!     module::{ModuleOptions, ModuleType},
 //!     regexp::RegExpOptions,
 //!     typescript::{TsImportExportAssignConfig, TypeScriptOptions},
 //! };
@@ -61,7 +61,7 @@
 //!         refresh: Some(ReactRefreshOptions::default()),
 //!         ..Default::default()
 //!     }),
-//!     modules: ModulesOptions { r#type: ModuleType::CommonJs },
+//!     module: ModuleOptions { r#type: ModuleType::CommonJs },
 //!     typescript: Some(TypeScriptOptions {
 //!         import_export_assign_config: TsImportExportAssignConfig::EsNext,
 //!         ..Default::default()
@@ -70,11 +70,11 @@
 //! };
 //! ```
 
-use swc_next_ecma_ast::{AstCtx, Diagnostic, TraverseMutCtx};
+use swc_next_ecma_ast::{AstCtx, Diagnostic, GetSpan, TraverseMutCtx};
 
 use self::{
     common::{TraverseCtx, resolver::context::Resolver},
-    modules::ModulesOptions,
+    module::ModuleOptions,
 };
 
 pub mod decorators;
@@ -87,11 +87,39 @@ pub mod es2020;
 pub mod es2021;
 pub mod es2022;
 pub mod jsx;
-pub mod modules;
+pub mod module;
 pub mod regexp;
 pub mod typescript;
 
 mod common;
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[unsafe(no_mangle)]
+unsafe extern "Rust" fn __getrandom_v03_custom(
+    dest: *mut u8,
+    len: usize,
+) -> Result<(), getrandom::Error> {
+    use core::sync::atomic::{AtomicU64, Ordering};
+
+    static STATE: AtomicU64 = AtomicU64::new(0x9e37_79b9_7f4a_7c15);
+    let mut i = 0;
+    while i < len {
+        let mut z = STATE
+            .fetch_add(0x9e37_79b9_7f4a_7c15, Ordering::Relaxed)
+            .wrapping_add(0x9e37_79b9_7f4a_7c15);
+        z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        z ^= z >> 31;
+        let bytes = z.to_le_bytes();
+        let take = (len - i).min(bytes.len());
+        // SAFETY: `dest` is valid for `len` bytes by the getrandom custom backend contract.
+        unsafe {
+            core::ptr::copy_nonoverlapping(bytes.as_ptr(), dest.add(i), take);
+        }
+        i += take;
+    }
+    Ok(())
+}
 
 /// A boolean shorthand or explicit configuration, as in SWC Next's public API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -117,7 +145,7 @@ pub struct TransformerOptions {
     /// TypeScript stripping/lowering and JSX import-retention options.
     pub typescript: Option<typescript::TypeScriptOptions>,
     /// Module output format. Defaults to preserving ECMAScript modules.
-    pub modules: ModulesOptions,
+    pub module: ModuleOptions,
 }
 
 /// Diagnostics produced while transforming an AST in place.
@@ -169,6 +197,17 @@ impl Transformer {
         let mut diagnostics = Vec::new();
         let mut resolver = Resolver::new(ast);
         let mut context = TraverseMutCtx::new(ast, TraverseCtx::new(&mut resolver));
+        let header_end = {
+            let program = context.ast.root_program();
+            let mut boundary = u32::MAX;
+            if let Some(directive) = program.directives(context.ast).get_node(context.ast, 0) {
+                boundary = boundary.min(directive.span(context.ast).start);
+            }
+            if let Some(statement) = program.body(context.ast).get_node(context.ast, 0) {
+                boundary = boundary.min(statement.span(context.ast).start);
+            }
+            boundary
+        };
         if let Some(decorators) = options.decorators {
             decorators::transform(context.ast, &mut context.state, decorators);
         }
@@ -178,14 +217,17 @@ impl Transformer {
                 None => false,
             };
             if jsx_enabled && let Some(jsx) = &options.jsx {
+                typescript.jsx.automatic = jsx.runtime == Some(jsx::JsxRuntime::Automatic);
                 typescript.jsx.pragma = jsx.pragma.clone();
                 typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
             }
+            let tsx = context.ast.lang().is_jsx();
             diagnostics.extend(typescript::typescript(
                 context.ast,
                 typescript,
-                jsx_enabled,
-                options.modules.r#type,
+                tsx,
+                header_end,
+                options.module.r#type,
                 context.state.resolver,
             ));
         }
@@ -194,6 +236,7 @@ impl Transformer {
                 context.ast,
                 jsx,
                 options.filename.as_deref(),
+                header_end,
                 context.state.resolver,
             ));
         }
@@ -206,10 +249,10 @@ impl Transformer {
         es2017::transform(&mut context, options.env.es2017);
         es2016::transform(&mut context, options.env.es2016);
         regexp::transform(context.ast, context.state.resolver, options.env.regexp);
-        modules::transform(
+        module::transform(
             context.ast,
             &mut context.state,
-            options.modules.r#type,
+            options.module.r#type,
             options.filename.as_deref(),
             options.env.module_features,
         );

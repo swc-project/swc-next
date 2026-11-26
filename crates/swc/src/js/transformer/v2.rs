@@ -238,39 +238,13 @@ impl From<JsReactRefreshConfig> for ReactRefreshOptions {
 impl From<JsAssumptions> for Assumptions {
     fn from(options: JsAssumptions) -> Self {
         let mut assumptions = Self::default();
-        assumptions.array_like_is_iterable = options
-            .array_like_is_iterable
-            .unwrap_or(assumptions.array_like_is_iterable);
-        assumptions.constant_reexports = options
-            .constant_reexports
-            .unwrap_or(assumptions.constant_reexports);
         assumptions.constant_super = options.constant_super.unwrap_or(assumptions.constant_super);
-        assumptions.enumerable_module_meta = options
-            .enumerable_module_meta
-            .unwrap_or(assumptions.enumerable_module_meta);
         assumptions.ignore_function_length = options
             .ignore_function_length
             .unwrap_or(assumptions.ignore_function_length);
-        assumptions.ignore_function_name = options
-            .ignore_function_name
-            .unwrap_or(assumptions.ignore_function_name);
-        assumptions.ignore_to_primitive_hint = options
-            .ignore_to_primitive_hint
-            .unwrap_or(assumptions.ignore_to_primitive_hint);
-        assumptions.iterable_is_array = options
-            .iterable_is_array
-            .unwrap_or(assumptions.iterable_is_array);
-        assumptions.mutable_template_object = options
-            .mutable_template_object
-            .unwrap_or(assumptions.mutable_template_object);
-        assumptions.no_class_calls = options.no_class_calls.unwrap_or(assumptions.no_class_calls);
         assumptions.no_document_all = options
             .no_document_all
             .unwrap_or(assumptions.no_document_all);
-        assumptions.no_incomplete_ns_import_detection = options
-            .no_incomplete_ns_import_detection
-            .unwrap_or(assumptions.no_incomplete_ns_import_detection);
-        assumptions.no_new_arrows = options.no_new_arrows.unwrap_or(assumptions.no_new_arrows);
         assumptions.object_rest_no_symbols = options
             .object_rest_no_symbols
             .unwrap_or(assumptions.object_rest_no_symbols);
@@ -278,24 +252,12 @@ impl From<JsAssumptions> for Assumptions {
             .private_fields_as_properties
             .unwrap_or(assumptions.private_fields_as_properties);
         assumptions.pure_getters = options.pure_getters.unwrap_or(assumptions.pure_getters);
-        assumptions.set_class_methods = options
-            .set_class_methods
-            .unwrap_or(assumptions.set_class_methods);
-        assumptions.set_computed_properties = options
-            .set_computed_properties
-            .unwrap_or(assumptions.set_computed_properties);
         assumptions.set_public_class_fields = options
             .set_public_class_fields
             .unwrap_or(assumptions.set_public_class_fields);
         assumptions.set_spread_properties = options
             .set_spread_properties
             .unwrap_or(assumptions.set_spread_properties);
-        assumptions.skip_for_of_iterator_closing = options
-            .skip_for_of_iterator_closing
-            .unwrap_or(assumptions.skip_for_of_iterator_closing);
-        assumptions.super_is_callable_constructor = options
-            .super_is_callable_constructor
-            .unwrap_or(assumptions.super_is_callable_constructor);
         assumptions
     }
 }

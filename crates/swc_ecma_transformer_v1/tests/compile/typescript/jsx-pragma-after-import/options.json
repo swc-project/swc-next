@@ -1,0 +1,8 @@
+{
+  "filename": "input.tsx",
+  "transformer": {
+    "jsx": {
+      "runtime": "automatic"
+    }
+  }
+}

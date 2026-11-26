@@ -149,6 +149,7 @@ pub struct JsTypeScriptConfig {
     /// TypeScript's `preserveConstEnums`: preserve declarations without disabling inlining.
     ///
     /// @default false
+    #[cfg(feature = "js_transformer_v2")]
     pub preserve_const_enums: Option<bool>,
     /// JSX runtime used to determine which factory imports to retain when JSX
     /// syntax is preserved. Does not enable JSX lowering. When JSX lowering is
@@ -243,35 +244,35 @@ pub struct JsReactRefreshConfig {
 )]
 #[derive(Clone, Copy, Debug, Default)]
 pub struct JsAssumptions {
-    pub array_like_is_iterable: Option<bool>,
-    pub constant_reexports: Option<bool>,
+    // pub array_like_is_iterable: Option<bool>,
+    // pub constant_reexports: Option<bool>,
     pub constant_super: Option<bool>,
-    pub enumerable_module_meta: Option<bool>,
+    // pub enumerable_module_meta: Option<bool>,
     pub ignore_function_length: Option<bool>,
-    pub ignore_function_name: Option<bool>,
-    pub ignore_to_primitive_hint: Option<bool>,
-    pub iterable_is_array: Option<bool>,
-    pub mutable_template_object: Option<bool>,
-    pub no_class_calls: Option<bool>,
+    // pub ignore_function_name: Option<bool>,
+    // pub ignore_to_primitive_hint: Option<bool>,
+    // pub iterable_is_array: Option<bool>,
+    // pub mutable_template_object: Option<bool>,
+    // pub no_class_calls: Option<bool>,
     pub no_document_all: Option<bool>,
-    pub no_incomplete_ns_import_detection: Option<bool>,
-    pub no_new_arrows: Option<bool>,
+    // pub no_incomplete_ns_import_detection: Option<bool>,
+    // pub no_new_arrows: Option<bool>,
     pub object_rest_no_symbols: Option<bool>,
     pub private_fields_as_properties: Option<bool>,
     pub pure_getters: Option<bool>,
-    pub set_class_methods: Option<bool>,
-    pub set_computed_properties: Option<bool>,
+    // pub set_class_methods: Option<bool>,
+    // pub set_computed_properties: Option<bool>,
     pub set_public_class_fields: Option<bool>,
     pub set_spread_properties: Option<bool>,
-    pub skip_for_of_iterator_closing: Option<bool>,
-    pub super_is_callable_constructor: Option<bool>,
+    // pub skip_for_of_iterator_closing: Option<bool>,
+    // pub super_is_callable_constructor: Option<bool>,
 }
 
 #[cfg(any(feature = "js_transformer_v1", feature = "js_transformer_v2"))]
-pub(super) fn enabled_options<T, U: Default + From<T>>(options: Option<BoolOr<T>>) -> Option<U> {
+pub(super) fn enabled_options<T: Default, U: From<T>>(options: Option<BoolOr<T>>) -> Option<U> {
     match options {
         None | Some(BoolOr::Bool(false)) => None,
-        Some(BoolOr::Bool(true)) => Some(U::default()),
+        Some(BoolOr::Bool(true)) => Some(T::default().into()),
         Some(BoolOr::Options(options)) => Some(options.into()),
     }
 }

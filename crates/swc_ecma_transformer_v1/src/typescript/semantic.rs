@@ -137,7 +137,10 @@ impl SemanticAnalyzer<'_, '_> {
 
     /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/semantic.rs#L151>.
     fn collect_module(&mut self) {
-        if !self.ast.is_module() {
+        if !matches!(
+            self.ast.source_type(),
+            SourceType::Module | SourceType::CommonJs
+        ) {
             return;
         }
         for slot in self.ast.root_program().body(self.ast).iter() {

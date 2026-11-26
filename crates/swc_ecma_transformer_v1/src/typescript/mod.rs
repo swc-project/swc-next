@@ -4,7 +4,11 @@ use std::collections::HashSet;
 
 use swc_next_ecma_ast::*;
 
-use crate::{common::resolver::context::Resolver, modules::ModuleType};
+use crate::{
+    common::resolver::context::Resolver,
+    jsx::{JsxDirectives, JsxRuntime},
+    module::ModuleType,
+};
 
 mod config;
 mod retain;
@@ -25,15 +29,18 @@ pub(crate) fn typescript(
     ast: &mut Ast<'_>,
     mut options: TypeScriptOptions,
     tsx: bool,
+    header_end: u32,
     module_type: ModuleType,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
-    if module_type != ModuleType::Preserve && ast.is_module() {
+    if ast.source_type() == SourceType::CommonJs {
+        options.import_export_assign_config = TsImportExportAssignConfig::Classic;
+    } else if module_type != ModuleType::Preserve && ast.is_module() {
         options.import_export_assign_config = TsImportExportAssignConfig::Preserve;
     }
     let pass = TypeScript { config: &options };
     if tsx {
-        TypeScriptReact { typescript: pass }.process(ast, resolver)
+        TypeScriptReact { typescript: pass }.process(ast, resolver, header_end)
     } else {
         pass.process(ast, resolver, HashSet::new())
     }
@@ -113,10 +120,17 @@ struct TypeScriptReact<'a> {
 }
 
 impl TypeScriptReact<'_> {
-    fn process(&self, ast: &mut Ast<'_>, resolver: &mut Resolver) -> Vec<Diagnostic> {
+    fn process(
+        &self,
+        ast: &mut Ast<'_>,
+        resolver: &mut Resolver,
+        header_end: u32,
+    ) -> Vec<Diagnostic> {
         let options = self.typescript.config;
-        let id_usage = if ast.is_module() && !options.verbatim_module_syntax {
-            jsx_usage(ast, options, resolver)
+        let id_usage = if matches!(ast.source_type(), SourceType::Module | SourceType::CommonJs)
+            && !options.verbatim_module_syntax
+        {
+            jsx_usage(ast, options, resolver, header_end)
         } else {
             HashSet::new()
         };
@@ -139,48 +153,37 @@ fn is_es_module_decl(ast: &Ast<'_>, statement: Stmt) -> bool {
 /// SWC TSX conservatively retains both configured factory roots, even when no
 /// element or fragment needs them. Leading pragma comments add their roots.
 /// SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/typescript.rs#L186>.
-fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) -> HashSet<SymbolId> {
-    let mut id_usage = HashSet::new();
+fn jsx_usage(
+    ast: &Ast<'_>,
+    options: &TypeScriptOptions,
+    resolver: &Resolver,
+    header_end: u32,
+) -> HashSet<SymbolId> {
     let jsx = &options.jsx;
-    let pragma = jsx.pragma.as_deref().unwrap_or("React.createElement");
-    let pragma_frag = jsx.pragma_frag.as_deref().unwrap_or("React.Fragment");
+    let directives = JsxDirectives::from_header_comments(ast, header_end, None);
+    let automatic = match directives.runtime {
+        Some(JsxRuntime::Automatic) => true,
+        Some(JsxRuntime::Classic) => false,
+        Some(JsxRuntime::Preserve) | None => jsx.automatic,
+    };
+    if automatic {
+        return HashSet::new();
+    }
+    let mut id_usage = HashSet::new();
+    let pragma = directives
+        .pragma
+        .as_ref()
+        .map(|(value, _)| value.as_str())
+        .or(jsx.pragma.as_deref())
+        .unwrap_or("React.createElement");
+    let pragma_frag = directives
+        .pragma_frag
+        .as_ref()
+        .map(|(value, _)| value.as_str())
+        .or(jsx.pragma_frag.as_deref())
+        .unwrap_or("React.Fragment");
     for factory in [pragma, pragma_frag] {
         id_usage.extend(id_for_jsx(ast, resolver, factory));
-    }
-    let program = ast.root_program();
-    // SWC's module span starts at its first token; Next's program span starts
-    // at byte zero, so include the first directive/body attachment explicitly.
-    let program_start = program.span(ast).start;
-    let start = if let Some(directive) = program.directives(ast).get_node(ast, 0) {
-        directive.span(ast).start
-    } else if let Some(statement) = program.body(ast).get_node(ast, 0) {
-        statement.span(ast).start
-    } else {
-        program_start
-    };
-    for comment in ast.comments() {
-        if (comment.attached_to != start && comment.attached_to != program_start)
-            || comment.position != CommentPosition::Leading
-            || comment.kind != CommentKind::Block
-        {
-            continue;
-        }
-        for line in ast.get_utf8(comment.value(ast.source().as_bytes())).lines() {
-            let line = line.trim().trim_start_matches('*').trim();
-            if !line.starts_with("@jsx") {
-                continue;
-            }
-            let mut words = line.split_whitespace();
-            while let Some(directive) = words.next() {
-                let value = words.next();
-                if matches!(directive, "@jsx" | "@jsxFrag")
-                    && let Some(value) = value
-                    && let Some(id) = id_for_jsx(ast, resolver, value)
-                {
-                    id_usage.insert(id);
-                }
-            }
-        }
     }
     id_usage
 }

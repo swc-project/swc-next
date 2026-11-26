@@ -6,6 +6,7 @@ input.*
 !/crates/swc_ecma_semantic/tests/semantic/**/input.*
 !/crates/swc_formatter/tests/**/input.*
 !/crates/swc_ecma_transformer/tests/compile/**/input.*
+!/crates/swc_ecma_transformer_v1/tests/compile/**/input.*
 profile.json
 local
 tasks/testsuite/fixtures

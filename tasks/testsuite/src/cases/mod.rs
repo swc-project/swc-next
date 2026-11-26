@@ -76,27 +76,13 @@ pub fn fixtures() -> PathBuf {
 
 pub(super) fn assumptions(options: Assumptions) -> JsAssumptions {
     JsAssumptions {
-        array_like_is_iterable: Some(options.array_like_is_iterable),
-        constant_reexports: Some(options.constant_reexports),
         constant_super: Some(options.constant_super),
-        enumerable_module_meta: Some(options.enumerable_module_meta),
         ignore_function_length: Some(options.ignore_function_length),
-        ignore_function_name: Some(options.ignore_function_name),
-        ignore_to_primitive_hint: Some(options.ignore_to_primitive_hint),
-        iterable_is_array: Some(options.iterable_is_array),
-        mutable_template_object: Some(options.mutable_template_object),
-        no_class_calls: Some(options.no_class_calls),
         no_document_all: Some(options.no_document_all),
-        no_incomplete_ns_import_detection: Some(options.no_incomplete_ns_import_detection),
-        no_new_arrows: Some(options.no_new_arrows),
         object_rest_no_symbols: Some(options.object_rest_no_symbols),
         private_fields_as_properties: Some(options.private_fields_as_properties),
         pure_getters: Some(options.pure_getters),
-        set_class_methods: Some(options.set_class_methods),
-        set_computed_properties: Some(options.set_computed_properties),
         set_public_class_fields: Some(options.set_public_class_fields),
         set_spread_properties: Some(options.set_spread_properties),
-        skip_for_of_iterator_closing: Some(options.skip_for_of_iterator_closing),
-        super_is_callable_constructor: Some(options.super_is_callable_constructor),
     }
 }

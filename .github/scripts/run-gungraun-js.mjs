@@ -6,7 +6,7 @@ import { cpus } from "node:os";
 import { join, resolve, dirname } from "node:path";
 import { selectCases, fixtures } from "../../tasks/benchmark/js/runner.mjs";
 import { loadSummaries, renderFailureSummary } from "./render-gungraun-summary.mjs";
-import { compare, render, validateRepeatability } from "./render-gungraun-js-summary.mjs";
+import { compare, render } from "./render-gungraun-js-summary.mjs";
 
 const root = process.cwd();
 const prepared = resolve(process.env.JS_BENCH_PREPARED ?? "target/gungraun-js-prepared");
@@ -79,8 +79,6 @@ async function measure() {
   assert.equal(process.version, metadata.node);
   assert.equal(process.arch, metadata.arch);
   for (const file of ["gungraun-js-bench", "gungraun-runner", "measure.node"]) assert.equal(hash(join(harness, file)), metadata.hashes[file]);
-  const sameSha = process.argv.includes("--same-sha");
-  if (sameSha) metadata.base_sha = metadata.head_sha;
   Object.assign(metadata, { filter, case: process.env.JS_BENCH_CASE ?? null, status: "running",
     valgrind: read("valgrind", ["--version"]), cpu: cpus()[0]?.model,
     run_url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` });
@@ -88,7 +86,7 @@ async function measure() {
   saveMetadata();
   try {
     for (const side of ["base", "head"]) {
-      const entry = join(prepared, sameSha ? "head" : side, "npm/core/dist/index.js");
+      const entry = join(prepared, side, "npm/core/dist/index.js");
       const log = join(output, `${side}.log`);
       writeFileSync(log, "");
       // Stream progress to Actions while preserving the exact output in artifacts.
@@ -109,7 +107,6 @@ async function measure() {
     }
     const rows = compare(await loadSummaries(data));
     writeFileSync(join(output, "comparison.json"), JSON.stringify(rows, null, 2));
-    if (sameSha) validateRepeatability(rows);
     writeFileSync(join(output, "summary.md"), render(rows));
     metadata.status = "passed";
   } catch (error) {

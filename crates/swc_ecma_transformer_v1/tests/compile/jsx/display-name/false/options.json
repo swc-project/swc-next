@@ -1,0 +1,8 @@
+{
+  "filename": "input.jsx",
+  "transformer": {
+    "jsx": {
+      "displayName": false
+    }
+  }
+}

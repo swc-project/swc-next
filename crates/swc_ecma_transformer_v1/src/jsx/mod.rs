@@ -2,7 +2,7 @@
 
 use std::{borrow::Cow, mem};
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 use swc_next_ecma_ast::*;
 
 use crate::common::resolver::context::Resolver;
@@ -62,8 +62,14 @@ pub struct Options {
     pub pragma_frag: Option<String>,
     /// Report XML namespace syntax in JSX. Defaults to `true` when unset.
     pub throw_if_namespace: Option<bool>,
-    /// Select development JSX output and source/self metadata.
+    /// Select development JSX output.
     pub development: Option<bool>,
+    /// Add `__source` and `__self` metadata in development mode. Defaults to `true` when unset.
+    pub source_self: Option<bool>,
+    /// Mark JSX factory calls and known React API calls as pure. Defaults to `true` when unset.
+    pub pure: Option<bool>,
+    /// Add `displayName` to `createReactClass` calls. Defaults to `true` when unset.
+    pub display_name: Option<bool>,
     /// Legacy SWC compatibility option; ignored by its current JSX lowering.
     pub use_builtins: Option<bool>,
     /// Legacy SWC compatibility option; ignored by its current JSX lowering.
@@ -76,13 +82,14 @@ pub(crate) fn transform(
     ast: &mut Ast<'_>,
     options: &JsxOptions,
     filename: Option<&str>,
+    header_end: u32,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
     if options.runtime == Some(JsxRuntime::Preserve) {
         return Vec::new();
     }
 
-    jsx(ast, options, filename, resolver)
+    jsx(ast, options, filename, header_end, resolver)
 }
 
 /// SWC JSX hook construction: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L212>.
@@ -91,6 +98,7 @@ fn jsx(
     ast: &mut Ast<'_>,
     options: &JsxOptions,
     filename: Option<&str>,
+    header_end: u32,
     resolver: &mut Resolver,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
@@ -108,16 +116,9 @@ fn jsx(
         return diagnostics;
     }
     let development = options.development.unwrap_or_default();
-    let mut comments: FxHashMap<u32, Vec<Comment>> = FxHashMap::default();
-    for &comment in ast.comments() {
-        if comment.kind != CommentKind::Block || comment.position != CommentPosition::Leading {
-            continue;
-        }
-        comments
-            .entry(comment.attached_to)
-            .or_default()
-            .push(comment);
-    }
+    let source_self = development && options.source_self.unwrap_or(true);
+    let pure = options.pure.unwrap_or(true);
+    let display_name = options.display_name.unwrap_or(true);
     let mut jsx = Jsx {
         resolver,
         runtime: options.runtime.unwrap_or_default(),
@@ -129,13 +130,16 @@ fn jsx(
         pragma: pragma.into(),
         pragma_frag: pragma_frag.into(),
         development,
+        source_self,
+        pure,
+        display_name,
         refresh: options.refresh.as_ref().filter(|_| development),
         throw_if_namespace: options.throw_if_namespace.unwrap_or(true),
         filename: filename.unwrap_or_default().into(),
-        source: development.then(|| JsxSrc::new(ast.source())),
+        source: source_self.then(|| JsxSrc::new(ast.source())),
         self_ctx: JsxSelfCtx::default(),
         method_functions: FxHashSet::default(),
-        comments,
+        header_end,
         diagnostics,
         top_level_node: true,
         pure_positions: FxHashSet::default(),
@@ -173,14 +177,17 @@ struct Jsx<'r, 'ast> {
     pragma: String,
     pragma_frag: String,
     development: bool,
+    source_self: bool,
+    pure: bool,
+    display_name: bool,
     refresh: Option<&'r ReactRefreshOptions>,
     throw_if_namespace: bool,
     filename: String,
     source: Option<JsxSrc>,
     self_ctx: JsxSelfCtx,
     method_functions: FxHashSet<NodeId>,
-    // JSX directives are only read from leading block comments.
-    comments: FxHashMap<u32, Vec<Comment>>,
+    // Byte offset of the original first directive or statement for file-header JSX directives.
+    header_end: u32,
     diagnostics: Vec<Diagnostic>,
     top_level_node: bool,
     pure_positions: FxHashSet<u32>,
@@ -190,7 +197,9 @@ struct Jsx<'r, 'ast> {
 impl Jsx<'_, '_> {
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_common/src/comments.rs#L502>.
     fn add_pure_comment(&mut self, span: Span) {
-        self.pure_positions.insert(span.start);
+        if self.pure {
+            self.pure_positions.insert(span.start);
+        }
     }
 
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx_self.rs#L176>.
@@ -214,24 +223,12 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<Program> {
         let ast = &*ctx.ast;
-        self.parse_directives(ast, program.span(ast).start);
-        // Directives are statements in SWC and a separate list in Next.
-        let directives = program
-            .directives(ast)
-            .iter()
-            .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
-        let statements = program
-            .body(ast)
-            .iter()
-            .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
-        for offset in directives.chain(statements) {
-            if self.parse_directives(ast, offset) {
-                break;
-            }
-        }
+        self.parse_directives(ast);
         if ctx.ast.is_module() {
-            self.pure_annotations
-                .collect_imports(ctx.ast, self.resolver, program);
+            if self.pure {
+                self.pure_annotations
+                    .collect_imports(ctx.ast, self.resolver, program);
+            }
             if let Some(options) = self.refresh {
                 refresh::hook(ctx.ast, self.resolver, options).enter_module_items(program);
             }
@@ -314,7 +311,9 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         node: ObjectProperty,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<ObjectProperty> {
-        display_name::exit_property(ctx.ast, self.resolver, node);
+        if self.display_name {
+            display_name::exit_property(ctx.ast, self.resolver, node);
+        }
         if node.method(ctx.ast) || node.kind(ctx.ast) != PropertyKind::Init {
             self.self_ctx.pop();
         }
@@ -371,7 +370,9 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         node: AssignmentExpression,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<AssignmentExpression> {
-        display_name::enter_assignment(ctx.ast, self.resolver, node);
+        if self.display_name {
+            display_name::enter_assignment(ctx.ast, self.resolver, node);
+        }
         TraverseAction::Continue
     }
 
@@ -380,7 +381,9 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         node: VariableDeclarator,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<VariableDeclarator> {
-        display_name::enter_declarator(ctx.ast, self.resolver, node);
+        if self.display_name {
+            display_name::enter_declarator(ctx.ast, self.resolver, node);
+        }
         TraverseAction::Continue
     }
 
@@ -389,7 +392,9 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         node: ExportDefaultDeclaration,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<ExportDefaultDeclaration> {
-        display_name::exit_export_default(ctx.ast, self.resolver, node);
+        if self.display_name {
+            display_name::exit_export_default(ctx.ast, self.resolver, node);
+        }
         TraverseAction::Continue
     }
 
@@ -398,8 +403,10 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         node: CallExpression,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<CallExpression> {
-        self.pure_annotations
-            .annotate(ctx.ast, self.resolver, node, &mut self.pure_positions);
+        if self.pure {
+            self.pure_annotations
+                .annotate(ctx.ast, self.resolver, node, &mut self.pure_positions);
+        }
         TraverseAction::Continue
     }
 
@@ -410,7 +417,7 @@ impl<'a> TraverseMut<'a> for Jsx<'_, 'a> {
         node: JsxOpeningElement,
         ctx: &mut TraverseMutCtx<'_, 'a>,
     ) -> TraverseAction<JsxOpeningElement> {
-        if !self.development {
+        if !self.source_self {
             return TraverseAction::Continue;
         }
         let ast = &mut *ctx.ast;
@@ -521,9 +528,15 @@ pub(super) fn array(ast: &mut Ast<'_>, arguments: Vec<Argument>) -> Expr {
 }
 
 /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L692>.
-pub(super) fn call(ast: &mut Ast<'_>, span: Span, callee: Expr, arguments: Vec<Argument>) -> Expr {
+pub(super) fn call(
+    ast: &mut Ast<'_>,
+    span: Span,
+    callee: Expr,
+    arguments: Vec<Argument>,
+    pure: bool,
+) -> Expr {
     let arguments = ast.add_sub_range(arguments);
-    ast.expr_call_expression(span, callee, None, arguments, false, true)
+    ast.expr_call_expression(span, callee, None, arguments, false, pure)
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_ast/src/expr.rs#L179>.
@@ -565,21 +578,23 @@ impl Jsx<'_, '_> {
                 if self.development {
                     args.push(Argument::Expr(undefined(ast)));
                     args.push(Argument::Expr(ast.expr_boolean_literal(DUMMY_SP, use_jsxs)));
-                    args.push(Argument::Expr(
-                        self.source.as_ref().unwrap().jsx_dev_source_arg(
-                            ast,
-                            fragment.opening_fragment(ast).span(ast),
-                            &self.filename,
-                        ),
-                    ));
-                    let this = if self.self_ctx.can_add_self() {
-                        ast.expr_this_expression(DUMMY_SP)
-                    } else {
-                        undefined(ast)
-                    };
-                    args.push(Argument::Expr(this));
+                    if self.source_self {
+                        args.push(Argument::Expr(
+                            self.source.as_ref().unwrap().jsx_dev_source_arg(
+                                ast,
+                                fragment.opening_fragment(ast).span(ast),
+                                &self.filename,
+                            ),
+                        ));
+                        let this = if self.self_ctx.can_add_self() {
+                            ast.expr_this_expression(DUMMY_SP)
+                        } else {
+                            undefined(ast)
+                        };
+                        args.push(Argument::Expr(this));
+                    }
                 }
-                call(ast, span, callee, args)
+                call(ast, span, callee, args, self.pure)
             }
             JsxRuntime::Classic => {
                 let name = parse_expr_for_jsx(ast, self.resolver, &self.pragma_frag);
@@ -587,7 +602,7 @@ impl Jsx<'_, '_> {
                 let mut args = vec![Argument::Expr(name), Argument::Expr(props)];
                 args.extend(self.children(fragment.children(ast), ast));
                 let callee = parse_expr_for_jsx(ast, self.resolver, &self.pragma);
-                call(ast, span, callee, args)
+                call(ast, span, callee, args, self.pure)
             }
             JsxRuntime::Preserve => unreachable!(),
         }
@@ -692,19 +707,21 @@ impl Jsx<'_, '_> {
                 } else if development {
                     args.push(Argument::Expr(key.unwrap_or_else(|| undefined(ast))));
                     args.push(Argument::Expr(ast.expr_boolean_literal(DUMMY_SP, use_jsxs)));
-                    args.push(Argument::Expr(source.unwrap_or_else(|| undefined(ast))));
-                    args.push(Argument::Expr(this.unwrap_or_else(|| undefined(ast))));
+                    if source.is_some() || this.is_some() {
+                        args.push(Argument::Expr(source.unwrap_or_else(|| undefined(ast))));
+                        args.push(Argument::Expr(this.unwrap_or_else(|| undefined(ast))));
+                    }
                 } else if let Some(key) = key {
                     args.push(Argument::Expr(key));
                 }
-                call(ast, span, callee, args)
+                call(ast, span, callee, args, self.pure)
             }
             JsxRuntime::Classic => {
                 let props = self.fold_attrs_for_classic(attributes, ast);
                 let mut args = vec![Argument::Expr(name), Argument::Expr(props)];
                 args.extend(self.children(element.children(ast), ast));
                 let callee = parse_expr_for_jsx(ast, self.resolver, &self.pragma);
-                call(ast, span, callee, args)
+                call(ast, span, callee, args, self.pure)
             }
             JsxRuntime::Preserve => unreachable!(),
         }
@@ -971,22 +988,25 @@ pub(super) fn parse_expr_for_jsx(ast: &mut Ast<'_>, resolver: &mut Resolver, val
 }
 
 #[derive(Default)]
-struct JsxDirectives {
-    runtime: Option<Runtime>,
-    import_source: Option<String>,
-    pragma: Option<(String, Span)>,
-    pragma_frag: Option<(String, Span)>,
+pub(crate) struct JsxDirectives {
+    pub(crate) runtime: Option<Runtime>,
+    pub(crate) import_source: Option<String>,
+    pub(crate) pragma: Option<(String, Span)>,
+    pub(crate) pragma_frag: Option<(String, Span)>,
 }
 
 impl JsxDirectives {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L320>.
-    fn from_comments(
+    pub(crate) fn from_header_comments(
         ast: &Ast<'_>,
-        comments: &[Comment],
-        diagnostics: &mut Vec<Diagnostic>,
+        header_end: u32,
+        mut diagnostics: Option<&mut Vec<Diagnostic>>,
     ) -> Self {
         let mut directives = Self::default();
-        for comment in comments {
+        for comment in ast.comments() {
+            if comment.span.end > header_end || comment.kind != CommentKind::Block {
+                continue;
+            }
             let text = ast.get_utf8(comment.value(ast.source().as_bytes()));
             for line in text.lines() {
                 let line = line.trim();
@@ -1004,10 +1024,14 @@ impl JsxDirectives {
                         ("@jsxRuntime", Some("automatic")) => {
                             directives.runtime = Some(JsxRuntime::Automatic)
                         }
-                        ("@jsxRuntime", Some(_)) => diagnostics.push(Diagnostic::error(
-                            "Runtime must be either `classic` or `automatic`.",
-                            comment.span,
-                        )),
+                        ("@jsxRuntime", Some(_)) => {
+                            if let Some(diagnostics) = diagnostics.as_deref_mut() {
+                                diagnostics.push(Diagnostic::error(
+                                    "Runtime must be either `classic` or `automatic`.",
+                                    comment.span,
+                                ));
+                            }
+                        }
                         ("@jsxImportSource", Some(value)) => {
                             directives.runtime = Some(JsxRuntime::Automatic);
                             directives.import_source = Some(value.to_owned());
@@ -1029,20 +1053,13 @@ impl JsxDirectives {
 
 impl Jsx<'_, '_> {
     /// SWC directive application: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1143>.
-    pub(super) fn parse_directives(&mut self, ast: &Ast<'_>, offset: u32) -> bool {
-        let Some(comments) = self.comments.get(&offset) else {
-            return false;
-        };
+    pub(super) fn parse_directives(&mut self, ast: &Ast<'_>) {
         let JsxDirectives {
             runtime,
             import_source,
             pragma,
             pragma_frag,
-        } = JsxDirectives::from_comments(ast, comments, &mut self.diagnostics);
-        let found = runtime.is_some()
-            || import_source.is_some()
-            || pragma.is_some()
-            || pragma_frag.is_some();
+        } = JsxDirectives::from_header_comments(ast, self.header_end, Some(&mut self.diagnostics));
         if let Some(runtime) = runtime {
             self.runtime = runtime;
         }
@@ -1067,7 +1084,6 @@ impl Jsx<'_, '_> {
             }
             self.pragma_frag = pragma;
         }
-        found
     }
 }
 

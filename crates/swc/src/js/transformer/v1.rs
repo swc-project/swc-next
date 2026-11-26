@@ -11,7 +11,7 @@ use swc_next_ecma_transformer_v1::{
     env::{Engine, EnvConfig, EnvOptions, EsVersion, Target},
     es2022::ClassFieldsUseSetOptions,
     jsx::{JsxOptions, JsxRuntime as V1JsxRuntime, ReactRefreshOptions},
-    modules::{ModuleType, ModulesOptions},
+    module::{ModuleOptions, ModuleType},
     typescript::{JsxImportOptions, TsImportExportAssignConfig, TypeScriptOptions},
 };
 
@@ -90,7 +90,7 @@ pub(super) fn to_options(
     apply_assumptions(&mut env, assumptions);
 
     let jsx: Option<JsxOptions> = enabled_options(config.jsx);
-    let modules = config.module.map(to_module_options).unwrap_or_default();
+    let module = config.module.map(to_module_options).unwrap_or_default();
 
     let set_public_fields = assumptions.set_public_class_fields.unwrap_or(false);
     let native_class_properties = !set_public_fields && env.es2022.class_properties.is_none();
@@ -98,7 +98,7 @@ pub(super) fn to_options(
     let mut typescript: Option<TypeScriptOptions> = enabled_options(config.typescript);
     if let Some(ts) = &mut typescript {
         ts.native_class_properties = native_class_properties;
-        ts.import_export_assign_config = match modules.r#type {
+        ts.import_export_assign_config = match module.r#type {
             ModuleType::Preserve => TsImportExportAssignConfig::EsNext,
             ModuleType::CommonJs | ModuleType::Amd | ModuleType::Umd | ModuleType::SystemJs => {
                 TsImportExportAssignConfig::Preserve
@@ -114,7 +114,7 @@ pub(super) fn to_options(
         env,
         jsx,
         typescript,
-        modules,
+        module,
     })
 }
 
@@ -160,6 +160,7 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
         Self {
             verbatim_module_syntax: options.verbatim_module_syntax.unwrap_or(false),
             jsx: JsxImportOptions {
+                automatic: options.jsx_runtime == Some(JsxRuntime::Automatic),
                 pragma: options.jsx_pragma,
                 pragma_frag: options.jsx_pragma_frag,
             },
@@ -168,8 +169,8 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
     }
 }
 
-fn to_module_options(options: JsModuleConfig) -> ModulesOptions {
-    ModulesOptions {
+fn to_module_options(options: JsModuleConfig) -> ModuleOptions {
+    ModuleOptions {
         r#type: match options.r#type.unwrap_or_default() {
             JsModuleType::Preserve => ModuleType::Preserve,
             JsModuleType::CommonJs => ModuleType::CommonJs,
@@ -194,6 +195,9 @@ impl From<JsxConfig> for JsxOptions {
         Self {
             runtime: Some(options.runtime.unwrap_or_default().into()),
             development: Some(options.development.unwrap_or(false)),
+            source_self: Some(options.source_self.unwrap_or(false)),
+            pure: options.pure,
+            display_name: Some(options.display_name.unwrap_or(false)),
             import_source: options.import_source,
             pragma: options.pragma,
             pragma_frag: options.pragma_frag,

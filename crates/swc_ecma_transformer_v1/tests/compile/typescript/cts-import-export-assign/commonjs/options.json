@@ -1,0 +1,8 @@
+{
+  "filename": "input.cts",
+  "transformer": {
+    "module": {
+      "type": "commonjs"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "filename": "input.jsx",
+  "transformer": {
+    "jsx": {
+      "runtime": "classic",
+      "development": true,
+      "sourceSelf": false
+    }
+  }
+}

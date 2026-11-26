@@ -64,14 +64,18 @@ impl<'a, 'ast> Transform<'a, 'ast> {
             .iter()
             .map(|slot| self.ast.get_node_in_sub_range(slot))
             .collect();
-        if self.ast.is_module() {
+        let is_ts_module = matches!(
+            self.ast.source_type(),
+            SourceType::Module | SourceType::CommonJs
+        );
+        if is_ts_module {
             if !self.options.verbatim_module_syntax {
                 body.retain(|&statement| self.strip_module_items_with_semantic(statement));
             }
             self.visit_mut_for_ts_import_export(&mut body);
         }
         let body = self.ast.add_sub_range(body);
-        let body = self.visit_mut_stmts_impl(body, self.ast.is_module());
+        let body = self.visit_mut_stmts_impl(body, is_ts_module);
         let mut body: Vec<_> = body
             .iter()
             .map(|slot| self.ast.get_node_in_sub_range(slot))

@@ -24,7 +24,7 @@ use self::{
 
 /// Selects how ECMAScript modules are emitted.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct ModulesOptions {
+pub struct ModuleOptions {
     /// Defaults to [`ModuleType::Preserve`].
     pub r#type: ModuleType,
 }
