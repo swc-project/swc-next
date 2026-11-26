@@ -654,7 +654,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         has_more: bool,
         trailing_comma: TrailingCommaPolicy,
         spacing: SeparatorSpacing,
-        comma: Option<u32>,
+        comma: impl FnOnce() -> Option<u32>,
         gap_end: u32,
         writer: &mut Writer<'ast>,
     ) -> Separator {
@@ -662,7 +662,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if has_more || matches!(trailing_comma, TrailingCommaPolicy::Required) {
             writer.text(",");
             if spacing.empty_line(|| {
-                comma.is_some_and(|comma| self.next_line_is_empty(comma + 1, gap_end))
+                comma().is_some_and(|comma| self.next_line_is_empty(comma + 1, gap_end))
             }) {
                 separator = Separator::EmptyLine;
             }
@@ -832,7 +832,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && !matches!(following, FollowingItem::Elision { .. })
             && !matches!(closing, Some(DelimitedClose::Fixed(_)))
         {
-            let comma = self.find_comma(gap, comments);
             let spacing = separator_spacing.for_attachment(true, || {
                 suppression.is_some() || self.content_mode(comments) == ContentMode::Verbatim
             });
@@ -840,7 +839,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_more,
                 trailing_comma,
                 spacing,
-                comma,
+                || self.find_comma(gap, comments),
                 gap.end,
                 writer,
             );
@@ -948,7 +947,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_more,
                 trailing_comma,
                 spacing,
-                comma,
+                || comma,
                 gap.end,
                 writer,
             );
@@ -1026,7 +1025,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 has_more,
                 trailing_comma,
                 separator_spacing,
-                comma,
+                || comma,
                 gap.end,
                 writer,
             );
