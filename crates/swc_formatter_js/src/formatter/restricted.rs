@@ -196,7 +196,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             expression: argument,
             comments: leading,
         };
-        let envelope = if protected_opening || mode == ContentMode::Verbatim {
+        let envelope = if mode == ContentMode::Verbatim
+            && matches!(
+                self.ast.expr_data(argument),
+                ExprData::ParenthesizedExpression(_)
+            )
+            && self
+                .restricted_lexical_head(argument, content.expression.span(self.ast), grammar)?
+                .requires_envelope
+        {
+            ArgumentEnvelope::Source
+        } else if protected_opening || mode == ContentMode::Verbatim {
             if matches!(content.data, ExprData::ParenthesizedExpression(_)) {
                 ArgumentEnvelope::Source
             } else {
@@ -320,6 +330,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             &prepared,
             |formatter, content_start, writer| {
                 formatter.comments.claim(prepared.head.comments)?;
+                if matches!(prepared.envelope, ArgumentEnvelope::Source)
+                    && prepared.mode == ContentMode::Verbatim
+                {
+                    formatter.format_comment_run(
+                        prepared.head.comments,
+                        CommentRunLayout::FlatLeading(content_start),
+                        writer,
+                    )?;
+                    formatter.format_verbatim(prepared.argument.span(formatter.ast), writer)?;
+                    return Ok(ExpressionOutput::closed(None));
+                }
                 let context = prepared
                     .grammar
                     .argument_context(prepared.envelope, prepared.mode);
@@ -442,6 +463,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             RestrictedGrammar::Yield => ExpressionPosition::YieldArgument,
         });
         let mut requires_envelope = false;
+        let mut released_comment_end = None;
         loop {
             comments.before(expression.span(self.ast).end);
             let data = self.ast.expr_data(expression);
@@ -470,7 +492,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 context = ExpressionContext::at(position);
                 continue;
             }
-            if self.expression_is_parenthesized(data, context) {
+            // A binary operator can release its operand's head before printing
+            // a generated grouping pair around that operand.
+            if !matches!(
+                data,
+                ExprData::BinaryExpression(_) | ExprData::LogicalExpression(_)
+            ) && self.expression_is_parenthesized(data, context)
+            {
                 break;
             }
             expression = match data {
@@ -490,6 +518,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let leading = comments.leading(boundary.inner.start);
                     requires_envelope |=
                         self.restricted_head_requires_envelope(leading, boundary.inner.start);
+                    if let Some(comment) = leading.last() {
+                        released_comment_end = Some(comment.span.end);
+                    }
                     child
                 }
                 ExprData::MemberExpression(member) => {
@@ -557,6 +588,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
         }
+        requires_envelope |= released_comment_end
+            .is_some_and(|end| self.source_line_breaks(end, expression.span(self.ast).start) != 0);
         Ok(RestrictedHeadFacts {
             expression,
             requires_envelope,
