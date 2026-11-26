@@ -125,6 +125,9 @@ THE SOFTWARE.
 Source: [Unicode 17.0.0 PropertyValueAliases.txt](https://www.unicode.org/Public/17.0.0/ucd/PropertyValueAliases.txt).
 Used for the Chumsky regular expression validator's property aliases.
 
+Source: [Unicode 9.0.0 UnicodeData.txt](https://www.unicode.org/Public/9.0.0/ucd/UnicodeData.txt).
+Used for the JavaScript formatter's property key identifier categories.
+
 ```text
 UNICODE LICENSE V3
 

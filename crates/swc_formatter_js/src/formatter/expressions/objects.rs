@@ -1513,7 +1513,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if matches!(context, PropertyKeyContext::TypeMethod) && content == "new" {
             return None;
         }
-        (swc_next_ecma_ast::is_identifier_es5_and_esnext(content.as_bytes())
+        (crate::formatter::es5_identifier::is_es5_identifier_name(content)
             || !matches!(context, PropertyKeyContext::ModuleAttribute)
                 && !self.ast.lang().is_typescript()
                 && numeric_property_name(content))
