@@ -149,6 +149,7 @@ pub struct JsTypeScriptConfig {
     /// TypeScript's `preserveConstEnums`: preserve declarations without disabling inlining.
     ///
     /// @default false
+    #[cfg(feature = "js_transformer_v2")]
     pub preserve_const_enums: Option<bool>,
     /// JSX runtime used to determine which factory imports to retain when JSX
     /// syntax is preserved. Does not enable JSX lowering. When JSX lowering is
