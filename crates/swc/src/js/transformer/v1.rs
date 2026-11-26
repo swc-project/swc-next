@@ -195,6 +195,9 @@ impl From<JsxConfig> for JsxOptions {
         Self {
             runtime: Some(options.runtime.unwrap_or_default().into()),
             development: Some(options.development.unwrap_or(false)),
+            source_self: Some(options.source_self.unwrap_or(false)),
+            pure: options.pure,
+            display_name: Some(options.display_name.unwrap_or(false)),
             import_source: options.import_source,
             pragma: options.pragma,
             pragma_frag: options.pragma_frag,

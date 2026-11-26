@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer_v1/tests/compile.rs
+---
+import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime";
+export const el = /* #__PURE__ */ _jsxDEV("div", {}, void 0, false);

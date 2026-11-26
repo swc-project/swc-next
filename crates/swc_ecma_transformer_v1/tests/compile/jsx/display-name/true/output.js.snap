@@ -1,0 +1,5 @@
+---
+source: crates/swc_ecma_transformer_v1/tests/compile.rs
+---
+const Foo = createReactClass({ displayName: "Foo" });
+export default Foo;
