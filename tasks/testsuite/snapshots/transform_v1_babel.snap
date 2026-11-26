@@ -1,6 +1,6 @@
 transform_v1 * babel
 ========================
-Positive Passed: 558/4082 (13.67%)
+Positive Passed: 570/4082 (13.96%)
 Negative Passed: 0/0 (0.00%)
 Panicked: 0/4082 (0.00%)
 Skipped: 3394/4082 (83.15%)
@@ -49,9 +49,6 @@ Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/autoImport/import-source/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/autoImport/react-defined/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/false-default-pragma-automatic-runtime/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/false-default-pragma-classic-runtime/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/false-pragma-comment-classic-runtime/input.js - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/false-pragma-option-classic-runtime/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/true-default-pragma-automatic-runtime/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/unset-default-pragma-automatic-runtime/input.js - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-react-jsx/test/fixtures/pure/unset-pragma-comment-classic-runtime/input.js - transformed output differs from expected output
@@ -85,15 +82,6 @@ Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescrip
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/export-type/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/imported-types-only-remove-type-imports/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/exports/interface/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-jsx-pragma-namespace-no/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-jsx-pragma-no/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-jsx-pragmaFrag-namespace-no/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-jsx-pragmaFrag-no/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-preact-no-1/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-preact-no-2/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-react-no-1/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-react-no-2/input.ts - transformed output differs from expected output
-Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-react-no-3/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/elide-type-referenced-in-imports-equal-no/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/enum-id/input.ts - transformed output differs from expected output
 Failed: tasks/testsuite/fixtures/babel/packages/babel-plugin-transform-typescript/test/fixtures/imports/enum-value/input.ts - transformed output differs from expected output
