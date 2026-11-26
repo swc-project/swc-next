@@ -13,8 +13,7 @@ use syn::{
 
 use crate::schema::{
     AstAttrs, AstEnum, AstEnumVariant, AstFieldAttrs, AstOption, AstPrimitive, AstStruct,
-    AstStructField, AstSubRange, AstType, FieldLocation, Layout, LayoutMode, ScalarEnum, Schema,
-    TypeId,
+    AstStructField, AstSubRange, AstType, FieldLocation, Layout, LayoutMode, Schema, TypeId,
 };
 
 const PAYLOAD_SIZE: usize = 16;
@@ -49,35 +48,6 @@ impl PayloadSelection {
             .map(|&(index, size)| (size, index))
             .lt(other.fields.iter().map(|&(index, size)| (size, index)))
     }
-}
-
-fn parse_scalar_enum(item: &ItemEnum, repr: Option<usize>) -> Option<ScalarEnum> {
-    let legacy = item.attrs.iter().any(|attr| attr.path().is_ident("estree"));
-    let unit = item
-        .variants
-        .iter()
-        .all(|variant| matches!(variant.fields, syn::Fields::Unit));
-    assert!(
-        !legacy || unit,
-        "expected unit variants on a legacy scalar enum"
-    );
-    if !(legacy || repr == Some(1) && unit) {
-        return None;
-    }
-    Some(ScalarEnum {
-        name: item.ident.to_string(),
-        legacy,
-        attrs: crate::estree::attrs(&item.attrs),
-        variants: item
-            .variants
-            .iter()
-            .map(|variant| AstEnumVariant {
-                type_id: None,
-                name: variant.ident.to_string(),
-                estree: crate::estree::attrs(&variant.attrs),
-            })
-            .collect(),
-    })
 }
 
 pub fn parse_files(file_paths: &[&str]) -> Schema {
@@ -127,16 +97,16 @@ pub fn parse_files(file_paths: &[&str]) -> Schema {
                     }));
                 }
                 Item::Enum(item) => {
-                    // Collect #[repr(uN)] sizes for all enums (not just #[ast] enums).
-                    let repr = parse_repr_size(&item.attrs);
-                    if let Some(size) = repr {
+                    if let Some(enumeration) = crate::estree::scalar(&item) {
+                        scalar_enums.push(enumeration);
+                    }
+                    // Collect #[repr(uN)] sizes for all enums (not just #[ast] enums)
+                    if let Some(size) = parse_repr_size(&item.attrs) {
                         repr_sizes.insert(item.ident.to_string(), size);
                     }
 
+                    // Filter enums with #[ast]
                     let Some(attrs) = parse_attrs(&item.attrs) else {
-                        if let Some(enumeration) = parse_scalar_enum(&item, repr) {
-                            scalar_enums.push(enumeration);
-                        }
                         continue;
                     };
 

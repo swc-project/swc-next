@@ -9,10 +9,12 @@ repository.workspace  = true
 version               = "0.8.1"
 
 [features]
+internal_ffi2           = ["dep:memchr"]
 shared_string_allocator = []
 
 [dependencies]
 cow-utils        = { workspace = true }
+memchr           = { workspace = true, optional = true }
 num-bigint       = { workspace = true }
 unicode-id-start = { workspace = true }
 

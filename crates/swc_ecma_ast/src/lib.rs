@@ -5,6 +5,8 @@ mod comment;
 mod derive;
 mod diagnostic;
 pub mod ffi;
+#[cfg(feature = "internal_ffi2")]
+#[doc(hidden)]
 pub mod ffi2;
 mod node_id;
 mod semantic;

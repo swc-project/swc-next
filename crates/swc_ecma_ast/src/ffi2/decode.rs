@@ -1,10 +1,7 @@
 use std::collections::HashSet;
 
 use swc_next_allocator::{
-    Allocator,
-    hash_map::HashMap as ArenaHashMap,
-    hash_set::HashSet as ArenaHashSet,
-    wtf8::{Wtf8, utf16_le_has_unpaired_surrogate},
+    Allocator, hash_map::HashMap as ArenaHashMap, hash_set::HashSet as ArenaHashSet, wtf8::Wtf8,
 };
 
 use super::BorrowedAst;
@@ -721,9 +718,10 @@ unsafe fn merge_extension_strings(
         return Ok(());
     }
     if extension.utf8_strings {
-        ast.strings.extend_extra(
+        append_string_bytes(
+            ast,
             &extension.bytes[extension.strings..extension.strings + extension.string_len],
-        );
+        )?;
         return Ok(());
     }
     let base_string_len = reader.base.string_len;
@@ -751,10 +749,13 @@ unsafe fn merge_extension_strings(
     }
     ranges.sort_unstable();
     let mut map = ArenaHashMap::with_capacity_in(ranges.len(), allocator);
+    let mut transcoded = ArenaVec::new_in(allocator);
     for &(start, end) in ranges.iter() {
         let units = &extension.bytes[extension.strings + start as usize - base_string_len
             ..extension.strings + end as usize - base_string_len];
-        map.insert((start, end), ast.strings.extend_wtf8_from_utf16(units));
+        transcoded.clear();
+        extend_wtf8_from_utf16_le(units, &mut transcoded);
+        map.insert((start, end), append_string_bytes(ast, &transcoded)?);
     }
     let extra = ast.extra_data.as_mut_ptr().cast::<u8>();
     for target in 0..reader.count {
@@ -786,6 +787,7 @@ unsafe fn read_tables<'a>(
     allocator: &'a Allocator,
 ) -> Result<BorrowedAst<'a>, Error> {
     let base = &reader.base;
+    let base_strings = &base.bytes[base.strings + base.source_len..base.strings + base.string_len];
     // Appended rows or extra slots require owned tables, but a string-only UTF-8
     // extension can keep borrowing the base tables and append to the string pool.
     #[cfg(target_endian = "little")]
@@ -833,10 +835,18 @@ unsafe fn read_tables<'a>(
             let extension_strings = reader.extension.as_ref().map_or(&[][..], |extension| {
                 &extension.bytes[extension.strings..extension.strings + extension.string_len]
             });
-            ast.strings.borrow_extra_with(
-                &base.bytes[base.strings + base.source_len..base.strings + base.string_len],
-                extension_strings,
-            );
+            let strings = if extension_strings.is_empty() {
+                base_strings
+            } else {
+                let mut strings = ArenaVec::with_capacity_in(
+                    base_strings.len() + extension_strings.len(),
+                    allocator,
+                );
+                strings.extend_from_slice(base_strings);
+                strings.extend_from_slice(extension_strings);
+                strings.into_bump_slice()
+            };
+            ast.strings.borrow_extra(strings);
             ast.source_type = std::mem::transmute::<u8, SourceType>((reader.flags & 3) as u8);
             ast.lang = std::mem::transmute::<u8, Lang>((reader.flags >> 2) as u8);
         }
@@ -923,8 +933,7 @@ unsafe fn read_tables<'a>(
                 reader.extra(id)?[..4].try_into().unwrap(),
             )));
     }
-    ast.strings
-        .extend_extra(&base.bytes[base.strings + base.source_len..base.strings + base.string_len]);
+    append_string_bytes(&mut ast, base_strings)?;
     if reader.extension.is_some() {
         // SAFETY: The extension part is validated or trusted, and the tables above are
         // arena copies this function owns.
@@ -936,4 +945,41 @@ unsafe fn read_tables<'a>(
         unsafe { std::mem::transmute::<u8, Lang>((reader.flags >> 2) as u8) },
     );
     Ok(BorrowedAst::from_ast(ast))
+}
+
+fn append_string_bytes(ast: &mut Ast<'_>, bytes: &[u8]) -> Result<(u32, u32), Error> {
+    let start = end(ast.source().len(), ast.strings.extra_bytes().len(), 1)?;
+    let end = u32::try_from(end(start, bytes.len(), 1)?)
+        .map_err(|_| invalid("AST string storage exceeds u32"))?;
+    ast.strings.extend_extra(bytes);
+    Ok((start as u32, end))
+}
+
+fn utf16_le(units: &[u8]) -> impl Iterator<Item = u16> + '_ {
+    units
+        .as_chunks::<2>()
+        .0
+        .iter()
+        .map(|unit| u16::from_le_bytes(*unit))
+}
+
+fn utf16_le_has_unpaired_surrogate(units: &[u8]) -> bool {
+    char::decode_utf16(utf16_le(units)).any(|decoded| decoded.is_err())
+}
+
+fn extend_wtf8_from_utf16_le(units: &[u8], out: &mut ArenaVec<'_, u8>) {
+    for decoded in char::decode_utf16(utf16_le(units)) {
+        match decoded {
+            Ok(character) => {
+                let mut buffer = [0; 4];
+                out.extend_from_slice(character.encode_utf8(&mut buffer).as_bytes());
+            }
+            Err(error) => {
+                let half = error.unpaired_surrogate();
+                out.push((0xE0 | (half >> 12)) as u8);
+                out.push((0x80 | ((half >> 6) & 0x3F)) as u8);
+                out.push((0x80 | (half & 0x3F)) as u8);
+            }
+        }
+    }
 }

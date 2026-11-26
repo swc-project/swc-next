@@ -1,0 +1,14 @@
+{
+  "name": "@swc-next/benchmark-js-plugin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "node bench.mjs"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "2.11.4",
+    "@swc-next/core": "workspace:*",
+    "@swc-next/core-ffi2": "workspace:*",
+    "@swc-next/walker": "workspace:*"
+  }
+}

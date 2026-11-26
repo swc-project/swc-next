@@ -11,6 +11,7 @@ use crate::{
 pub(crate) mod derive;
 pub(crate) mod estree;
 pub(crate) mod generator;
+pub(crate) mod generator_ffi2;
 pub(crate) mod output;
 pub(crate) mod parse;
 pub(crate) mod schema;
@@ -61,10 +62,10 @@ fn main() -> std::io::Result<()> {
     for output in generator::estree_visitor_keys::estree_visitor_keys(&schema) {
         output.write_to_file()?;
     }
-    for output in generator::ffi2::ffi2(&schema) {
+    for output in generator_ffi2::ffi2(&schema) {
         output.write_to_file()?;
     }
-    for output in generator::ffi2_visitor_keys::visitor_keys(&schema) {
+    for output in generator_ffi2::visitor_keys(&schema) {
         output.write_to_file()?;
     }
     Ok(())

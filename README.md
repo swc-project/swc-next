@@ -13,7 +13,7 @@
 
 # SWC Next
 
-SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a rewrite of [SWC](https://github.com/swc-project/swc) from the ground up, built around a flat, native AST for performance and extensibility.
+SWC Next is a fast JavaScript and TypeScript toolchain written in Rust. It is a rewrite of [SWC](https://github.com/swc-project/swc) from the ground up, built around a flat, ESTree-based AST for performance and extensibility.
 
 - **Performance:** **Up to 3× faster than SWC** in [native parser benchmarks](https://github.com/rstackjs/ecmascript-parser-benchmark-native) and **up to 15× faster** in [JavaScript API benchmarks](https://github.com/rstackjs/ecmascript-parser-benchmark-js).
 - **JavaScript Extensibility:** Fast AST round trips between Rust and JavaScript enable writing plugins in JavaScript.
@@ -38,10 +38,6 @@ const { program, diagnostics } = parseSync("const answer = 42;");
 console.log(diagnostics);
 console.log(generateSync(program).code);
 ```
-
-To opt into buffer-backed views of the native Rust AST, use the `@swc-next/core/ffi2` entry point
-with [`@swc-next/ast2`](packages/ast2) and [`@swc-next/walker2`](packages/walker2).
-The default JavaScript API still accepts and returns plain ESTree objects.
 
 ## Roadmap
 

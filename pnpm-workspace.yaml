@@ -1,7 +1,7 @@
 packages:
   - npm/*
   - packages/*
-  - tasks/benchmark
+  - tasks/benchmark/js-plugin
   - website/*
 
 allowBuilds:

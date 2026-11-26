@@ -288,18 +288,12 @@ importers:
 
   npm/core:
     dependencies:
-      '@swc-next/ast2':
-        specifier: workspace:*
-        version: link:../../packages/ast2
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
       '@swc-next/walker':
         specifier: workspace:*
         version: link:../../packages/walker
-      '@swc-next/walker2':
-        specifier: workspace:*
-        version: link:../../packages/walker2
     devDependencies:
       '@babel/parser':
         specifier: 'catalog:'
@@ -352,9 +346,6 @@ importers:
 
   npm/core-browser:
     dependencies:
-      '@swc-next/ast2':
-        specifier: workspace:*
-        version: link:../../packages/ast2
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -362,6 +353,28 @@ importers:
       '@swc-next/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+
+  npm/core-ffi2:
+    dependencies:
+      '@swc-next/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@swc-next/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 'catalog:'
+        version: 3.7.4(patch_hash=18575baf41240f923e90608e78bf31096a2443e0dd7d37deeb75c3580216599e)(@emnapi/runtime@1.11.2)(@types/node@26.1.1)
+      '@rstest/core':
+        specifier: 'catalog:'
+        version: 0.11.11
+      '@swc-next/core':
+        specifier: workspace:*
+        version: link:../core
+      cross-env:
+        specifier: 'catalog:'
+        version: 10.1.0
 
   npm/formatter:
     devDependencies:
@@ -438,9 +451,6 @@ importers:
 
   npm/generator:
     dependencies:
-      '@swc-next/ast2':
-        specifier: workspace:*
-        version: link:../../packages/ast2
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -457,9 +467,6 @@ importers:
 
   npm/parser:
     dependencies:
-      '@swc-next/ast2':
-        specifier: workspace:*
-        version: link:../../packages/ast2
       '@swc-next/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -486,16 +493,6 @@ importers:
         specifier: 'catalog:'
         version: 26.1.1
 
-  packages/ast2:
-    dependencies:
-      '@swc-next/types':
-        specifier: workspace:*
-        version: link:../types
-    devDependencies:
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-
   packages/helpers: {}
 
   packages/protocol:
@@ -508,26 +505,20 @@ importers:
 
   packages/walker: {}
 
-  packages/walker2:
-    dependencies:
-      '@swc-next/ast2':
-        specifier: workspace:*
-        version: link:../ast2
-
-  tasks/benchmark:
+  tasks/benchmark/js-plugin:
     dependencies:
       '@formatjs/icu-messageformat-parser':
         specifier: 2.11.4
         version: 2.11.4
       '@swc-next/core':
         specifier: workspace:*
-        version: link:../../npm/core
+        version: link:../../../npm/core
+      '@swc-next/core-ffi2':
+        specifier: workspace:*
+        version: link:../../../npm/core-ffi2
       '@swc-next/walker':
         specifier: workspace:*
-        version: link:../../packages/walker
-      '@swc-next/walker2':
-        specifier: workspace:*
-        version: link:../../packages/walker2
+        version: link:../../../packages/walker
 
   website/docs:
     devDependencies:

@@ -31,7 +31,10 @@ pub use decode::{deserialize, deserialize_unchecked};
 
 use std::{fmt, mem::size_of, ops::Deref, slice};
 
-use crate::{Ast, AstCtx, Diagnostic, ExtraDataUnit, NodePayload, Span};
+use crate::{
+    Ast, AstCtx, AstNode, CloneIn, Diagnostic, ExportSpecifier, ExtraDataUnit, NodeId, NodeKind,
+    NodePayload, Span,
+};
 
 pub const SPAN_SIZE: usize = 8;
 pub const PAYLOAD_SIZE: usize = 16;
@@ -93,6 +96,35 @@ impl<'a> Deref for BorrowedAst<'a> {
 
     fn deref(&self) -> &Self::Target {
         &self.ast
+    }
+}
+
+/// Give each shorthand export name its own node before encoding a tree.
+pub fn split_export_specifier_names(ast: &mut Ast<'_>) {
+    let count = ast.node_count();
+    let mut start = 0;
+    // Shorthand exports can share a name handle. The transferred tree needs a
+    // distinct node for each position so edits to either name are independent.
+    if count == 0 {
+        return;
+    }
+    loop {
+        // SAFETY: The parser initialized all original kinds. Refresh the slice
+        // whenever cloning a node may have reallocated the table.
+        let kinds = unsafe { slice::from_raw_parts(ast.nodes.kind.as_ptr().cast::<u8>(), count) };
+        let Some(offset) = memchr::memchr(NodeKind::ExportSpecifier as u8, &kinds[start..]) else {
+            break;
+        };
+        let index = start + offset;
+        // SAFETY: The kind table identifies this node as an export specifier.
+        let specifier =
+            unsafe { ExportSpecifier::from_node_id_unchecked(NodeId::from_usize(index)) };
+        let local = specifier.local(ast);
+        if local.node_id() == specifier.exported(ast).node_id() {
+            let local = local.clone_in(ast);
+            specifier.set_local(ast, local);
+        }
+        start = index + 1;
     }
 }
 

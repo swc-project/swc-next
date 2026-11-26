@@ -54,43 +54,6 @@ The formatter receives a parsed document and preserves fenced code as plain text
 cargo bench --locked -p benchmark --bench gungraun -- --allow-aslr=yes '*::bench_markdown_*'
 ```
 
-## JavaScript plugins
-
-Build the native core and JavaScript packages, then run the Criterion plugin
-benchmarks with Node.js 22 or later:
-
-```sh
-pnpm --filter @swc-next/core build --release
-pnpm build:js
-cargo bench -p benchmark --bench js-plugin
-```
-
-The `js-plugin` group runs `files/js-plugin/` with FFI1 via `@swc-next/core`.
-The `js-plugin2` group runs `files/js-plugin2/` with FFI2 via
-`@swc-next/core/ffi2` and `@swc-next/walker2` using native AST fields. Both groups process the same
-JavaScript, JSX, TypeScript and TSX fixtures in persistent Node processes.
-Each iteration measures `parse` (Rust parse, AST encode, root/comments decode),
-`plugin` (JS traversal and transform), and `print` (JS encode, native decode
-and print). `ident-length` has no `print` phase.
-
-The worker warms the dataset three times before timing (`JS_PLUGIN_WARMUP`
-overrides the count), so the default V8 tier-up thresholds reach the hot path.
-Module loading, plugin construction, validation, context construction,
-IPC and the first cold pass are outside the phase clocks; `total` includes
-context construction and clock reads, so it can exceed the phase sum. The cold
-pass is reported separately as `coldPluginNs`. The `js-plugin2` group uses the
-internal unchecked `generateSync2Unchecked` for printing. Keep Node, fixtures
-and plugin sources identical across revisions;
-validation normalizes only RegExp flag order. `JS_PLUGIN_NODE`,
-`JS_PLUGIN_REPORT_DIR` and `JS_PLUGIN_ROOT` select the executable, report
-directory and runner checkout.
-
-Criterion uses 20 flat samples, 10 ms warmup and 200 ms measurement targets per
-phase; each invocation still runs the whole dataset. The usual `--warm-up-time`,
-`--measurement-time` and `--sample-size` flags override them. The worker uses
-Node's default tier-up thresholds; its warmup passes ensure the measured phases
-run on optimized code.
-
 ## Pipeline simulator
 
 ```sh

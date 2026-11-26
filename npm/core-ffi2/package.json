@@ -1,0 +1,40 @@
+{
+  "name": "@swc-next/core-ffi2",
+  "version": "0.8.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src-js/index.d.ts",
+      "import": "./src-js/index.js"
+    },
+    "./browser": {
+      "types": "./src-js/browser.d.ts",
+      "import": "./src-js/browser.js"
+    },
+    "./binding": "./src-js/binding.js"
+  },
+  "scripts": {
+    "build:ffi2": "napi build --no-js --dts ../src-js/binding.d.ts --output-dir dist",
+    "build:wasm:ffi2": "cargo run --quiet --locked -p bridge_cli -- build core-ffi2 --output-dir dist",
+    "test": "node --test \"test/!(walk*).test.js\" && rstest run --include \"test/walk*.test.js\"",
+    "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test"
+  },
+  "napi": {
+    "binaryName": "swc-next-core-ffi2",
+    "packageName": "@swc-next/core-ffi2-binding"
+  },
+  "wasm": {
+    "binaryName": "swc-next-core-ffi2"
+  },
+  "dependencies": {
+    "@swc-next/protocol": "workspace:*",
+    "@swc-next/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "catalog:",
+    "@rstest/core": "catalog:",
+    "@swc-next/core": "workspace:*",
+    "cross-env": "catalog:"
+  }
+}

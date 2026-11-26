@@ -69,7 +69,7 @@ function writeVersion(version) {
 
   for (const manifestPath of npmManifestPaths()) {
     const manifest = readManifest(manifestPath);
-    if (manifest.napi) {
+    if (manifest.napi && manifest.private !== true) {
       const bindingLoaderPath = path.join(
         repositoryRoot,
         path.dirname(manifestPath),

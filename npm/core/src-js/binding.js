@@ -583,5 +583,3 @@ export { CommentMode }
 export { Lang }
 export { SourceType }
 export { transformSync }
-
-export const { parseSync2, generateSync2, generateSync2Unchecked } = nativeBinding

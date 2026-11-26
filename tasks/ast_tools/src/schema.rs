@@ -195,7 +195,6 @@ pub struct EstreeField {
 #[derive(Debug)]
 pub struct ScalarEnum {
     pub name: String,
-    pub legacy: bool,
     pub attrs: EstreeAttrs,
     pub variants: Vec<AstEnumVariant>,
 }

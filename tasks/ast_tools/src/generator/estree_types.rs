@@ -8,11 +8,7 @@ use crate::{
 
 pub fn estree_types(schema: &Schema) -> RawOutput {
     let mut output = String::from(PREAMBLE);
-    for enumeration in schema
-        .scalar_enums
-        .iter()
-        .filter(|enumeration| enumeration.legacy)
-    {
+    for enumeration in &schema.scalar_enums {
         let name = type_name(&enumeration.name, schema);
         if let Some(alias) = &enumeration.attrs.ts_alias {
             writeln!(output, "export type {name} = {alias};\n").unwrap();
@@ -126,7 +122,7 @@ fn type_name(name: &str, schema: &Schema) -> String {
             schema
                 .scalar_enums
                 .iter()
-                .find(|enumeration| enumeration.legacy && enumeration.name == name)
+                .find(|enumeration| enumeration.name == name)
                 .and_then(|enumeration| enumeration.attrs.rename.clone())
         })
         .unwrap_or_else(|| default_name(name))
@@ -145,7 +141,7 @@ fn reference(id: TypeId, schema: &Schema) -> String {
             name if schema
                 .scalar_enums
                 .iter()
-                .any(|enumeration| enumeration.legacy && enumeration.name == name) =>
+                .any(|enumeration| enumeration.name == name) =>
             {
                 type_name(name, schema)
             }

@@ -14,20 +14,13 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./ffi2": {
-      "types": "./dist/ffi2.d.ts",
-      "import": "./dist/ffi2.js",
-      "default": "./dist/ffi2.js"
     }
   },
   "files": [
     "dist/binding.d.ts",
     "dist/binding.js",
     "dist/index.d.ts",
-    "dist/index.js",
-    "dist/ffi2.js",
-    "dist/ffi2.d.ts"
+    "dist/index.js"
   ],
   "publishConfig": {
     "access": "public",
@@ -35,7 +28,7 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
-    "build:js": "pnpm --filter @swc-next/ast2 build && pnpm -w exec rslib build --lib generator --lib generator-ffi2",
+    "build:js": "pnpm -w exec rslib build --lib generator",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build generator --output-dir dist",
     "prepack": "pnpm build:js"
   },
@@ -69,8 +62,7 @@
     ]
   },
   "dependencies": {
-    "@swc-next/types": "workspace:*",
-    "@swc-next/ast2": "workspace:*"
+    "@swc-next/types": "workspace:*"
   },
   "wasm": {
     "binaryName": "swc-next-generator",

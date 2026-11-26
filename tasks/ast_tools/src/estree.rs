@@ -1,7 +1,7 @@
 //! Parse declaration metadata independently of Rust storage layout.
-use syn::{Attribute, LitStr, Meta, meta::ParseNestedMeta};
+use syn::{Attribute, ItemEnum, LitStr, Meta, meta::ParseNestedMeta};
 
-use crate::schema::{AstFieldAttrs, EstreeAttrs, EstreeField};
+use crate::schema::{AstEnumVariant, AstFieldAttrs, EstreeAttrs, EstreeField, ScalarEnum};
 
 fn string(meta: &ParseNestedMeta<'_>) -> syn::Result<String> {
     Ok(meta.value()?.parse::<LitStr>()?.value())
@@ -103,4 +103,38 @@ pub fn field_attrs(attributes: &[Attribute]) -> AstFieldAttrs {
         .expect("invalid ESTree field attribute");
     }
     result
+}
+
+pub fn scalar(enumeration: &ItemEnum) -> Option<ScalarEnum> {
+    if enumeration
+        .attrs
+        .iter()
+        .any(|attr| attr.path().is_ident("ast"))
+        || !enumeration
+            .attrs
+            .iter()
+            .any(|attr| attr.path().is_ident("estree"))
+    {
+        return None;
+    }
+    let variants = enumeration
+        .variants
+        .iter()
+        .map(|variant| {
+            assert!(
+                matches!(variant.fields, syn::Fields::Unit),
+                "expected unit variant"
+            );
+            AstEnumVariant {
+                type_id: None,
+                name: variant.ident.to_string(),
+                estree: attrs(&variant.attrs),
+            }
+        })
+        .collect();
+    Some(ScalarEnum {
+        name: enumeration.ident.to_string(),
+        attrs: attrs(&enumeration.attrs),
+        variants,
+    })
 }

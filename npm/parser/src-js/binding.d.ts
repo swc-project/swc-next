@@ -85,6 +85,3 @@ export declare function langFromPath(path: string): Lang
 export declare function parseSync(source: Uint8Array, sourceUtf16Len: number, options: number): Uint8Array
 
 export declare function sourceTypeFromPath(path: string): SourceType
-
-// Additional AST buffer protocol.
-export declare function parseSync2(source: Uint8Array, sourceUtf16Len: number, options: number): Uint8Array
