@@ -44,20 +44,37 @@ impl<C: Case> Runner<C> for CodegenRunner {
 fn run_case<C: Case>(case: &C) -> Result<(), String> {
     let allocator = Allocator::new();
     let mut errors = Vec::new();
+    let normalized_options = ParserOptions {
+        source_type: case.source_type(),
+        lang: case.lang(),
+        preserve_parens: false,
+        ..ParserOptions::default()
+    };
+    let original = parse_with_options(&allocator, case.code(), normalized_options)
+        .map_err(|error| format!("preserve_parens=false: input {error}"))?;
 
     for preserve_parens in [false, true] {
         let options = ParserOptions {
-            source_type: case.source_type(),
-            lang: case.lang(),
             preserve_parens,
-            ..ParserOptions::default()
+            ..normalized_options
         };
-        let ast = parse_with_options(&allocator, case.code(), options)
+        let preserved = preserve_parens
+            .then(|| parse_with_options(&allocator, case.code(), options))
+            .transpose()
             .map_err(|error| format!("preserve_parens={preserve_parens}: input {error}"))?;
-        let output = generate(&ast, GeneratorOptions::default()).code;
+        let ast = preserved.as_ref().unwrap_or(&original);
+        let output = generate(ast, GeneratorOptions::default()).code;
         let reparsed = parse_with_options(&allocator, &output, options)
             .map_err(|error| format!("preserve_parens={preserve_parens}: output {error}"))?;
-        if let Err(error) = ast_compare::compare(&ast, &reparsed) {
+        // Grammar groups may be added to preserved input. Compare every AST
+        // field after removing parentheses, and check printing stability below.
+        let normalized = preserve_parens
+            .then(|| parse_with_options(&allocator, &output, normalized_options))
+            .transpose()
+            .map_err(|error| format!("preserve_parens={preserve_parens}: output {error}"))?;
+        if let Err(error) =
+            ast_compare::compare(&original, normalized.as_ref().unwrap_or(&reparsed))
+        {
             errors.push(format!("preserve_parens={preserve_parens}: {error}"));
         }
         let output2 = generate(&reparsed, GeneratorOptions::default()).code;

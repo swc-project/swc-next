@@ -4,7 +4,9 @@ Conformance testing for SWC Next against Test262, TypeScript, Babel, SWC,
 Prettier, and terser fixtures.
 
 - Parser suites check parsing and semantic diagnostics against fixture expectations.
-- Codegen suites check AST round trips and printing stability.
+- Codegen suites check AST round trips and printing stability with both source
+  parenthesis modes. Optional expression groups are normalized for AST comparison;
+  other node fields remain structural.
 - Semantic suites compare identifier end offsets and semantic binding identities
   with reference output.
 - Transform suites compare normalized output or check output syntax and stability.

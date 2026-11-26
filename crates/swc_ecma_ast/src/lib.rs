@@ -349,6 +349,16 @@ impl<'a> Ast<'a> {
         *self.nodes.kind(node_id)
     }
 
+    /// Returns the kinds of initialized slots, indexed by raw node ID.
+    ///
+    /// This includes detached nodes that are not reachable from the root.
+    #[inline]
+    pub fn node_kinds(&self) -> &[NodeKind] {
+        // SAFETY: All slots below `len` are initialized and remain immutable
+        // for this borrow, including borrowed transport views.
+        unsafe { std::slice::from_raw_parts(self.nodes.kind.as_ptr(), self.nodes.len()) }
+    }
+
     /// Returns the source span stored for `node_id`.
     #[inline]
     pub fn span(&self, node_id: NodeId) -> Span {

@@ -7,6 +7,473 @@ use swc_next_ecma_ast::{Lang, TsModuleBody};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParseOptions, Parser};
 
+#[path = "../../../../tasks/testsuite/src/ast_compare/mod.rs"]
+mod ast_compare;
+
+#[track_caller]
+fn expect_comparison(source: &str, pretty: &str, compact: &str) {
+    for lang in [Lang::Ts, Lang::Tsx] {
+        expect_comparison_in_lang(source, lang, pretty, compact);
+    }
+}
+
+#[track_caller]
+fn expect_comparison_in_lang(source: &str, lang: Lang, pretty: &str, compact: &str) {
+    let allocator = Allocator::new();
+    let normalized_options = ParseOptions {
+        lang,
+        preserve_parens: false,
+        comments: swc_next_ecma_parser::CommentMode::Flat,
+        ..ParseOptions::default()
+    };
+    let baseline =
+        Parser::init(&allocator, source, normalized_options, NoTokenParserConfig).parse();
+    assert!(baseline.diagnostics.is_empty());
+    for preserve_parens in [false, true] {
+        let parse_options = ParseOptions {
+            preserve_parens,
+            ..normalized_options
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+        for minify in [false, true] {
+            let options = GeneratorOptions {
+                minify,
+                ..GeneratorOptions::default()
+            };
+            let result = generate(&original.ast, options.clone());
+            if !preserve_parens {
+                assert_eq!(result.code, if minify { compact } else { pretty });
+            }
+            let reparsed =
+                Parser::init(&allocator, &result.code, parse_options, NoTokenParserConfig).parse();
+            assert!(reparsed.diagnostics.is_empty());
+            let normalized = Parser::init(
+                &allocator,
+                &result.code,
+                normalized_options,
+                NoTokenParserConfig,
+            )
+            .parse();
+            assert_eq!(ast_compare::compare(&baseline.ast, &normalized.ast), Ok(()));
+            assert_eq!(generate(&reparsed.ast, options).code, result.code);
+        }
+    }
+}
+
+#[test]
+fn test_comparison_contextual_operators() {
+    expect_comparison("(a < b) > as;", "(a < b) > as;\n", "(a<b)>as;");
+
+    expect_comparison(
+        "(a < b) > satisfies;",
+        "(a < b) > satisfies;\n",
+        "(a<b)>satisfies;",
+    );
+
+    expect_comparison(
+        "f((a < b), c > as);",
+        "f((a < b), c > as);\n",
+        "f((a<b),c>as);",
+    );
+
+    expect_comparison(
+        "f((a < b), c > satisfies);",
+        "f((a < b), c > satisfies);\n",
+        "f((a<b),c>satisfies);",
+    );
+
+    expect_comparison(
+        "f((a<b),c>as,(d<e)>(()=>h));",
+        "f((a < b), c > as, (d < e) > (() => h));\n",
+        "f((a<b),c>as,(d<e)>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b),c>satisfies,(d<e)>(()=>h));",
+        "f((a < b), c > satisfies, (d < e) > (() => h));\n",
+        "f((a<b),c>satisfies,(d<e)>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b),c>asValue,(d<e)>(()=>h));",
+        "f(a < b, c > asValue, (d < e) > (() => h));\n",
+        "f(a<b,c>asValue,(d<e)>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b),c>satisfies$,(d<e)>(()=>h));",
+        "f(a < b, c > satisfies$, (d < e) > (() => h));\n",
+        "f(a<b,c>satisfies$,(d<e)>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b),c>asé,(d<e)>(()=>h));",
+        "f(a < b, c > asé, (d < e) > (() => h));\n",
+        "f(a<b,c>asé,(d<e)>(()=>h));",
+    );
+
+    expect_comparison(
+        "(a < b) > /* keep */ as;",
+        "(a < b) > /* keep */ as;\n",
+        "(a<b)>/* keep */as;",
+    );
+
+    expect_comparison("(a < b) > \\u0061s;", "(a < b) > as;\n", "(a<b)>as;");
+}
+
+#[test]
+fn test_comparison_grouping() {
+    expect_comparison("(a < b) > `c`;", "(a < b) > `c`;\n", "(a<b)>`c`;");
+
+    expect_comparison("(a < b) > あ;", "a < b > あ;\n", "a<b>あ;");
+
+    expect_comparison(
+        "f((a<b),c>value.field);",
+        "f(a < b, c > value.field);\n",
+        "f(a<b,c>value.field);",
+    );
+
+    expect_comparison(
+        "f((a<b),c>/*\n*/value.field);",
+        "f((a < b), c > /*\n */\nvalue.field);\n",
+        "f((a<b),c>/*\n*/value.field);",
+    );
+
+    expect_comparison(
+        "f((a<b),c as T>(d as U));",
+        "f(a < b, c as T > (d as U));\n",
+        "f(a<b,c as T>(d as U));",
+    );
+
+    expect_comparison(
+        "f((a<b),c satisfies T>(d as U));",
+        "f(a < b, c satisfies T > (d as U));\n",
+        "f(a<b,c satisfies T>(d as U));",
+    );
+
+    expect_comparison(
+        "f((a<b),c as T>(d as U),(e<f),g>(()=>h));",
+        "f(a < b, c as T > (d as U), (e < f), g > (() => h));\n",
+        "f(a<b,c as T>(d as U),(e<f),g>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b),(c<d),(e as T)>>(x as U),(p<q),r>(()=>s));",
+        "f(a < b, c < d, (e as T) >> (x as U), (p < q), r > (() => s));\n",
+        "f(a<b,c<d,(e as T)>>(x as U),(p<q),r>(()=>s));",
+    );
+
+    expect_comparison(
+        "(a < b) > /*\n*/ +c;",
+        "a < b > /*\n */\n+c;\n",
+        "a<b>/*\n*/+c;",
+    );
+
+    expect_comparison("f((a<b),c>++d);", "f(a < b, c > ++d);\n", "f(a<b,c>++d);");
+
+    expect_comparison(
+        "f((a<b),c>/*\n*/++d);",
+        "f((a < b), c > /*\n */\n++d);\n",
+        "f((a<b),c>/*\n*/++d);",
+    );
+
+    expect_comparison(
+        "f((a<b),c>/*\n*/--d);",
+        "f((a < b), c > /*\n */\n--d);\n",
+        "f((a<b),c>/*\n*/--d);",
+    );
+
+    expect_comparison(
+        "f((a<b),c>=/*\n*/d,(x<y)>as);",
+        "f(a < b, c >= /*\n */\nd, (x < y) > as);\n",
+        "f(a<b,c>=/*\n*/d,(x<y)>as);",
+    );
+
+    expect_comparison(
+        "f((a < b), (c < d), (e < f), g > (()=>h));",
+        "f(a < b, c < d, (e < f), g > (() => h));\n",
+        "f(a<b,c<d,(e<f),g>(()=>h));",
+    );
+
+    expect_comparison(
+        "f(a < b, x => c > (()=>d));",
+        "f(a < b, x => c > (() => d));\n",
+        "f(a<b,x=>c>(()=>d));",
+    );
+
+    expect_comparison(
+        "a < (((c), d) > (()=>e));",
+        "a < ((c, d) > (() => e));\n",
+        "a<((c,d)>(()=>e));",
+    );
+
+    expect_comparison(
+        "a < (((c) ? d : e) > (()=>g));",
+        "a < ((c ? d : e) > (() => g));\n",
+        "a<((c?d:e)>(()=>g));",
+    );
+
+    expect_comparison(
+        "a < (((c) = d) > (()=>g));",
+        "a < ((c = d) > (() => g));\n",
+        "a<((c=d)>(()=>g));",
+    );
+
+    expect_comparison(
+        "f((a < b), g<T>());",
+        "f(a < b, g<T>());\n",
+        "f(a<b,g<T>());",
+    );
+
+    expect_comparison("f((a < b), g<T>);", "f(a < b, g<T>);\n", "f(a<b,g<T>);");
+
+    expect_comparison(
+        "f((a < b), g<T>`x`);",
+        "f(a < b, g<T>`x`);\n",
+        "f(a<b,g<T>`x`);",
+    );
+
+    expect_comparison(
+        "f((a < b), keyof<typeof z>());",
+        "f(a < b, keyof<typeof z>());\n",
+        "f(a<b,keyof<typeof z>());",
+    );
+
+    expect_comparison(
+        "(a < keyof(b)) > (()=>d);",
+        "(a < keyof(b)) > (() => d);\n",
+        "(a<keyof(b))>(()=>d);",
+    );
+
+    expect_comparison(
+        "f((a < readonly(b)), c > (()=>d));",
+        "f((a < readonly(b)), c > (() => d));\n",
+        "f((a<readonly(b)),c>(()=>d));",
+    );
+
+    expect_comparison(
+        "f((a < b), c >> (()=>d));",
+        "f(a < b, c >> (() => d));\n",
+        "f(a<b,c>>(()=>d));",
+    );
+
+    expect_comparison(
+        "f((a < b), (c < d), e >> (()=>f));",
+        "f((a < b), c < d, e >> (() => f));\n",
+        "f((a<b),c<d,e>>(()=>f));",
+    );
+
+    expect_comparison(
+        "f((a < b), (c < d), (e < f), g >> (()=>h));",
+        "f(a < b, (c < d), e < f, g >> (() => h));\n",
+        "f(a<b,(c<d),e<f,g>>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b), ((x|y)<d), e>>(()=>h));",
+        "f(a < b, (x | y) < d, e >> (() => h));\n",
+        "f(a<b,(x|y)<d,e>>(()=>h));",
+    );
+
+    expect_comparison(
+        "f((a<b), (((x:T)=>c>d)<e), g>>(()=>h));",
+        "f(a < b, ((x: T) => c > d) < e, g >> (() => h));\n",
+        "f(a<b,((x:T)=>c>d)<e,g>>(()=>h));",
+    );
+}
+
+#[track_caller]
+fn expect_syntax_mapping(source: &str, identifier: &str) {
+    let allocator = Allocator::new();
+    let parse_options = ParseOptions {
+        lang: Lang::Ts,
+        preserve_parens: false,
+        ..ParseOptions::default()
+    };
+    let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+    assert!(original.diagnostics.is_empty());
+    let options = GeneratorOptions {
+        minify: true,
+        source_map_path: Some("input.ts".into()),
+        ..GeneratorOptions::default()
+    };
+    let result = generate(&original.ast, options);
+    let map = result.map.unwrap();
+    let json = serde_json::json!({"version":3,"sources":["input.ts"],"names":map.names().iter().map(|bytes|std::str::from_utf8(bytes).unwrap()).collect::<Vec<_>>(),"mappings":std::str::from_utf8(map.mappings()).unwrap()});
+    let decoded = sourcemap::SourceMap::from_slice(&serde_json::to_vec(&json).unwrap()).unwrap();
+    let position = result.code[..result.code.find(identifier).unwrap()]
+        .encode_utf16()
+        .count() as u32;
+    let token = decoded.lookup_token(0, position).unwrap();
+    assert_eq!(token.get_dst(), (0, position));
+    assert_eq!(
+        token.get_src(),
+        (
+            0,
+            source[..source.find(identifier).unwrap()]
+                .encode_utf16()
+                .count() as u32
+        )
+    );
+}
+
+#[test]
+fn test_comparison_mappings() {
+    expect_syntax_mapping("f(a);", "a");
+
+    expect_syntax_mapping("a < b > c;", "b");
+
+    expect_syntax_mapping("f((a<b),c as T>(d as U),(value<f),g>(()=>h));", "value");
+
+    expect_syntax_mapping("f((a < b), (c < d), e > (()=>g));", "c");
+
+    expect_syntax_mapping("f((あ < b), (c < d), e > (()=>g));", "c");
+
+    expect_syntax_mapping("a < (((c), d) > (()=>e));", "c");
+
+    expect_syntax_mapping(
+        "f(a < b, function(){ return (value < d) > `x`; });",
+        "value",
+    );
+
+    expect_syntax_mapping("(a < keyof(value)) > (()=>d);", "value");
+
+    expect_syntax_mapping("f((a<b), (c<d), (e<f), g>>(()=>h));", "e");
+
+    expect_syntax_mapping("f((a<b), ((x:T)=>value)<d, e>>(()=>h));", "value");
+
+    expect_syntax_mapping("(a<((x:T)=>[value>d]))>(()=>e);", "value");
+
+    expect_syntax_mapping(
+        "f(a < b, class extends B<T>{ m(){ return (value < d) > `x`; } });",
+        "value",
+    );
+}
+
+#[test]
+fn test_comparison_type_forms() {
+    expect_comparison(
+        "(a << b) > (()=>c);",
+        "a << b > (() => c);\n",
+        "a<<b>(()=>c);",
+    );
+
+    expect_comparison(
+        "(a<((x:T)=>[c>d]))>(()=>e);",
+        "a < ((x: T) => [c > d]) > (() => e);\n",
+        "a<((x:T)=>[c>d])>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<((x:T)=>({p:c>d})))>(()=>e);",
+        "a < ((x: T) => ({ p: c > d })) > (() => e);\n",
+        "a<((x:T)=>({p:c>d}))>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<keyof(g()))>(()=>e);",
+        "a < keyof(g()) > (() => e);\n",
+        "a<keyof(g())>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<((x:T)=>({p:g()})))>(()=>e);",
+        "a < ((x: T) => ({ p: g() })) > (() => e);\n",
+        "a<((x:T)=>({p:g()}))>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<((x:T)=>({p:g?.()})))>(()=>e);",
+        "a < ((x: T) => ({ p: g?.() })) > (() => e);\n",
+        "a<((x:T)=>({p:g?.()}))>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<((x:T)=>[T]))>(()=>e);",
+        "(a < ((x: T) => [T])) > (() => e);\n",
+        "(a<((x:T)=>[T]))>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<((x:T)=>({p:x=y})))>(()=>e);",
+        "(a < ((x: T) => ({ p: x = y }))) > (() => e);\n",
+        "(a<((x:T)=>({p:x=y})))>(()=>e);",
+    );
+
+    expect_comparison(
+        "(a<((x=g())=>T))>(()=>e);",
+        "(a < ((x = g()) => T)) > (() => e);\n",
+        "(a<((x=g())=>T))>(()=>e);",
+    );
+}
+
+#[test]
+fn test_comparison_values() {
+    expect_comparison(
+        "f((a < b), g(c > (()=>d)));",
+        "f(a < b, g(c > (() => d)));\n",
+        "f(a<b,g(c>(()=>d)));",
+    );
+
+    expect_comparison(
+        "f((a < b), tag`x${c > (()=>d)}`);",
+        "f(a < b, tag`x${c > (() => d)}`);\n",
+        "f(a<b,tag`x${c>(()=>d)}`);",
+    );
+
+    expect_comparison(
+        "(a < (x,y)(b)) > (()=>d);",
+        "a < (x, y)(b) > (() => d);\n",
+        "a<(x,y)(b)>(()=>d);",
+    );
+
+    expect_comparison(
+        "a < ((x:T)=>c>(d));",
+        "a < ((x: T) => c > d);\n",
+        "a<((x:T)=>c>d);",
+    );
+
+    expect_comparison_in_lang(
+        "a < (<A>x</A>);",
+        Lang::Tsx,
+        "a < <A>x</A>;\n",
+        "a< <A>x</A>;",
+    );
+
+    expect_comparison_in_lang("a < (/x/(b));", Lang::Tsx, "a < /x/(b);\n", "a< /x/(b);");
+
+    expect_comparison(
+        "f(a < b, function(){ return (c < d) > `x`; });",
+        "f(a < b, function() {\n  return (c < d) > `x`;\n});\n",
+        "f(a<b,function(){return( c<d)>`x`});",
+    );
+
+    expect_comparison(
+        "(a < ((x = function(){ return (c < d) > `x`; }) => T)) > (()=>e);",
+        "(a < ((x = function() {\n  return (c < d) > `x`;\n}) => T)) > (() => e);\n",
+        "(a<((x=function(){return( c<d)>`x`})=>T))>(()=>e);",
+    );
+
+    expect_comparison(
+        "f((a < b), function<T>(x:T){ return (c < d) > `x`; });",
+        "f(a < b, function<T>(x: T) {\n  return (c < d) > `x`;\n});\n",
+        "f(a<b,function<T>(x:T){return( c<d)>`x`});",
+    );
+
+    expect_comparison(
+        "f((a < b), function(x=(p < q), y=r>(()=>s)){ return (c < d) > `x`; });",
+        "f(a < b, function(x = p < q, y = r > (() => s)) {\n  return (c < d) > `x`;\n});\n",
+        "f(a<b,function(x=p<q,y=r>(()=>s)){return( c<d)>`x`});",
+    );
+
+    expect_comparison(
+        "(a < class extends B<T>{}) > (()=>d);",
+        "a < class extends B<T> {\n} > (() => d);\n",
+        "a<class extends B<T>{}>(()=>d);",
+    );
+}
+
 #[track_caller]
 fn expect_generated_ts_recovery_pair(
     source: &str,

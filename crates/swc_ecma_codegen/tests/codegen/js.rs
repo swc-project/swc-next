@@ -162,15 +162,20 @@ fn expect_token_boundary_mapping(source: &str, expected: &[u8]) {
 fn test_generate_result_ownership() {
     let code = {
         let allocator = Allocator::new();
-        let source = "const value = 1;";
-        let parse_options = ParseOptions::default();
+        let source = "/*! license */ const value = 1;";
+        let parse_options = ParseOptions {
+            comments: swc_next_ecma_parser::CommentMode::Flat,
+            ..ParseOptions::default()
+        };
         let parsed = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
         assert!(parsed.diagnostics.is_empty());
         let generator_options = GeneratorOptions {
+            comments: false,
             source_map_path: Some("路径.js".into()),
             ..GeneratorOptions::default()
         };
         let generated = generate(&parsed.ast, generator_options);
+        assert_eq!(generated.legal_comments.len(), 1);
         let map = generated.map.unwrap();
         assert_eq!(map.sources().len(), 1);
         assert_eq!(map.sources()[0], "路径.js".as_bytes());
@@ -352,6 +357,8 @@ fn test_expression_token_boundary_controls() {
 
 #[test]
 fn test_expression_token_boundary_mappings() {
+    expect_token_boundary_mapping("await value", b"AAAA,MAAMA");
+
     // VLQ segments map each token after its inserted separator.
     expect_token_boundary_mapping("await true", b"AAAA,MAAM");
 
@@ -886,6 +893,58 @@ fn identifier_names() {
     expect_generated_with_options("({ 𐐀 });", "({\\u{10400}});", ascii);
 }
 
+#[track_caller]
+fn expect_directive_position_string(source: &str, expected: &str) {
+    for lang in [Lang::Js, Lang::Ts, Lang::Tsx] {
+        let allocator = Allocator::new();
+        let parse_options = ParseOptions {
+            lang,
+            preserve_parens: false,
+            ..ParseOptions::default()
+        };
+        let options = GeneratorOptions {
+            minify: true,
+            ..GeneratorOptions::default()
+        };
+        let original = Parser::init(&allocator, source, parse_options, NoTokenParserConfig).parse();
+        assert!(original.diagnostics.is_empty());
+        let generated = generate(&original.ast, options.clone());
+        assert_eq!(generated.code, expected);
+
+        let reparsed = Parser::init(
+            &allocator,
+            &generated.code,
+            parse_options,
+            NoTokenParserConfig,
+        )
+        .parse();
+        assert!(reparsed.diagnostics.is_empty());
+        // SAFETY: All handles below are obtained from their own AST.
+        let (original_ast, output_ast) = unsafe { (original.ast.ast(), reparsed.ast.ast()) };
+        assert_eq!(
+            original_ast.root_program().directives(original_ast).len(),
+            output_ast.root_program().directives(output_ast).len()
+        );
+        assert_eq!(generate(&reparsed.ast, options).code, generated.code);
+    }
+}
+
+#[test]
+fn test_directive_position_strings() {
+    expect_directive_position_string("(\"a\\\"'\");", "`a\"'`;");
+
+    expect_directive_position_string("function f() { (\"a\\\"'\"); }", "function f(){`a\"'`}");
+
+    expect_directive_position_string("(\"use strict\");", "(\"use strict\");");
+
+    expect_directive_position_string(
+        "function f() { (\"use strict\"); }",
+        "function f(){(\"use strict\")}",
+    );
+
+    expect_directive_position_string("(\"a\\\"'\"); \"use strict\";", "`a\"'`;\"use strict\";");
+}
+
 #[test]
 fn test_directive_string_value() {
     let script = ParseOptions {
@@ -1032,6 +1091,17 @@ fn roundtrip_jsx_attribute(value: &Wtf8, options: &GeneratorOptions) -> Wtf8Buf 
 }
 
 #[test]
+fn test_jsx_tokens() {
+    expect_generated_jsx_minify("a < <A/>;", "a< <A/>;");
+
+    expect_generated_jsx_minify("a < <>x</>;", "a< <>x</>;");
+
+    expect_generated_jsx_minify("<><A/></>;", "<><A/></>;");
+
+    expect_generated_jsx_minify("a < /x/;", "a< /x/;");
+}
+
+#[test]
 fn test_jsx_attributes() {
     expect_generated_jsx("<C {...(a, b)} />;", "<C {...(a, b)} />;\n");
 
@@ -1108,6 +1178,12 @@ fn test_jsx_container_comments() {
 
 #[test]
 fn test_container_comments() {
+    let without_comments = GeneratorOptions {
+        comments: false,
+        ..GeneratorOptions::default()
+    };
+    expect_generated_with_options("f(a, b /* keep */, c);", "f(a, b, c);\n", without_comments);
+
     expect_stable("let x /*! license */;", "let x /*! license */ ;\n");
 
     expect_stable("const x = [1 /* keep */];", "const x = [1 /* keep */ ];\n");

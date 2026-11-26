@@ -13,6 +13,8 @@ use crate::{
     sourcemap::{ChunkBuilder, generate_line_offset_tables, make_chunk_builder},
 };
 
+mod ts_grouping;
+
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum NumberFormat {
     #[default]
@@ -114,7 +116,42 @@ fn parse_small_int(bytes: &[u8]) -> i32 {
     if was_negative { -n } else { n }
 }
 
-struct Printer<'a> {
+#[derive(Default)]
+struct JavaScript;
+
+#[derive(Default)]
+struct Typed;
+
+// A compile-time mode selects typed expression context, layout and tracing.
+// JavaScript retains its formatting without TS context or syntax capture.
+trait PrinterMode<'a>: Default {
+    const TYPESCRIPT: bool;
+
+    const CAPTURE: bool = false;
+
+    fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
+        unreachable!("this printer mode has no syntax trace")
+    }
+}
+
+impl PrinterMode<'_> for JavaScript {
+    const TYPESCRIPT: bool = false;
+}
+
+impl PrinterMode<'_> for Typed {
+    const TYPESCRIPT: bool = true;
+}
+
+impl<'a> PrinterMode<'a> for ts_grouping::State<'a> {
+    const TYPESCRIPT: bool = true;
+    const CAPTURE: bool = true;
+    fn state_mut(&mut self) -> &mut ts_grouping::State<'a> {
+        self
+    }
+}
+
+// Untraced modes are zero sized and keep the ordinary binary-stack layout.
+struct Printer<'a, M: PrinterMode<'a>> {
     ast: &'a Ast<'a>,
     options: Options,
     js: Vec<u8>,
@@ -141,6 +178,7 @@ struct Printer<'a> {
     prev_token_end_requiring_space: usize,
     forbid_in: bool,
     int_to_bytes_buffer: [u8; 64],
+    trace: M,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -188,11 +226,16 @@ impl TsTypeContext {
 /// Prints an AST without exposing its unbranded handles.
 pub fn generate<'a>(tree: &'a AstCtx<'a>, options: Options) -> GenerateResult<'a> {
     // SAFETY: The printer only reads handles obtained from this AST.
-    Printer::init(unsafe { tree.ast() }, options).generate()
+    let ast = unsafe { tree.ast() };
+    if tree.is_ts() {
+        ts_grouping::generate(ast, options)
+    } else {
+        Printer::<JavaScript>::init(ast, options).generate()
+    }
 }
 
 impl BinaryExprVisitor {
-    fn prepare(&mut self, p: &mut Printer<'_>) {
+    fn prepare<'a, M: PrinterMode<'a>>(&mut self, p: &mut Printer<'a, M>) {
         let e = self.e;
 
         let operator = e.operator(p.ast);
@@ -201,6 +244,30 @@ impl BinaryExprVisitor {
         self.operator = operator;
         self.wrap = self.level > precedence
             || (self.flags && operator == BinaryishOperator::Binary(BinaryOperator::In));
+
+        let syntax_rejects = M::CAPTURE
+            && matches!(
+                operator,
+                BinaryishOperator::Binary(BinaryOperator::LessThan)
+            )
+            && p.syntax_rejects_type(e.right(p.ast));
+
+        let syntax_explicit = self.context.contains(ExprContext::EXPLICIT_GROUP);
+
+        if M::CAPTURE
+            && matches!(
+                operator,
+                BinaryishOperator::Binary(BinaryOperator::LessThan)
+            )
+        {
+            p.trace.state_mut().begin_binary(
+                ts_grouping::Shape {
+                    wrapped: self.wrap || syntax_explicit,
+                    rejects: syntax_rejects,
+                },
+                p.js.len(),
+            );
+        }
 
         if self.wrap {
             p.print("(");
@@ -220,9 +287,17 @@ impl BinaryExprVisitor {
             precedence.next()
         };
         self.left_flags = local_forbid_in;
-        self.left_context = operator.following_context();
-        self.right_context = self.context.inside_group(self.wrap)
-            & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION);
+        self.left_context = if M::TYPESCRIPT {
+            operator.following_context()
+        } else {
+            ExprContext::empty()
+        };
+        self.right_context = if M::TYPESCRIPT {
+            self.context.inside_group(self.wrap)
+                & (ExprContext::WRAP_TS_CAST | ExprContext::NO_INSTANTIATION)
+        } else {
+            ExprContext::empty()
+        };
 
         match operator {
             BinaryishOperator::Logical(LogicalOperator::NullishCoalescing) => {
@@ -257,7 +332,7 @@ impl BinaryExprVisitor {
                     self.left_level = Precedence::Call;
                 }
             }
-            BinaryishOperator::Binary(BinaryOperator::LeftShift) => {
+            BinaryishOperator::Binary(BinaryOperator::LeftShift) if M::TYPESCRIPT => {
                 let (mut expression, type_annotation) = match p.ast.expr_data(e.left(p.ast)) {
                     ExprData::TsAsExpression(assertion) => (
                         assertion.expression(p.ast),
@@ -296,7 +371,8 @@ impl BinaryExprVisitor {
         }
     }
 
-    fn visit_right_and_finish(self, p: &mut Printer<'_>) {
+    fn visit_right_and_finish<'a, M: PrinterMode<'a>>(self, p: &mut Printer<'a, M>) {
+        let syntax_left_end = p.js.len();
         p.print_space();
         if self.operator.is_keyword() {
             p.print_space_before_identifier();
@@ -307,6 +383,20 @@ impl BinaryExprVisitor {
                 BinaryishOperator::Binary(operator) => {
                     let operator_code = OperatorCode::Binary(operator);
                     p.print_operator(operator_code, operator.as_str());
+
+                    if M::CAPTURE {
+                        match operator {
+                            BinaryOperator::LessThan => {
+                                p.trace.state_mut().operator(1, syntax_left_end)
+                            }
+                            // The second `<` of a shift would have to begin a
+                            // generic function type with parameters and a real
+                            // `=>`. Value precedence groups an arrow operand,
+                            // so a complete such head cannot come from `<<`.
+                            BinaryOperator::LeftShift => p.trace.state_mut().type_break(),
+                            _ => {}
+                        }
+                    }
                 }
                 BinaryishOperator::Logical(_) => p.print(self.operator.as_str()),
             }
@@ -321,12 +411,28 @@ impl BinaryExprVisitor {
         if self.wrap {
             p.print(")");
         }
+
+        if M::CAPTURE
+            && matches!(
+                self.operator,
+                BinaryishOperator::Binary(BinaryOperator::LessThan)
+            )
+        {
+            p.trace.state_mut().end_binary(p.js.len());
+        }
         p.forbid_in = self.flags;
     }
 }
 
-impl<'a> Printer<'a> {
+impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     fn init(ast: &'a Ast<'a>, options: Options) -> Self {
+        // Formatting must use the comments that will actually be emitted.
+        // Keep legal-comment metadata independent of this printing view.
+        let comments = if options.comments {
+            ast.comments()
+        } else {
+            &[]
+        };
         let line_offset_tables = if options.source_map_path.is_some() {
             generate_line_offset_tables(ast.source().as_bytes())
         } else {
@@ -336,7 +442,7 @@ impl<'a> Printer<'a> {
             ast,
             options,
             js: Vec::with_capacity(ast.source().len()),
-            comments: ast.comments(),
+            comments,
             expr_visitor_stack: Vec::new(),
             builder: make_chunk_builder(line_offset_tables),
             next_comment: 0,
@@ -354,19 +460,25 @@ impl<'a> Printer<'a> {
             prev_token_end_requiring_space: usize::MAX,
             forbid_in: false,
             int_to_bytes_buffer: [0; 64],
+            trace: M::default(),
         }
     }
 
     fn generate(mut self) -> GenerateResult<'a> {
         self.print_program(self.ast.root_program());
+        self.finish()
+    }
+
+    fn finish(self) -> GenerateResult<'a> {
         let Self {
             ast,
             options,
             js,
-            comments,
             builder,
+            trace,
             ..
         } = self;
+        drop(trace);
         let map = if let Some(path) = options.source_map_path {
             let path = path.into_os_string().into_encoded_bytes();
             let chunk = builder.generate_chunk(js.as_slice());
@@ -376,7 +488,8 @@ impl<'a> Printer<'a> {
         };
 
         let code = String::from_utf8(js).expect("generated code must be valid UTF-8");
-        let legal_comments = comments
+        let legal_comments = ast
+            .comments()
             .iter()
             .filter(|comment| is_legal_comment(ast, **comment))
             .copied()
@@ -392,6 +505,11 @@ impl<'a> Printer<'a> {
     #[inline]
     fn add_source_mapping(&mut self, original_offset: u32) {
         if self.options.source_map_path.is_some() {
+            if M::CAPTURE && self.trace.state_mut().has_records() {
+                let state = self.trace.state_mut();
+                state.mapping(self.js.len(), original_offset, &[]);
+                return;
+            }
             self.builder
                 .add_source_mapping(original_offset, &[], self.js.as_slice());
         }
@@ -400,6 +518,11 @@ impl<'a> Printer<'a> {
     #[inline]
     fn add_source_mapping_for_name(&mut self, original_offset: u32, original_name: &'a str) {
         if self.options.source_map_path.is_some() {
+            if M::CAPTURE && self.trace.state_mut().has_records() {
+                let state = self.trace.state_mut();
+                state.mapping(self.js.len(), original_offset, original_name.as_bytes());
+                return;
+            }
             self.builder.add_source_mapping(
                 original_offset,
                 original_name.as_bytes(),
@@ -408,8 +531,12 @@ impl<'a> Printer<'a> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn print(&mut self, text: &str) {
+        if M::CAPTURE {
+            let state = self.trace.state_mut();
+            state.syntax(text.as_bytes(), self.js.len());
+        }
         self.js.extend_from_slice(text.as_bytes());
     }
 
@@ -829,6 +956,11 @@ impl<'a> Printer<'a> {
     #[inline]
     fn print_identifier(&mut self, name: &str) {
         self.print_space_before_identifier();
+        self.print_identifier_text(name);
+    }
+
+    #[inline]
+    fn print_identifier_text(&mut self, name: &str) {
         if !self.options.ascii_only || name.is_ascii() {
             self.print_bytes(name);
         } else {
@@ -854,7 +986,7 @@ impl<'a> Printer<'a> {
         }
     }
 
-    fn print_quoted(&mut self, value: &Wtf8, allow_backtick: bool) {
+    fn string_quote(&self, value: &Wtf8, allow_backtick: bool) -> u8 {
         let allow_backtick = allow_backtick && self.options.minify;
         let bytes = value.as_bytes();
         let single_cost = bytes.iter().filter(|&&byte| byte == b'\'').count();
@@ -871,6 +1003,11 @@ impl<'a> Printer<'a> {
                 quote = b'`';
             }
         }
+        quote
+    }
+
+    fn print_quoted(&mut self, value: &Wtf8, allow_backtick: bool) {
+        let quote = self.string_quote(value, allow_backtick);
         quote_into(
             &mut self.js,
             value,
@@ -977,8 +1114,10 @@ impl<'a> Printer<'a> {
                 }
                 self.print_indent();
                 self.stmt_start = self.js.len();
+                // A template literal cannot become a directive after quote selection.
                 let wrap = prevent_directive
-                    && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(_));
+                    && matches!(self.ast.expr_data(expression), ExprData::StringLiteral(literal)
+                        if self.string_quote(self.ast.get_wtf8(literal.value(self.ast)), true) != b'`');
                 if wrap {
                     self.print("(");
                 }
@@ -1596,6 +1735,8 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
+
+        let syntax_body = M::CAPTURE && self.trace.state_mut().begin_value();
         self.print_space_before_identifier();
         self.add_source_mapping(f.span(self.ast).start);
         if f.r#async(self.ast) {
@@ -1620,6 +1761,10 @@ impl<'a> Printer<'a> {
         self.print_space();
         self.print_function_body(f.body(self.ast));
         self.print_attached_trailing_comments(f.body(self.ast).span(self.ast).end);
+
+        if syntax_body {
+            self.trace.state_mut().end_value();
+        }
         if wrap {
             self.print(")");
         }
@@ -1709,6 +1854,12 @@ impl<'a> Printer<'a> {
         if let Some(initializer) = parameter.initializer(self.ast) {
             let old_forbid_in = self.forbid_in;
             self.forbid_in = false;
+
+            if M::CAPTURE {
+                // A value-parameter initializer cannot continue a type-argument
+                // list begun in this parameter frame. Ancestor trials remain.
+                self.trace.state_mut().type_break();
+            }
             self.print_space();
             self.print("=");
             self.print_space();
@@ -1721,7 +1872,7 @@ impl<'a> Printer<'a> {
         let name = self.ast.get_utf8(id.name(self.ast));
         self.print_space_before_identifier();
         self.add_source_mapping_for_name(id.span(self.ast).start, name);
-        self.print_identifier(name);
+        self.print_identifier_text(name);
     }
 
     fn print_binding(&mut self, binding: BindingPattern) {
@@ -2084,8 +2235,9 @@ impl<'a> Printer<'a> {
                 if wrap {
                     self.print("(");
                 }
+                self.print_space_before_identifier();
                 self.add_source_mapping_for_name(expr.span(self.ast).start, name);
-                self.print_identifier(name);
+                self.print_identifier_text(name);
                 if wrap {
                     self.print(")");
                 }
@@ -2130,10 +2282,11 @@ impl<'a> Printer<'a> {
                 self.print("null");
             }
             ExprData::RegExpLiteral(e) => {
-                // Avoid forming a single-line comment or a "</script"
-                // sequence across the token boundary.
+                // JSX scanners recognize `</` as one token even outside a tag.
+                // Also avoid comments and inline-script closing sequences.
                 if let Some(&last) = self.js.last()
                     && (last == b'/'
+                        || last == b'<' && self.ast.is_jsx()
                         || (self.options.inline_script
                             && last == b'<'
                             && self
@@ -2163,7 +2316,7 @@ impl<'a> Printer<'a> {
             }
             ExprData::UnaryExpression(e) => {
                 // Select the operand mode before printing to shorten the context live range.
-                if context.contains(ExprContext::NO_INSTANTIATION) {
+                if M::TYPESCRIPT && context.contains(ExprContext::NO_INSTANTIATION) {
                     self.print_unary::<true>(e, level);
                 } else {
                     self.print_unary::<false>(e, level);
@@ -2186,6 +2339,10 @@ impl<'a> Printer<'a> {
                 self.print_assignment_target(e.left(self.ast));
                 self.print_space();
                 let operator = e.operator(self.ast);
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print_operator(OperatorCode::Assignment, operator.as_str());
                 self.print_space();
                 self.print_expr(e.right(self.ast), Precedence::Assignment);
@@ -2207,17 +2364,25 @@ impl<'a> Printer<'a> {
                 let mut test_context = ExprContext::empty();
                 test_context.set(
                     ExprContext::WRAP_TS_CAST,
-                    self.ast.is_ts()
+                    M::TYPESCRIPT
                         && self.expr_ends_with_ts_cast(test)
                         && !self.expr_can_start_ts_type(consequent),
                 );
                 self.print_expr_with_context(test, Precedence::Conditional.next(), test_context);
                 self.print_space();
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print("?");
                 self.print_space();
                 self.forbid_in = false;
                 self.print_expr(consequent, Precedence::Yield);
                 self.print_space();
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print(":");
                 self.print_space();
                 self.forbid_in = old_forbid_in && !wrap;
@@ -2241,6 +2406,12 @@ impl<'a> Printer<'a> {
                         Precedence::Lowest
                     } else {
                         Precedence::Assignment
+                    };
+
+                    let member_level = if M::TYPESCRIPT {
+                        Precedence::Assignment
+                    } else {
+                        member_level
                     };
                     self.print_expr(self.ast.get_node_in_sub_range(id), member_level);
                 }
@@ -2274,6 +2445,11 @@ impl<'a> Printer<'a> {
             ExprData::TaggedTemplateExpression(e) => {
                 let tag = e.tag(self.ast);
                 let type_arguments = e.type_arguments(self.ast);
+
+                let syntax_value = M::CAPTURE
+                    && self.trace.state_mut().is_active()
+                    && (type_arguments.is_some() || !self.is_type_operator_head(tag))
+                    && self.trace.state_mut().begin_value();
                 let tag_level = if type_arguments.is_some() {
                     Precedence::Call
                 } else {
@@ -2292,15 +2468,33 @@ impl<'a> Printer<'a> {
                     self.print_ts_type_args(args);
                 }
                 self.print_template(e.quasi(self.ast), true);
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
+                }
             }
             ExprData::ArrowFunctionExpression(e) => self.print_arrow(e, level),
             ExprData::ArrayExpression(e) => self.print_array(e),
             ExprData::ObjectExpression(e) => self.print_object(e, level),
             ExprData::ParenthesizedExpression(e) => {
+                let syntax_value = self.syntax_value_container(e.expression(self.ast));
                 self.print("(");
-                self.print_expr(e.expression(self.ast), Precedence::Lowest);
+
+                self.print_expr_with_context(
+                    e.expression(self.ast),
+                    Precedence::Lowest,
+                    if M::CAPTURE {
+                        ExprContext::EXPLICIT_GROUP
+                    } else {
+                        ExprContext::empty()
+                    },
+                );
                 self.print_comments_before(e.span(self.ast).end, false, true);
                 self.print(")");
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
+                }
             }
             ExprData::Function(e) => self.print_function(e),
             ExprData::Class(e) => self.print_class(e, false),
@@ -2397,27 +2591,53 @@ impl<'a> Printer<'a> {
             ExprData::TsAsExpression(e) => {
                 let wrap =
                     level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
+
+                let syntax_value = M::CAPTURE
+                    && wrap
+                    && self.trace.state_mut().has_pending_here()
+                    && self.trace.state_mut().begin_value();
                 if wrap {
                     self.print("(");
                 }
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print(" as ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
                 }
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
+                }
             }
             ExprData::TsSatisfiesExpression(e) => {
                 let wrap =
                     level > Precedence::Compare || context.contains(ExprContext::WRAP_TS_CAST);
+
+                let syntax_value = M::CAPTURE
+                    && wrap
+                    && self.trace.state_mut().has_pending_here()
+                    && self.trace.state_mut().begin_value();
                 if wrap {
                     self.print("(");
                 }
                 self.print_expr(e.expression(self.ast), Precedence::Compare);
+
+                if M::CAPTURE {
+                    self.trace.state_mut().type_break();
+                }
                 self.print(" satisfies ");
                 self.print_ts_type(e.type_annotation(self.ast), TsTypePrecedence::Lowest);
                 if wrap {
                     self.print(")");
+                }
+
+                if syntax_value {
+                    self.trace.state_mut().end_value();
                 }
             }
             ExprData::TsTypeAssertion(e) => self.print_ts_type_assertion(e, level, context),
@@ -2445,8 +2665,14 @@ impl<'a> Printer<'a> {
                     self.print(")");
                 }
             }
-            ExprData::JsxElement(e) => self.print_jsx_element(e),
-            ExprData::JsxFragment(e) => self.print_jsx_fragment(e),
+            ExprData::JsxElement(e) => {
+                self.print_space_before_operator(OperatorCode::TsTypeOpen, "<");
+                self.print_jsx_element(e);
+            }
+            ExprData::JsxFragment(e) => {
+                self.print_space_before_operator(OperatorCode::TsTypeOpen, "<");
+                self.print_jsx_fragment(e);
+            }
         }
     }
 
@@ -2636,7 +2862,10 @@ impl<'a> Printer<'a> {
         }
         let mut context = ExprContext::empty();
         context.set(ExprContext::IN_NEW_CALLEE, in_new_callee && !wrap_object);
-        context.set(ExprContext::NO_INSTANTIATION, !optional || !computed);
+        context.set(
+            ExprContext::NO_INSTANTIATION,
+            M::TYPESCRIPT && (!optional || !computed),
+        );
         self.print_expr_with_context(
             object,
             if matches!(object_data, ExprData::NewExpression(_)) {
@@ -2679,6 +2908,10 @@ impl<'a> Printer<'a> {
     }
 
     fn print_call(&mut self, e: CallExpression, level: Precedence, in_new_callee: bool) {
+        let syntax_value = M::CAPTURE
+            && self.trace.state_mut().has_pending_here()
+            && self.call_rejects_type(e)
+            && self.trace.state_mut().begin_value();
         let print_pure = self.options.comments && e.pure(self.ast);
         let wrap = level > Precedence::Call
             || in_new_callee
@@ -2713,7 +2946,7 @@ impl<'a> Printer<'a> {
         };
         let type_arguments = e.type_arguments(self.ast);
         let mut context = ExprContext::empty();
-        context.set(ExprContext::NO_INSTANTIATION, !optional);
+        context.set(ExprContext::NO_INSTANTIATION, M::TYPESCRIPT && !optional);
         self.print_expr_with_context(callee, callee_level, context);
         if optional {
             self.print("?.");
@@ -2727,6 +2960,10 @@ impl<'a> Printer<'a> {
         );
         if wrap {
             self.print(")");
+        }
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
         }
     }
 
@@ -2814,6 +3051,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_array(&mut self, e: ArrayExpression) {
+        let syntax_value = self.syntax_value_container(Expr::ArrayExpression(e));
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         self.add_source_mapping(e.span(self.ast).start);
@@ -2847,9 +3085,14 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(close_offset);
         self.print("]");
         self.forbid_in = old_forbid_in;
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_object(&mut self, e: ObjectExpression, _level: Precedence) {
+        let syntax_value = self.syntax_value_container(Expr::ObjectExpression(e));
         let old_forbid_in = self.forbid_in;
         self.forbid_in = false;
         let wrap = self.js.len() == self.stmt_start || self.js.len() == self.arrow_expr_start;
@@ -2911,6 +3154,10 @@ impl<'a> Printer<'a> {
             self.print(")");
         }
         self.forbid_in = old_forbid_in;
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_object_property(&mut self, p: ObjectProperty) {
@@ -3055,6 +3302,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_template(&mut self, e: TemplateLiteral, is_tagged: bool) {
+        let syntax_value = self.syntax_value_container(Expr::TemplateLiteral(e));
         if !is_tagged {
             self.add_source_mapping(e.span(self.ast).start);
         }
@@ -3094,6 +3342,10 @@ impl<'a> Printer<'a> {
             }
         }
         self.print("`");
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_arrow(&mut self, e: ArrowFunctionExpression, level: Precedence) {
@@ -3123,14 +3375,21 @@ impl<'a> Printer<'a> {
         }
         let params = e.params(self.ast);
         let return_type = e.return_type(self.ast);
-        let bare_parameter =
-            if self.options.minify && type_parameters.is_none() && return_type.is_none() {
-                self.bare_arrow_parameter(params)
-            } else {
-                None
-            };
+        let prefer_bare = self.options.minify;
+
+        let prefer_bare = prefer_bare || M::TYPESCRIPT;
+        let bare_parameter = if prefer_bare && type_parameters.is_none() && return_type.is_none() {
+            self.bare_arrow_parameter(params)
+        } else {
+            None
+        };
         if let Some(identifier) = bare_parameter {
             self.print_binding_identifier(identifier);
+
+            if M::CAPTURE {
+                let state = self.trace.state_mut();
+                state.type_break();
+            }
         } else {
             self.print_formal_parameters(params, None);
         }
@@ -3184,6 +3443,8 @@ impl<'a> Printer<'a> {
         if wrap {
             self.print("(");
         }
+
+        let syntax_class = M::CAPTURE && self.trace.state_mut().begin_value();
         if declaration {
             self.print_indent();
         }
@@ -3253,6 +3514,10 @@ impl<'a> Printer<'a> {
         self.add_source_mapping(c.body(self.ast).span(self.ast).end.saturating_sub(1));
         self.print("}");
         self.forbid_in = old_forbid_in;
+
+        if syntax_class {
+            self.trace.state_mut().end_value();
+        }
         if wrap {
             self.print(")");
         }
@@ -4185,6 +4450,7 @@ impl<'a> Printer<'a> {
         d: TsTypeParameterDeclaration,
         trailing_comma: bool,
     ) {
+        let syntax_type = M::CAPTURE && self.trace.state_mut().begin_type();
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -4217,9 +4483,14 @@ impl<'a> Printer<'a> {
             self.print(",");
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
+
+        if syntax_type {
+            self.trace.state_mut().end_type();
+        }
     }
 
     fn print_ts_type_args(&mut self, d: TsTypeParameterInstantiation) {
+        let syntax_type = M::CAPTURE && self.trace.state_mut().begin_type();
         self.print_operator(OperatorCode::TsTypeOpen, "<");
         for (i, id) in d.params(self.ast).iter().enumerate() {
             if i != 0 {
@@ -4229,6 +4500,10 @@ impl<'a> Printer<'a> {
             self.print_ts_type(self.ast.get_node_in_sub_range(id), TsTypePrecedence::Lowest);
         }
         self.print_operator(OperatorCode::TsTypeClose, ">");
+
+        if syntax_type {
+            self.trace.state_mut().end_type();
+        }
     }
 
     fn print_ts_type_assertion_prefix(&mut self, ty: TsType, source_offset: u32) {
@@ -5251,11 +5526,14 @@ impl<'a> Printer<'a> {
     }
 
     fn print_jsx_element(&mut self, e: JsxElement) {
+        let syntax_value = M::CAPTURE && self.trace.state_mut().begin_value();
         let o = e.opening_element(self.ast);
         self.add_source_mapping(e.span(self.ast).start);
         self.print("<");
         self.print_jsx_name(o.name(self.ast));
-        if let Some(type_arguments) = o.type_arguments(self.ast) {
+        if M::TYPESCRIPT
+            && let Some(type_arguments) = o.type_arguments(self.ast)
+        {
             self.print_ts_type_args(type_arguments);
         }
         for id in o.attributes(self.ast).iter() {
@@ -5289,6 +5567,10 @@ impl<'a> Printer<'a> {
             self.print_space();
             self.add_source_mapping(o.span(self.ast).end.saturating_sub(2));
             self.print("/>");
+
+            if syntax_value {
+                self.trace.state_mut().end_value();
+            }
             return;
         }
         self.print(">");
@@ -5309,16 +5591,26 @@ impl<'a> Printer<'a> {
             self.print_comments_before(c.span(self.ast).end, false, false);
             self.print(">");
         }
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_jsx_fragment(&mut self, e: JsxFragment) {
+        let syntax_value = M::CAPTURE && self.trace.state_mut().begin_value();
         self.add_source_mapping(e.span(self.ast).start);
-        self.print("<>");
+        self.print("<");
+        self.print(">");
         for id in e.children(self.ast).iter() {
             self.print_jsx_child(self.ast.get_node_in_sub_range(id));
         }
         self.add_source_mapping(e.span(self.ast).end.saturating_sub(3));
         self.print("</>");
+
+        if syntax_value {
+            self.trace.state_mut().end_value();
+        }
     }
 
     fn print_jsx_name(&mut self, n: JsxElementName) {
@@ -5460,7 +5752,7 @@ impl<'a> Printer<'a> {
     }
 }
 
-impl Printer<'_> {
+impl<'a, M: PrinterMode<'a>> Printer<'a, M> {
     fn binding_pattern_identifier_name(&self, binding: BindingPattern) -> Option<&str> {
         match self.ast.binding_pattern_data(binding) {
             BindingPatternData::BindingIdentifier(identifier) => {
