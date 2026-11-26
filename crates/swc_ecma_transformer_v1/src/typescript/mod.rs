@@ -2,6 +2,7 @@
 
 use std::collections::HashSet;
 
+use rustc_hash::FxHashMap;
 use swc_next_ecma_ast::*;
 
 use crate::{common::resolver::context::Resolver, module::ModuleType};
@@ -148,45 +149,75 @@ fn jsx_usage(ast: &Ast<'_>, options: &TypeScriptOptions, resolver: &Resolver) ->
     let mut automatic = jsx.automatic;
     let mut pragmas = Vec::new();
     let program = ast.root_program();
-    // SWC's module span starts at its first token; Next's program span starts
-    // at byte zero, so include the first directive/body attachment explicitly.
-    let program_start = program.span(ast).start;
-    let start = if let Some(directive) = program.directives(ast).get_node(ast, 0) {
-        directive.span(ast).start
-    } else if let Some(statement) = program.body(ast).get_node(ast, 0) {
-        statement.span(ast).start
-    } else {
-        program_start
-    };
-    for comment in ast.comments() {
-        if (comment.attached_to != start && comment.attached_to != program_start)
-            || comment.position != CommentPosition::Leading
-            || comment.kind != CommentKind::Block
-        {
-            continue;
+    let mut comments_by_offset: FxHashMap<u32, Vec<Comment>> = FxHashMap::default();
+    for &comment in ast.comments() {
+        if comment.position == CommentPosition::Leading && comment.kind == CommentKind::Block {
+            comments_by_offset
+                .entry(comment.attached_to)
+                .or_default()
+                .push(comment);
         }
-        for line in ast.get_utf8(comment.value(ast.source().as_bytes())).lines() {
-            let line = line.trim().trim_start_matches('*').trim();
-            if !line.starts_with("@jsx") {
-                continue;
-            }
-            let mut words = line.split_whitespace();
-            while let Some(directive) = words.next() {
-                let Some(value) = words.next() else {
-                    break;
-                };
-                match directive {
-                    "@jsx" | "@jsxFrag" => pragmas.push(value.to_owned()),
-                    "@jsxRuntime" => match value {
-                        "automatic" => automatic = true,
-                        "classic" => automatic = false,
+    }
+    let mut scan_offset = |offset: u32| -> bool {
+        let Some(comments) = comments_by_offset.get(&offset) else {
+            return false;
+        };
+        let mut found = false;
+        for comment in comments {
+            for line in ast.get_utf8(comment.value(ast.source().as_bytes())).lines() {
+                let line = line.trim().trim_start_matches('*').trim();
+                if !line.starts_with("@jsx") {
+                    continue;
+                }
+                let mut words = line.split_whitespace();
+                while let Some(directive) = words.next() {
+                    let Some(value) = words.next() else {
+                        break;
+                    };
+                    match directive {
+                        "@jsx" | "@jsxFrag" => {
+                            pragmas.push(value.to_owned());
+                            found = true;
+                        }
+                        "@jsxRuntime" => match value {
+                            "automatic" => {
+                                automatic = true;
+                                found = true;
+                            }
+                            "classic" => {
+                                automatic = false;
+                                found = true;
+                            }
+                            _ => {}
+                        },
+                        "@jsxImportSource" => {
+                            found = true;
+                        }
                         _ => {}
-                    },
-                    _ => {}
+                    }
                 }
             }
         }
+        found
+    };
+
+    // Match Jsx::enter_program: scan program-level comments first, then
+    // directives and top-level statements until the first JSX directive.
+    scan_offset(program.span(ast).start);
+    let directives = program
+        .directives(ast)
+        .iter()
+        .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
+    let statements = program
+        .body(ast)
+        .iter()
+        .map(|slot| ast.get_node_in_sub_range(slot).span(ast).start);
+    for offset in directives.chain(statements) {
+        if scan_offset(offset) {
+            break;
+        }
     }
+
     if automatic {
         return HashSet::new();
     }
