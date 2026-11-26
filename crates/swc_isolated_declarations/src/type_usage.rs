@@ -464,7 +464,7 @@ impl<'visit, 'ast> TypeUsageAnalyzer<'visit, 'ast> {
         match self.ast.binding_pattern_data(pattern) {
             BindingPatternData::BindingIdentifier(binding) => {
                 self.with_declaration(binding, SymbolUsage::VALUE, |analyzer| {
-                    if let Some(annotation) = binding.type_annotation(analyzer.ast) {
+                    if let Some(annotation) = declarator.type_annotation(analyzer.ast) {
                         annotation.visit_with(analyzer);
                     } else if let Some(expression) = declarator.init(analyzer.ast) {
                         analyzer.visit_inferred_expression(expression, false);
@@ -717,11 +717,10 @@ impl<'ast> Visit<'ast> for TypeUsageAnalyzer<'_, 'ast> {
     fn visit_formal_parameter(&mut self, parameter: FormalParameter) {
         self.surface
             .record_annotation(parameter, self.ast, self.semantic);
-        let pattern = parameter.pattern(self.ast);
-        pattern.visit_with(self);
-        if pattern.type_annotation(self.ast).is_none()
-            && let Some(expression) = parameter.initializer(self.ast)
-        {
+        parameter.pattern(self.ast).visit_with(self);
+        if let Some(annotation) = parameter.type_annotation(self.ast) {
+            annotation.visit_with(self);
+        } else if let Some(expression) = parameter.initializer(self.ast) {
             self.visit_inferred_expression(expression, false);
         }
     }

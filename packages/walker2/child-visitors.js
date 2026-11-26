@@ -98,12 +98,22 @@ function readVariableDeclarator(ast, id, walker, plan, kind) {
   }
   {
     const child = ast.childAt(id, payload + 4, true, view);
-    if (child !== 0xffffffff && walker.visitScalarId(child, id, Field.init)) { return true; }
+    if (child !== 0xffffffff && walker.visitScalarId(child, id, Field.typeAnnotation)) { return true; }
   }
   if (ast._editVersion !== version) {
     version = ast._editVersion;
     const liveKind = ast._kindAt(id);
     if (liveKind !== kind) { return walker.visitRemaining(id, liveKind, plan, 2); }
+    row = ast.row(id); payload = ast._payloadAt(id, row); view = row === -1 ? ast._view : ast._arena.view;
+  }
+  {
+    const child = ast.childAt(id, payload + 8, true, view);
+    if (child !== 0xffffffff && walker.visitScalarId(child, id, Field.init)) { return true; }
+  }
+  if (ast._editVersion !== version) {
+    version = ast._editVersion;
+    const liveKind = ast._kindAt(id);
+    if (liveKind !== kind) { return walker.visitRemaining(id, liveKind, plan, 3); }
     row = ast.row(id); payload = ast._payloadAt(id, row); view = row === -1 ? ast._view : ast._arena.view;
   }
   return false;

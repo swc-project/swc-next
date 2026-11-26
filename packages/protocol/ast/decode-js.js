@@ -351,17 +351,15 @@ export const decodeJs = (/* @swc-next-pife-start */ function decodeJs(buffer, so
         break;
       }
       case 18: {
-        const extraId = _i32[(payload + 12) >> 2];
-        const f_elements = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], true);
-        const f_rest = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_elements = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], true);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
         if (f_rest !== null) f_elements.push(f_rest);
         result = { type: "ArrayPattern", start, end, elements: f_elements };
         break;
       }
       case 19: {
-        const extraId = _i32[(payload + 12) >> 2];
-        const f_properties = nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false);
-        const f_rest = optionalNode(_i32[(payload + 0) >> 2]);
+        const f_properties = nodeArray(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], false);
+        const f_rest = optionalNode(_i32[(payload + 8) >> 2]);
         if (f_rest !== null) f_properties.push(f_rest);
         result = { type: "ObjectPattern", start, end, properties: f_properties };
         break;
@@ -436,7 +434,7 @@ export const decodeJs = (/* @swc-next-pife-start */ function decodeJs(buffer, so
       }
       case 28: {
         const f_id = node(_i32[(payload + 0) >> 2]);
-        const f_init = optionalNode(_i32[(payload + 4) >> 2]);
+        const f_init = optionalNode(_i32[(payload + 8) >> 2]);
         result = { type: "VariableDeclarator", start, end, id: f_id, init: f_init };
         break;
       }
@@ -498,7 +496,7 @@ export const decodeJs = (/* @swc-next-pife-start */ function decodeJs(buffer, so
       }
       case 36: {
         const f_param = optionalNode(_i32[(payload + 0) >> 2]);
-        const f_body = node(_i32[(payload + 4) >> 2]);
+        const f_body = node(_i32[(payload + 8) >> 2]);
         result = { type: "CatchClause", start, end, param: f_param, body: f_body };
         break;
       }
@@ -690,8 +688,9 @@ export const decodeJs = (/* @swc-next-pife-start */ function decodeJs(buffer, so
         break;
       }
       case 59: {
-        const f_pattern = node(_i32[(payload + 8) >> 2]);
-        const f_initializer = optionalNode(_i32[(payload + 12) >> 2]);
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_pattern = node(_i32[(payload + 0) >> 2]);
+        const f_initializer = optionalNode(_i32[(extra + (extraId + 2) * 4) >> 2]);
         const left = f_pattern;
         if (f_initializer === null) {
           result = left;

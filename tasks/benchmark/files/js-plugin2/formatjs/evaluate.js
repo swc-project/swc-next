@@ -53,7 +53,7 @@ const scopeWalker = createWalker({
     const node = isFunction || type === 'Class' || type === 'TsEnumDeclaration' || type === 'CatchClause'
       || type === 'ImportDeclaration' || type === 'VariableDeclarator' ? ctx.node : null;
     const declaresId = node?.functionType === 'FunctionDeclaration' || node?.classType === 'ClassDeclaration'
-      || (type === 'TsFunction' && !node.isMethod) || type === 'TsEnumDeclaration';
+      || (type === 'TsFunction' && ctx.parent?.type !== 'TsMethodDefinition') || type === 'TsEnumDeclaration';
     if (declaresId) { declarePattern(node.id, scope); }
     if (opens) {
       scope = { parent: scope, bindings: new Map(), function: isFunction || type === 'Program' || type === 'StaticBlock', index: state.evaluator.scopeTable.length };

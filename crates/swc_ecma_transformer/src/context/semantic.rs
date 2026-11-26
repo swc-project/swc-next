@@ -36,7 +36,7 @@ impl BoundIdentifier {
         flags: SymbolFlags,
     ) -> BoundIdentifier {
         let name = ctx.generate_name(base, 2);
-        let identifier = ctx.ast.binding_identifier(DUMMY_SP, name, None, false);
+        let identifier = ctx.ast.binding_identifier(DUMMY_SP, name);
         let symbol = ctx.register_binding(scope, identifier, flags);
         BoundIdentifier { identifier, symbol }
     }

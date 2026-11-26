@@ -66,6 +66,7 @@ impl PrivatePropertyInObjectPass {
         class.vars.push(ast.variable_declarator(
             DUMMY_SP,
             BindingPattern::BindingIdentifier(binding),
+            None,
             init,
             false,
         ));

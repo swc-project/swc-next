@@ -54,7 +54,7 @@ impl AccessorFunction {
             FormalParameterItemData::FormalParameter(parameter) => parameter,
             FormalParameterItemData::TsParameterProperty(property) => property.parameter(ast),
         };
-        parameter.pattern(ast).type_annotation(ast)
+        parameter.type_annotation(ast)
     }
 }
 

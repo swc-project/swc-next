@@ -464,13 +464,13 @@ impl<'ast> ReactRefresh<'_, 'ast> {
         }
         let mut declarators = Vec::with_capacity(self.registrations.len());
         for registration in &self.registrations {
-            let id = self.ast.binding_pattern_binding_identifier(
-                DUMMY_SP,
-                registration.binding,
-                None,
-                false,
+            let id = self
+                .ast
+                .binding_pattern_binding_identifier(DUMMY_SP, registration.binding);
+            declarators.push(
+                self.ast
+                    .variable_declarator(DUMMY_SP, id, None, None, false),
             );
-            declarators.push(self.ast.variable_declarator(DUMMY_SP, id, None, false));
         }
         let declarators = self.ast.add_sub_range(declarators);
         let declaration =

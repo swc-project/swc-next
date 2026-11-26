@@ -164,8 +164,6 @@ pub(super) fn validate_fields(
         }
         NodeKind::BindingIdentifier => {
             input.string(Field::Payload(0usize), false, false)?;
-            input.node(Field::Payload(8usize), &[NodeKind::TsTypeAnnotation], true)?;
-            input.boolean(Field::Payload(12usize))?;
         }
         NodeKind::IdentifierName => {
             input.string(Field::Payload(0usize), false, false)?;
@@ -237,7 +235,6 @@ pub(super) fn validate_fields(
                 ],
                 false,
             )?;
-            input.node(Field::Payload(8usize), &[NodeKind::TsTypeAnnotation], true)?;
         }
         NodeKind::BindingRestElement => {
             input.node(
@@ -257,12 +254,10 @@ pub(super) fn validate_fields(
                 ],
                 false,
             )?;
-            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
         }
         NodeKind::ArrayPattern => {
-            input.extra(12usize, 2usize)?;
             input.list(
-                Field::Extra(0usize),
+                Field::Payload(0usize),
                 &[
                     NodeKind::BindingIdentifier,
                     NodeKind::IdentifierReference,
@@ -279,23 +274,18 @@ pub(super) fn validate_fields(
                 true,
             )?;
             input.node(
-                Field::Payload(0usize),
+                Field::Payload(8usize),
                 &[NodeKind::BindingRestElement],
                 true,
             )?;
-            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
-            input.boolean(Field::Payload(8usize))?;
         }
         NodeKind::ObjectPattern => {
-            input.extra(12usize, 2usize)?;
-            input.list(Field::Extra(0usize), &[NodeKind::BindingProperty], false)?;
+            input.list(Field::Payload(0usize), &[NodeKind::BindingProperty], false)?;
             input.node(
-                Field::Payload(0usize),
+                Field::Payload(8usize),
                 &[NodeKind::BindingRestElement],
                 true,
             )?;
-            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
-            input.boolean(Field::Payload(8usize))?;
         }
         NodeKind::BindingProperty => {
             input.node(
@@ -850,8 +840,9 @@ pub(super) fn validate_fields(
                 ],
                 false,
             )?;
+            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
             input.node(
-                Field::Payload(4usize),
+                Field::Payload(8usize),
                 &[
                     NodeKind::IdentifierReference,
                     NodeKind::ThisExpression,
@@ -896,7 +887,7 @@ pub(super) fn validate_fields(
                 ],
                 true,
             )?;
-            input.boolean(Field::Payload(8usize))?;
+            input.boolean(Field::Payload(12usize))?;
         }
         NodeKind::IfStatement => {
             input.node(
@@ -1574,7 +1565,8 @@ pub(super) fn validate_fields(
                 ],
                 true,
             )?;
-            input.node(Field::Payload(4usize), &[NodeKind::BlockStatement], false)?;
+            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
+            input.node(Field::Payload(8usize), &[NodeKind::BlockStatement], false)?;
         }
         NodeKind::BreakStatement => {
             input.node(Field::Payload(0usize), &[NodeKind::LabelIdentifier], true)?;
@@ -2488,9 +2480,10 @@ pub(super) fn validate_fields(
             input.enumeration(Field::Payload(12usize), 4usize, false)?;
         }
         NodeKind::FormalParameter => {
-            input.list(Field::Payload(0usize), &[NodeKind::Decorator], false)?;
+            input.extra(12usize, 3usize)?;
+            input.list(Field::Extra(0usize), &[NodeKind::Decorator], false)?;
             input.node(
-                Field::Payload(8usize),
+                Field::Payload(0usize),
                 &[
                     NodeKind::BindingIdentifier,
                     NodeKind::ArrayPattern,
@@ -2498,8 +2491,9 @@ pub(super) fn validate_fields(
                 ],
                 false,
             )?;
+            input.node(Field::Payload(4usize), &[NodeKind::TsTypeAnnotation], true)?;
             input.node(
-                Field::Payload(12usize),
+                Field::Extra(2usize),
                 &[
                     NodeKind::IdentifierReference,
                     NodeKind::ThisExpression,
@@ -2544,6 +2538,7 @@ pub(super) fn validate_fields(
                 ],
                 true,
             )?;
+            input.boolean(Field::Payload(8usize))?;
         }
         NodeKind::FormalParameterRest => {
             input.list(Field::Payload(0usize), &[NodeKind::Decorator], false)?;
@@ -3683,7 +3678,6 @@ pub(super) fn validate_fields(
             input.boolean(Field::Payload(8usize))?;
             input.boolean(Field::Payload(9usize))?;
             input.boolean(Field::Payload(10usize))?;
-            input.boolean(Field::Payload(11usize))?;
         }
         NodeKind::TsMethodDefinition => {
             input.extra(12usize, 3usize)?;

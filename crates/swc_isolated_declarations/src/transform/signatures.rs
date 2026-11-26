@@ -164,7 +164,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let initializer = parameter.initializer(ast);
         let has_initializer = initializer.is_some();
         let destructuring = !pattern.is_binding_identifier(ast);
-        if has_initializer && destructuring && pattern.type_annotation(ast).is_none() {
+        if has_initializer && destructuring && parameter.type_annotation(ast).is_none() {
             if report_missing_type {
                 self.diagnostics.push(Diagnostic::error(
                     PARAMETER_TYPE_REQUIRED,
@@ -178,10 +178,10 @@ impl<'ast> Transformer<'_, 'ast> {
         parameter.set_decorators(ast, SubRange::empty());
 
         if let Some(initializer) = initializer {
-            if pattern.type_annotation(ast).is_none() {
+            if parameter.type_annotation(ast).is_none() {
                 if let Some(inferred) = self.infer_type_from_expr(initializer, ast) {
                     let annotation = ast.ts_type_annotation(parameter.span(ast), inferred);
-                    pattern.set_type_annotation(ast, Some(annotation));
+                    parameter.set_type_annotation(ast, Some(annotation));
                 } else if report_missing_type {
                     self.diagnostics.push(Diagnostic::error(
                         PARAMETER_TYPE_REQUIRED,
@@ -196,7 +196,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 parameter.set_optional(ast, true);
             }
             parameter.set_initializer(ast, None);
-        } else if report_missing_type && pattern.type_annotation(ast).is_none() {
+        } else if report_missing_type && parameter.type_annotation(ast).is_none() {
             self.diagnostics.push(Diagnostic::error(
                 PARAMETER_TYPE_REQUIRED,
                 parameter.span(ast),
@@ -229,11 +229,9 @@ impl<'ast> Transformer<'_, 'ast> {
     ) -> Option<TsTypeAnnotation> {
         let item = ast.get_node_in_sub_range(params.items(ast).first()?);
         match ast.formal_parameter_item_data(item) {
-            FormalParameterItemData::FormalParameter(parameter) => {
-                parameter.pattern(ast).type_annotation(ast)
-            }
+            FormalParameterItemData::FormalParameter(parameter) => parameter.type_annotation(ast),
             FormalParameterItemData::TsParameterProperty(property) => {
-                property.parameter(ast).pattern(ast).type_annotation(ast)
+                property.parameter(ast).type_annotation(ast)
             }
         }
     }
@@ -262,13 +260,11 @@ impl<'ast> Transformer<'_, 'ast> {
             FormalParameterItemData::TsParameterProperty(property) => property.parameter(ast),
         };
         let annotation = annotation.clone_in(ast);
-        parameter
-            .pattern(ast)
-            .set_type_annotation(ast, Some(annotation));
+        parameter.set_type_annotation(ast, Some(annotation));
     }
 
     fn add_undefined_to_parameter(&mut self, parameter: FormalParameter, ast: &mut Ast<'ast>) {
-        let Some(annotation) = parameter.pattern(ast).type_annotation(ast) else {
+        let Some(annotation) = parameter.type_annotation(ast) else {
             return;
         };
         let ty = annotation.type_annotation(ast);
@@ -286,9 +282,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let types = ast.add_sub_range([ty, undefined]);
         let union = ast.ts_type_ts_union_type(span, types);
         let annotation = ast.ts_type_annotation(span, union);
-        parameter
-            .pattern(ast)
-            .set_type_annotation(ast, Some(annotation));
+        parameter.set_type_annotation(ast, Some(annotation));
     }
 
     pub(super) fn add_explicit_undefined_to_parameter(
@@ -296,7 +290,7 @@ impl<'ast> Transformer<'_, 'ast> {
         parameter: FormalParameter,
         ast: &mut Ast<'ast>,
     ) {
-        let Some(annotation) = parameter.pattern(ast).type_annotation(ast) else {
+        let Some(annotation) = parameter.type_annotation(ast) else {
             return;
         };
         let ty = annotation.type_annotation(ast);
@@ -308,9 +302,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let types = ast.add_sub_range([ty, undefined]);
         let union = ast.ts_type_ts_union_type(span, types);
         let annotation = ast.ts_type_annotation(span, union);
-        parameter
-            .pattern(ast)
-            .set_type_annotation(ast, Some(annotation));
+        parameter.set_type_annotation(ast, Some(annotation));
     }
 
     fn type_maybe_undefined(&self, ty: TsType, ast: &Ast<'ast>) -> bool {

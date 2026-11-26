@@ -252,19 +252,19 @@ test("parameter and declaration fields retain TypeScript ownership", () => {
   );
 });
 
-test("TS signature kinds decode from their own native fields", () => {
+test("TS method signatures keep their native parent", () => {
   const declarationAst = parseSync("declare function f(): void;", typescript);
   const declaration = declarationAst.program.body.get(0);
   assert.equal(declaration.type, "TsFunction");
-  assert.equal(declaration.get("isMethod"), false);
+  assert.equal(declaration.declare, true);
   assert.equal(declarationAst.cloneNode(declaration).type, "TsFunction");
 
   const methodAst = parseSync("class C { m(): void; }", typescript);
-  const method = methodAst.program.body.get(0).body.body.get(0).value;
-  assert.equal(method.type, "TsFunction");
-  assert.equal(method.get("isMethod"), true);
-  assert.equal(methodAst.cloneNode(method).type, "TsFunction");
-  assert.equal(parseSync("class C { m(): void; }", typescript).program.body.get(0).body.body.get(0).value.type, "TsFunction");
+  const method = methodAst.program.body.get(0).body.body.get(0);
+  assert.equal(method.type, "TsMethodDefinition");
+  assert.equal(method.value.type, "TsFunction");
+  assert.equal(method.value.get("isMethod"), undefined);
+  assert.ok(methodAst.cloneNode(method).value.isSame(method.value));
 });
 
 test("parameter views expose their pattern and initializer independently", () => {
@@ -273,7 +273,7 @@ test("parameter views expose their pattern and initializer independently", () =>
   const id = parameter.nodeId;
   assert.equal(ast.kind(id), NodeKind.FormalParameter);
   assert.equal(parameter.initializer, null);
-  assert.equal(parameter.pattern.typeAnnotation.type, "TsTypeAnnotation");
+  assert.equal(parameter.typeAnnotation.type, "TsTypeAnnotation");
 
   const initializer = ast.new_node(NodeKind.NumericLiteral);
   initializer.value = 1;
@@ -320,9 +320,11 @@ test("class, module and JSX nodes round-trip through AST storage", () => {
 
 test("native field availability does not depend on the source language", () => {
   const ast = expectRoundTrip("const value = input;");
-  const binding = ast.program.body.get(0).declarators.get(0).id;
-  assert.equal(binding.optional, false);
-  assert.equal(binding.typeAnnotation, null);
+  const declaration = ast.program.body.get(0).declarators.get(0);
+  const binding = declaration.id;
+  assert.equal(binding.optional, undefined);
+  assert.equal(binding.typeAnnotation, undefined);
+  assert.equal(declaration.typeAnnotation, null);
   assert.equal(ast.getField(binding.nodeId, "constructor"), undefined);
   assert.equal(ast.getField(binding.nodeId, "__proto__"), undefined);
   assert.equal(binding.decorators, undefined);
@@ -331,10 +333,20 @@ test("native field availability does not depend on the source language", () => {
   const parameter = typed.program.body.get(0).params.items.get(0);
   assert.deepEqual(parameter.decorators.toArray(), []);
   assert.notEqual(parameter.decorators, parameter.decorators);
-  parameter.pattern.optional = true;
-  parameter.pattern.typeAnnotation = null;
-  assert.equal(parameter.pattern.optional, true);
-  assert.equal(parameter.pattern.typeAnnotation, null);
+  parameter.optional = true;
+  parameter.typeAnnotation = null;
+  assert.equal(parameter.optional, true);
+  assert.equal(parameter.typeAnnotation, null);
+});
+
+test("variable and catch annotations stay on their native owners", () => {
+  const declaration = parseSync("let value: string;", typescript).program.body.get(0).declarators.get(0);
+  assert.equal(declaration.typeAnnotation.typeAnnotation.type, "TsStringKeyword");
+  assert.equal(declaration.id.typeAnnotation, undefined);
+
+  const handler = parseSync("try {} catch (error: unknown) {}", typescript).program.body.get(0).handler;
+  assert.equal(handler.typeAnnotation.typeAnnotation.type, "TsUnknownKeyword");
+  assert.equal(handler.param.typeAnnotation, undefined);
 });
 
 test("AST consumers can print and walk views or request independent snapshots", () => {

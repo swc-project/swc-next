@@ -293,6 +293,7 @@ fn emit_var_decl(
                 binding.span(cx.ast),
                 BindingPattern::BindingIdentifier(binding),
                 None,
+                None,
                 false,
             )
         })

@@ -282,13 +282,10 @@ impl<'a, 'ast, 'r> Metadata<'a, 'ast, 'r> {
                 .ast
                 .formal_parameter_item_data(self.ast.get_node_in_sub_range(slot))
             {
-                FormalParameterItemData::TsParameterProperty(p) => p
-                    .parameter(self.ast)
-                    .pattern(self.ast)
-                    .type_annotation(self.ast),
-                FormalParameterItemData::FormalParameter(p) => {
-                    p.pattern(self.ast).type_annotation(self.ast)
+                FormalParameterItemData::TsParameterProperty(p) => {
+                    p.parameter(self.ast).type_annotation(self.ast)
                 }
+                FormalParameterItemData::FormalParameter(p) => p.type_annotation(self.ast),
             };
             let expr = self.serialize_param_type(ann);
             elems.push(Some(Argument::Expr(expr)));
@@ -645,12 +642,11 @@ impl<'ast> VisitMut<'ast> for Metadata<'_, 'ast, '_> {
                             .formal_parameter_item_data(self.ast.get_node_in_sub_range(slot))
                         {
                             FormalParameterItemData::FormalParameter(p) => {
-                                p.pattern(self.ast).type_annotation(self.ast)
+                                p.type_annotation(self.ast)
                             }
-                            FormalParameterItemData::TsParameterProperty(p) => p
-                                .parameter(self.ast)
-                                .pattern(self.ast)
-                                .type_annotation(self.ast),
+                            FormalParameterItemData::TsParameterProperty(p) => {
+                                p.parameter(self.ast).type_annotation(self.ast)
+                            }
                         }
                     });
                 self.serialize_type(first_ann)

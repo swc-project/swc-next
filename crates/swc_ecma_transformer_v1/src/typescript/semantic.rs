@@ -460,15 +460,14 @@ impl<'ast> Visit<'ast> for SemanticAnalyzer<'_, 'ast> {
         for slot in declaration.declarators(self.ast).iter() {
             let declarator = self.ast.get_node_in_sub_range(slot);
             declarator.visit_with(self);
-            if declaration.kind(self.ast) != VariableKind::Const {
+            if declaration.kind(self.ast) != VariableKind::Const
+                || declarator.type_annotation(self.ast).is_some()
+            {
                 continue;
             }
             let Some(id) = declarator.id(self.ast).as_binding_identifier(self.ast) else {
                 continue;
             };
-            if id.type_annotation(self.ast).is_some() {
-                continue;
-            }
             let Some(init) = declarator.init(self.ast) else {
                 continue;
             };

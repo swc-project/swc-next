@@ -407,7 +407,7 @@ impl TypeEraser<'_, '_> {
     fn erase_optional_parameter(&mut self, node: FormalParameter) {
         let pattern_end = node.pattern(self.ast).span(self.ast).end;
         let mut marker_end = node.span(self.ast).end;
-        if let Some(annotation) = node.pattern(self.ast).type_annotation(self.ast) {
+        if let Some(annotation) = node.type_annotation(self.ast) {
             marker_end = marker_end.min(annotation.span(self.ast).start);
         }
         if let Some(initializer) = node.initializer(self.ast) {
@@ -1338,7 +1338,7 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
 
     fn visit_variable_declarator(&mut self, node: VariableDeclarator) {
         let pattern = node.id(self.ast);
-        let type_annotation = pattern.type_annotation(self.ast);
+        let type_annotation = node.type_annotation(self.ast);
         let init = node.init(self.ast);
         if node.definite(self.ast) {
             let pattern_end = pattern.span(self.ast).end;
@@ -1351,8 +1351,11 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
             };
             self.erase_token(pattern_end, marker_end, TokenTag::LogicalNot);
         }
-        // Visits the children in field order; the annotation belongs to the pattern.
-        pattern.visit_with(self);
+        // Visits the children in field order; a binding identifier has none.
+        if !pattern.is_binding_identifier(self.ast) {
+            pattern.visit_with(self);
+        }
+        type_annotation.visit_with(self);
         init.visit_with(self);
     }
 
@@ -1360,9 +1363,13 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
         if node.optional(self.ast) {
             self.erase_optional_parameter(node);
         }
-        // Visits the children in field order; the annotation belongs to the pattern.
+        // Visits the children in field order; a binding identifier has none.
         node.decorators(self.ast).visit_with(self);
-        node.pattern(self.ast).visit_with(self);
+        let pattern = node.pattern(self.ast);
+        if !pattern.is_binding_identifier(self.ast) {
+            pattern.visit_with(self);
+        }
+        node.type_annotation(self.ast).visit_with(self);
         node.initializer(self.ast).visit_with(self);
     }
 }

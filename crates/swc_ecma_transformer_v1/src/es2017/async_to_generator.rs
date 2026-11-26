@@ -489,9 +489,13 @@ fn handle_await_for(
             let original = ctx
                 .ast
                 .get_node_in_sub_range(decl.declarators(ctx.ast).iter().next().unwrap());
-            let declarator =
-                ctx.ast
-                    .variable_declarator(DUMMY_SP, original.id(ctx.ast), Some(reference), false);
+            let declarator = ctx.ast.variable_declarator(
+                DUMMY_SP,
+                original.id(ctx.ast),
+                None,
+                Some(reference),
+                false,
+            );
             b::declaration(ctx.ast, decl.kind(ctx.ast), vec![declarator])
         }
         ForStatementLeftData::AssignmentTarget(target) => {
@@ -616,6 +620,7 @@ fn handle_await_for(
     let catch = ctx.ast.catch_clause(
         DUMMY_SP,
         Some(BindingPattern::BindingIdentifier(err)),
+        None,
         catch_body,
     );
     let error = ctx.state.resolver.reference(ctx.ast, iterator_error);

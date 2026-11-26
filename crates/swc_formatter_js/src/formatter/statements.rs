@@ -430,8 +430,7 @@ impl StatementItem {
                 if node.init(ast).is_some() {
                     return None;
                 }
-                node.id(ast)
-                    .type_annotation(ast)
+                node.type_annotation(ast)
                     .map(|annotation| annotation.type_annotation(ast))
             }),
             DeclData::TsFunction(node) => node
@@ -495,7 +494,6 @@ impl StatementItem {
                     return super::expressions::raw_tail::raw_expression_terminal(initializer, ast);
                 }
                 declarator
-                    .id(ast)
                     .type_annotation(ast)
                     .map(|annotation| annotation.type_annotation(ast))
             }

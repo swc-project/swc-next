@@ -88,7 +88,7 @@ test("encoder preserves empty parameter spans", () => {
 
   const [, spans, kinds, payloads] = encode(program);
   const payloadView = new DataView(payloads.buffer, payloads.byteOffset, payloads.byteLength);
-  const patternId = payloadView.getUint32(kinds.indexOf(59) * 16 + 8, true);
+  const patternId = payloadView.getUint32(kinds.indexOf(59) * 16, true);
   const spanView = new DataView(spans.buffer, spans.byteOffset, spans.byteLength);
   assert.equal(spanView.getUint32(patternId * 8, true), 0);
   assert.equal(spanView.getUint32(patternId * 8 + 4, true), 0);

@@ -1,8 +1,6 @@
 use cow_utils::CowUtils;
 use swc_next_ast_macros::{ast, estree};
 
-use crate::TsTypeAnnotation;
-
 /// Kind of a class method definition.
 ///
 /// ## Example
@@ -479,58 +477,6 @@ pub enum BindingPattern {
     ObjectPattern(ObjectPattern),
 }
 
-impl BindingPattern {
-    /// Returns the TypeScript annotation attached to this binding, if any.
-    ///
-    /// `SimpleAssignmentTarget` variants never carry a binding annotation.
-    #[inline]
-    pub fn type_annotation(self, ast: &crate::Ast<'_>) -> Option<TsTypeAnnotation> {
-        match ast.node_kind(self.node_id()) {
-            crate::NodeKind::BindingIdentifier => {
-                BindingIdentifier(self.node_id()).type_annotation(ast)
-            }
-            crate::NodeKind::AssignmentPattern => {
-                AssignmentPattern(self.node_id()).type_annotation(ast)
-            }
-            crate::NodeKind::BindingRestElement => {
-                BindingRestElement(self.node_id()).type_annotation(ast)
-            }
-            crate::NodeKind::ArrayPattern => ArrayPattern(self.node_id()).type_annotation(ast),
-            crate::NodeKind::ObjectPattern => ObjectPattern(self.node_id()).type_annotation(ast),
-            _ => None,
-        }
-    }
-
-    /// Sets the TypeScript annotation on this binding.
-    ///
-    /// Does nothing for `SimpleAssignmentTarget` variants.
-    #[inline]
-    pub fn set_type_annotation(
-        self,
-        ast: &mut crate::Ast<'_>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        match ast.node_kind(self.node_id()) {
-            crate::NodeKind::BindingIdentifier => {
-                BindingIdentifier(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            crate::NodeKind::AssignmentPattern => {
-                AssignmentPattern(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            crate::NodeKind::BindingRestElement => {
-                BindingRestElement(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            crate::NodeKind::ArrayPattern => {
-                ArrayPattern(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            crate::NodeKind::ObjectPattern => {
-                ObjectPattern(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            _ => {}
-        }
-    }
-}
-
 #[ast(repr, nested)]
 pub enum AssignmentTarget {
     SimpleAssignmentTarget(SimpleAssignmentTarget),
@@ -601,70 +547,6 @@ pub enum FormalParameterPattern {
     BindingIdentifier(BindingIdentifier),
     ArrayPattern(ArrayPattern),
     ObjectPattern(ObjectPattern),
-}
-
-impl FormalParameterPattern {
-    /// Returns the TypeScript annotation attached to this parameter pattern.
-    #[inline]
-    pub fn type_annotation(self, ast: &crate::Ast<'_>) -> Option<TsTypeAnnotation> {
-        match ast.node_kind(self.node_id()) {
-            crate::NodeKind::BindingIdentifier => {
-                BindingIdentifier(self.node_id()).type_annotation(ast)
-            }
-            crate::NodeKind::ArrayPattern => ArrayPattern(self.node_id()).type_annotation(ast),
-            crate::NodeKind::ObjectPattern => ObjectPattern(self.node_id()).type_annotation(ast),
-            _ => None,
-        }
-    }
-
-    /// Sets the TypeScript annotation on this parameter pattern.
-    #[inline]
-    pub fn set_type_annotation(
-        self,
-        ast: &mut crate::Ast<'_>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        match ast.node_kind(self.node_id()) {
-            crate::NodeKind::BindingIdentifier => {
-                BindingIdentifier(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            crate::NodeKind::ArrayPattern => {
-                ArrayPattern(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            crate::NodeKind::ObjectPattern => {
-                ObjectPattern(self.node_id()).set_type_annotation(ast, type_annotation)
-            }
-            _ => {}
-        }
-    }
-
-    /// Sets the optional marker on this parameter pattern.
-    #[inline]
-    pub fn set_optional(self, ast: &mut crate::Ast<'_>, optional: bool) {
-        match ast.node_kind(self.node_id()) {
-            crate::NodeKind::BindingIdentifier => {
-                BindingIdentifier(self.node_id()).set_optional(ast, optional)
-            }
-            crate::NodeKind::ArrayPattern => {
-                ArrayPattern(self.node_id()).set_optional(ast, optional)
-            }
-            crate::NodeKind::ObjectPattern => {
-                ObjectPattern(self.node_id()).set_optional(ast, optional)
-            }
-            _ => {}
-        }
-    }
-
-    /// Returns the optional marker on this parameter pattern.
-    #[inline]
-    pub fn optional(self, ast: &crate::Ast<'_>) -> bool {
-        match ast.node_kind(self.node_id()) {
-            crate::NodeKind::BindingIdentifier => BindingIdentifier(self.node_id()).optional(ast),
-            crate::NodeKind::ArrayPattern => ArrayPattern(self.node_id()).optional(ast),
-            crate::NodeKind::ObjectPattern => ObjectPattern(self.node_id()).optional(ast),
-            _ => false,
-        }
-    }
 }
 
 #[ast(repr)]
@@ -945,12 +827,6 @@ pub struct PrivateIdentifier {
 )]
 pub struct BindingIdentifier {
     name: AstUtf8,
-    /// TypeScript annotation on this binding. `None` when absent.
-    #[estree(optional)]
-    type_annotation: Option<TsTypeAnnotation>,
-    /// Whether this binding is marked optional in a parameter list.
-    #[estree(optional)]
-    optional: bool,
 }
 
 /// An identifier used as a property key or meta property name.
@@ -999,16 +875,14 @@ pub struct LabelIdentifier {
 #[ast]
 #[estree(fields(
     decorators(ts_type = "Array<Decorator>", optional),
-    optional(ts_type = "boolean", optional)
+    optional(ts_type = "boolean", optional),
+    typeAnnotation(ts_type = "TSTypeAnnotation | null", optional)
 ))]
 pub struct AssignmentPattern {
     /// any binding pattern
     left: BindingPattern,
     /// any expression
     right: Expr,
-    /// TypeScript annotation on this binding. `None` when absent.
-    #[estree(optional)]
-    type_annotation: Option<TsTypeAnnotation>,
 }
 
 /// A `...rest` element in a destructuring pattern.
@@ -1025,15 +899,13 @@ pub struct AssignmentPattern {
     fields(
         value(ts_type = "null", optional),
         decorators(ts_type = "Array<Decorator>", optional),
-        optional(ts_type = "boolean", optional)
+        optional(ts_type = "boolean", optional),
+        typeAnnotation(ts_type = "TSTypeAnnotation | null", optional)
     )
 )]
 pub struct BindingRestElement {
     /// any binding pattern
     argument: BindingPattern,
-    /// TypeScript annotation on this binding. `None` when absent.
-    #[estree(optional)]
-    type_annotation: Option<TsTypeAnnotation>,
 }
 
 /// An array destructuring pattern.
@@ -1048,7 +920,11 @@ pub struct BindingRestElement {
 ///
 /// `elements[1]` is `None` (the hole between the two commas).
 #[ast]
-#[estree(fields(decorators(ts_type = "Array<Decorator>", optional)))]
+#[estree(fields(
+    decorators(ts_type = "Array<Decorator>", optional),
+    optional(ts_type = "boolean", optional),
+    typeAnnotation(ts_type = "TSTypeAnnotation | null", optional)
+))]
 pub struct ArrayPattern {
     /// any binding pattern. Entries are `None` for holes. Recovery preserves
     /// nonterminal rest elements here in source order.
@@ -1056,12 +932,6 @@ pub struct ArrayPattern {
     /// The terminal `binding_rest_element`, if present.
     #[estree(skip)]
     rest: Option<BindingRestElement>,
-    /// TypeScript annotation on this binding. `None` when absent.
-    #[estree(optional)]
-    type_annotation: Option<TsTypeAnnotation>,
-    /// Whether this binding is marked optional in a parameter list.
-    #[estree(optional)]
-    optional: bool,
 }
 
 /// An object destructuring pattern.
@@ -1074,7 +944,11 @@ pub struct ArrayPattern {
 /// //               ^^^^^^^ rest
 /// ```
 #[ast]
-#[estree(fields(decorators(ts_type = "Array<Decorator>", optional)))]
+#[estree(fields(
+    decorators(ts_type = "Array<Decorator>", optional),
+    optional(ts_type = "boolean", optional),
+    typeAnnotation(ts_type = "TSTypeAnnotation | null", optional)
+))]
 pub struct ObjectPattern {
     /// `binding_property[]`
     #[estree(ts_type = "Array<BindingProperty | BindingRestElement>")]
@@ -1082,12 +956,6 @@ pub struct ObjectPattern {
     /// `binding_rest_element`. `None` when no rest element is present.
     #[estree(skip)]
     rest: Option<BindingRestElement>,
-    /// TypeScript annotation on this binding. `None` when absent.
-    #[estree(optional)]
-    type_annotation: Option<TsTypeAnnotation>,
-    /// Whether this binding is marked optional in a parameter list.
-    #[estree(optional)]
-    optional: bool,
 }
 
 /// A single property inside an `object_pattern`.
@@ -1261,6 +1129,9 @@ pub struct VariableDeclaration {
 pub struct VariableDeclarator {
     /// any binding pattern
     id: BindingPattern,
+    /// TypeScript annotation on this declaration, outside the binding pattern.
+    #[estree(skip)]
+    type_annotation: Option<TsTypeAnnotation>,
     /// any expression. `None` when there is no initializer.
     init: Option<Expr>,
     /// true for a definite assignment assertion (`let x!: T`).
@@ -1409,6 +1280,9 @@ pub struct TryStatement {
 pub struct CatchClause {
     /// any binding pattern. `None` for `catch { }` with no binding.
     param: Option<BindingPattern>,
+    /// TypeScript annotation on the catch binding, if one is present.
+    #[estree(skip)]
+    type_annotation: Option<TsTypeAnnotation>,
     /// `block_statement`
     body: BlockStatement,
 }
@@ -1867,23 +1741,13 @@ pub struct FormalParameter {
     decorators: SubRange<Decorator>,
     /// The binding identifier or array/object destructuring pattern.
     pattern: FormalParameterPattern,
+    /// The type annotation for the whole parameter. `None` when absent.
+    type_annotation: Option<TsTypeAnnotation>,
     /// The default value expression, evaluated when the corresponding argument
     /// is omitted or `undefined`. `None` when no default is written.
     initializer: Option<Expr>,
-}
-
-impl FormalParameter {
-    /// Returns the optional marker stored on the parameter pattern.
-    #[inline]
-    pub fn optional(self, ast: &crate::Ast<'_>) -> bool {
-        self.pattern(ast).optional(ast)
-    }
-
-    /// Sets the optional marker on the parameter pattern.
-    #[inline]
-    pub fn set_optional(self, ast: &mut crate::Ast<'_>, optional: bool) {
-        self.pattern(ast).set_optional(ast, optional);
-    }
+    /// Whether the parameter has a TypeScript `?` marker.
+    optional: bool,
 }
 
 /// A rest parameter collecting the remaining arguments of a call.

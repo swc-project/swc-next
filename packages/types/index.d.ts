@@ -311,34 +311,34 @@ export interface AssignmentPattern extends BaseNode {
   type: "AssignmentPattern";
   left: Pattern;
   right: Expression;
-  typeAnnotation?: TSTypeAnnotation | null;
   decorators?: Array<Decorator>;
   optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface BindingRestElement extends BaseNode {
   type: "RestElement";
   argument: Pattern;
-  typeAnnotation?: TSTypeAnnotation | null;
   value?: null;
   decorators?: Array<Decorator>;
   optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface ArrayPattern extends BaseNode {
   type: "ArrayPattern";
   elements: Array<Pattern | null>;
-  typeAnnotation?: TSTypeAnnotation | null;
-  optional?: boolean;
   decorators?: Array<Decorator>;
+  optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface ObjectPattern extends BaseNode {
   type: "ObjectPattern";
   properties: Array<BindingProperty | BindingRestElement>;
-  typeAnnotation?: TSTypeAnnotation | null;
-  optional?: boolean;
   decorators?: Array<Decorator>;
+  optional?: boolean;
+  typeAnnotation?: TSTypeAnnotation | null;
 }
 
 export interface BindingProperty extends BaseNode {

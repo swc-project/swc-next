@@ -477,7 +477,7 @@ impl RestLowerer<'_, '_, '_> {
         match self.out {
             RestOutput::Declarations(ref mut declarations) => declarations.push(
                 self.ast
-                    .variable_declarator(DUMMY_SP, pattern, Some(init), false),
+                    .variable_declarator(DUMMY_SP, pattern, None, Some(init), false),
             ),
             RestOutput::Expressions(_) => {
                 let target = build::assignment_target(self.ast, self.context.resolver, pattern);
@@ -567,13 +567,9 @@ impl RestLowerer<'_, '_, '_> {
                 self.visit(nested, reference);
                 if let Some(after) = after {
                     let remaining = self.ast.add_sub_range(remaining);
-                    let object = self.ast.object_pattern(
-                        object.span(self.ast),
-                        remaining,
-                        rest,
-                        None,
-                        false,
-                    );
+                    let object = self
+                        .ast
+                        .object_pattern(object.span(self.ast), remaining, rest);
                     self.visit_object(object, after, captured);
                 }
                 return;
@@ -631,11 +627,9 @@ impl RestLowerer<'_, '_, '_> {
             None
         } else {
             let tail = self.declare_temp("_rest");
-            let rest = self.ast.binding_rest_element(
-                DUMMY_SP,
-                BindingPattern::BindingIdentifier(tail),
-                None,
-            );
+            let rest = self
+                .ast
+                .binding_rest_element(DUMMY_SP, BindingPattern::BindingIdentifier(tail));
             elements.push(Some(BindingPattern::BindingRestElement(rest)));
             Some(tail)
         };
@@ -866,7 +860,6 @@ impl ParamCollector {
                     DUMMY_SP,
                     pattern,
                     initializer,
-                    None,
                 ))
             } else {
                 pattern
@@ -923,7 +916,6 @@ impl ParamCollector {
                             DUMMY_SP,
                             pattern,
                             initializer,
-                            None,
                         ))
                     } else {
                         pattern
@@ -938,7 +930,6 @@ impl ParamCollector {
                         lowerer.ast.binding_rest_element(
                             DUMMY_SP,
                             BindingPattern::BindingIdentifier(tail),
-                            None,
                         ),
                     )));
                 }

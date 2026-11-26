@@ -141,6 +141,7 @@ impl TransformCtx<'_, '_> {
                             DUMMY_SP,
                             BindingPattern::BindingIdentifier(binding),
                             None,
+                            None,
                             false,
                         )
                     })

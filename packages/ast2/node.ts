@@ -358,7 +358,6 @@ export class NodeView {
         return (ast._nodeAt(ast.childAt(this.#id, offset + 0, false, view))) as NodeField<"body">;
       case 32:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 12, false, view))) as NodeField<"body">;
-      case 36:
       case 39:
       case 55:
       case 57:
@@ -367,6 +366,7 @@ export class NodeView {
         return (ast._nodeAt(ast.childAt(this.#id, offset + 4, false, view))) as NodeField<"body">;
       case 33:
       case 34:
+      case 36:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 8, false, view))) as NodeField<"body">;
       case 146:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 8, true, view))) as NodeField<"body">;
@@ -386,7 +386,6 @@ export class NodeView {
     if (this.#version !== ast._editVersion) { this._refresh(); }
     const kind = this.#kind;
     switch (kind) {
-      case 36:
       case 39:
       case 55:
       case 57:
@@ -797,10 +796,10 @@ export class NodeView {
     const offset = ast._payloadAt(this.#id, row);
     const view = row === -1 ? ast._view : ast._arena!.view!;
     switch (kind) {
+      case 28:
+        return (view.getUint8(offset + 12) !== 0) as NodeField<"definite">;
       case 50:
         return (view.getUint8(offset + 6) !== 0) as NodeField<"definite">;
-      case 28:
-        return (view.getUint8(offset + 8) !== 0) as NodeField<"definite">;
       default: return ast.value(this.#id, Field.definite, kind) as NodeField<"definite">;
     }
   }
@@ -1444,7 +1443,7 @@ export class NodeView {
       case 32:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 0, true, view))) as NodeField<"init">;
       case 28:
-        return (ast._nodeAt(ast.childAt(this.#id, offset + 4, true, view))) as NodeField<"init">;
+        return (ast._nodeAt(ast.childAt(this.#id, offset + 8, true, view))) as NodeField<"init">;
       default: return ast.value(this.#id, Field.init, kind) as NodeField<"init">;
     }
   }
@@ -1467,10 +1466,10 @@ export class NodeView {
     const offset = ast._payloadAt(this.#id, row);
     const view = row === -1 ? ast._view : ast._arena!.view!;
     switch (kind) {
-      case 59:
-        return (ast._nodeAt(ast.childAt(this.#id, offset + 12, true, view))) as NodeField<"initializer">;
       case 145:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 4, true, view))) as NodeField<"initializer">;
+      case 59:
+        return (this.#id >= ast.nodeCount || view.getUint32(offset + 12, true) >= ast._extraCount ? ast.value(this.#id, Field.initializer, kind) : ast._nodeAt(ast.childAt(this.#id, ast.extraOffset(offset, 12, 2), true, view))) as NodeField<"initializer">;
       default: return ast.value(this.#id, Field.initializer, kind) as NodeField<"initializer">;
     }
   }
@@ -1535,32 +1534,6 @@ export class NodeView {
         ast._writeBoolAt(id, 9, value);
         break;
       default: ast.writeNativeField(id, Field.isCookedUndefined, value);
-    }
-  }
-  get isMethod(): NodeField<"isMethod"> {
-    const ast = this.#ast;
-    if (this.#version !== ast._editVersion) { this._refresh(); }
-    const kind = this.#kind;
-    switch (kind) {
-      case 87:
-      {
-        const row = ast.row(this.#id);
-        const offset = ast._payloadAt(this.#id, row);
-        const view = row === -1 ? ast._view : ast._arena!.view!;
-        return (view.getUint8(offset + 11) !== 0) as NodeField<"isMethod">;
-      }
-      default: return ast.value(this.#id, Field.isMethod, kind) as NodeField<"isMethod">;
-    }
-  }
-  set isMethod(value: FieldInput<"isMethod">) {
-    const ast = this.#ast, id = this.#id;
-    if (this.#version !== ast._editVersion) { this._refresh(); }
-    const kind = this.#kind;
-    switch (kind) {
-      case 87:
-        ast._writeBoolAt(id, 11, value);
-        break;
-      default: ast.writeNativeField(id, Field.isMethod, value);
     }
   }
   get items(): NodeField<"items"> {
@@ -2095,13 +2068,10 @@ export class NodeView {
         return (ast.enumAt(offset + 8, "TsMappedTypeModifier", false, view)) as NodeField<"optional">;
       case 134:
         return (view.getUint8(offset + 10) !== 0) as NodeField<"optional">;
-      case 13:
-        return (view.getUint8(offset + 12) !== 0) as NodeField<"optional">;
       case 50:
         return (view.getUint8(offset + 5) !== 0) as NodeField<"optional">;
-      case 18:
-      case 19:
       case 49:
+      case 59:
       case 69:
       case 88:
       case 116:
@@ -2117,9 +2087,8 @@ export class NodeView {
     if (this.#version !== ast._editVersion) { this._refresh(); }
     const kind = this.#kind;
     switch (kind) {
-      case 18:
-      case 19:
       case 49:
+      case 59:
       case 69:
       case 88:
       case 116:
@@ -2341,7 +2310,7 @@ export class NodeView {
     const view = row === -1 ? ast._view : ast._arena!.view!;
     switch (kind) {
       case 59:
-        return (ast._nodeAt(ast.childAt(this.#id, offset + 8, false, view))) as NodeField<"pattern">;
+        return (ast._nodeAt(ast.childAt(this.#id, offset + 0, false, view))) as NodeField<"pattern">;
       case 8:
         return (ast.stringAt(offset + 0, false, view)) as NodeField<"pattern">;
       default: return ast.value(this.#id, Field.pattern, kind) as NodeField<"pattern">;
@@ -2352,8 +2321,8 @@ export class NodeView {
     if (this.#version !== ast._editVersion) { this._refresh(); }
     const kind = this.#kind;
     switch (kind) {
-      case 8:
-        ast._writeStringAt(id, 0, false, value);
+      case 59:
+        ast._writeNodeAt(id, 0, value);
         break;
       default: ast.writeNativeField(id, Field.pattern, value);
     }
@@ -2616,15 +2585,16 @@ export class NodeView {
     const ast = this.#ast;
     if (this.#version !== ast._editVersion) { this._refresh(); }
     const kind = this.#kind;
-    const row = ast.row(this.#id);
-    const offset = ast._payloadAt(this.#id, row);
-    const view = row === -1 ? ast._view : ast._arena!.view!;
     switch (kind) {
       case 18:
       case 19:
-        return (ast._nodeAt(ast.childAt(this.#id, offset + 0, true, view))) as NodeField<"rest">;
       case 58:
+      {
+        const row = ast.row(this.#id);
+        const offset = ast._payloadAt(this.#id, row);
+        const view = row === -1 ? ast._view : ast._arena!.view!;
         return (ast._nodeAt(ast.childAt(this.#id, offset + 8, true, view))) as NodeField<"rest">;
+      }
       default: return ast.value(this.#id, Field.rest, kind) as NodeField<"rest">;
     }
   }
@@ -2635,7 +2605,8 @@ export class NodeView {
     switch (kind) {
       case 18:
       case 19:
-        ast._writeNodeAt(id, 0, value);
+      case 58:
+        ast._writeNodeAt(id, 8, value);
         break;
       default: ast.writeNativeField(id, Field.rest, value);
     }
@@ -3060,18 +3031,15 @@ export class NodeView {
       case 152:
       case 160:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 4, false, view))) as NodeField<"typeAnnotation">;
-      case 17:
-      case 18:
-      case 19:
+      case 28:
+      case 36:
+      case 59:
       case 130:
       case 133:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 4, true, view))) as NodeField<"typeAnnotation">;
       case 137:
       case 138:
         return (ast._nodeAt(ast.childAt(this.#id, offset + 8, false, view))) as NodeField<"typeAnnotation">;
-      case 13:
-      case 16:
-        return (ast._nodeAt(ast.childAt(this.#id, offset + 8, true, view))) as NodeField<"typeAnnotation">;
       case 132:
         return (this.#id >= ast.nodeCount || view.getUint32(offset + 12, true) >= ast._extraCount ? ast.value(this.#id, Field.typeAnnotation, kind) : ast._nodeAt(ast.childAt(this.#id, ast.extraOffset(offset, 12, 1), true, view))) as NodeField<"typeAnnotation">;
       case 50:

@@ -364,28 +364,13 @@ fn read_u32(location: &str, aligned: bool) -> String {
 }
 
 fn write_generic_node(output: &mut String, name: &str, fields: &[DecodedField], is_ts: bool) {
-    let extras: Vec<_> = if is_ts {
-        ts_extra_fields(name)
-            .iter()
-            .map(|&(key, default)| {
-                let value = fields
-                    .iter()
-                    .find(|field| field.name == key)
-                    .map_or(default, |field| field.expression.as_str());
-                (key, value)
-            })
-            .collect()
-    } else {
-        Vec::new()
-    };
     write_object_literal(
         output,
         name,
-        fields.iter().filter(|field| {
-            (is_ts || !is_ts_field(name, &field.name))
-                && !extras.iter().any(|(key, _)| *key == field.name)
-        }),
-        &extras,
+        fields
+            .iter()
+            .filter(|field| is_ts || !is_ts_field(name, &field.name)),
+        if is_ts { ts_extra_fields(name) } else { &[] },
         8,
     );
 }
@@ -485,17 +470,18 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         }
         "FormalParameter" => {
             if is_ts {
-                if fields.iter().any(|field| field.name == "optional") {
-                    output.push_str("        f_pattern.optional = f_optional;\n");
-                }
                 output.push_str(
                     r#"        if (f_initializer === null) {
+          f_pattern.optional = f_optional;
+          f_pattern.typeAnnotation = f_typeAnnotation;
           f_pattern.end = end;
           f_pattern.decorators = f_decorators;
           result = f_pattern;
         } else {
           const left = f_pattern;
-          left.end = left.typeAnnotation?.end ?? (left.optional ? left.end + 1 : left.end);
+          left.optional = f_optional;
+          left.typeAnnotation = f_typeAnnotation;
+          left.end = f_typeAnnotation?.end ?? (f_optional ? left.end + 1 : left.end);
           result = {
             type: "AssignmentPattern", start: left.start, end,
             left, right: f_initializer,
@@ -520,14 +506,14 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         }
         "VariableDeclarator" => {
             output.push_str(if is_ts {
-                "        f_id.end = f_id.typeAnnotation?.end ?? f_id.end;\n        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init, definite: f_definite };\n"
+                "        f_id.typeAnnotation = f_typeAnnotation;\n        f_id.end = f_typeAnnotation?.end ?? f_id.end;\n        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init, definite: f_definite };\n"
             } else {
                 "        result = { type: \"VariableDeclarator\", start, end, id: f_id, init: f_init };\n"
             });
         }
         "CatchClause" => {
             output.push_str(if is_ts {
-                "        if (f_param !== null) f_param.end = f_param.typeAnnotation?.end ?? f_param.end;\n        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n"
+                "        if (f_param !== null) {\n          f_param.typeAnnotation = f_typeAnnotation;\n          f_param.end = f_typeAnnotation?.end ?? f_param.end;\n        }\n        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n"
             } else {
                 "        result = { type: \"CatchClause\", start, end, param: f_param, body: f_body };\n"
             });
@@ -727,19 +713,24 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
             }
             output.push_str("        };\n");
         }
-        "ArrayPattern" | "ObjectPattern" => {
-            let list = if name == "ArrayPattern" { "elements" } else { "properties" };
-            writeln!(output, "        if (f_rest !== null) f_{list}.push(f_rest);").unwrap();
-            write!(output, "        result = {{ type: \"{name}\", start, end, {list}: f_{list}").unwrap();
-            if is_ts {
-                let optional = if fields.iter().any(|field| field.name == "optional") {
-                    "f_optional"
-                } else {
-                    "false"
-                };
-                write!(output, ", decorators: [], optional: {optional}, typeAnnotation: f_typeAnnotation").unwrap();
-            }
-            output.push_str(" };\n");
+        "ArrayPattern" => {
+            output.push_str(
+                r#"        if (f_rest !== null) f_elements.push(f_rest);
+"#,
+            );
+            output.push_str(if is_ts {
+                "        result = { type: \"ArrayPattern\", start, end, elements: f_elements, decorators: [], optional: false, typeAnnotation: null };\n"
+            } else {
+                "        result = { type: \"ArrayPattern\", start, end, elements: f_elements };\n"
+            });
+        }
+        "ObjectPattern" => {
+            output.push_str("        if (f_rest !== null) f_properties.push(f_rest);\n");
+            output.push_str(if is_ts {
+                "        result = { type: \"ObjectPattern\", start, end, properties: f_properties, decorators: [], optional: false, typeAnnotation: null };\n"
+            } else {
+                "        result = { type: \"ObjectPattern\", start, end, properties: f_properties };\n"
+            });
         }
         "JsxText" => output.push_str(
             "        result = { type: \"JSXText\", start, end, value: f_value, raw: f_value };\n",

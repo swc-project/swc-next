@@ -237,6 +237,7 @@ impl Refresh<'_, '_> {
                         DUMMY_SP,
                         BindingPattern::BindingIdentifier(handle),
                         None,
+                        None,
                         false,
                     )
                 })

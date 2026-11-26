@@ -157,7 +157,6 @@ impl<'ast> Transformer<'_, 'ast> {
                         false,
                         false,
                         false,
-                        true,
                     );
                     let key = self.declaration_property_key(method.key(ast), ast);
                     let method = ast.ts_method_definition(
@@ -447,16 +446,14 @@ impl<'ast> Transformer<'_, 'ast> {
             };
             let parameter = property.parameter(ast);
             if property.accessibility(ast) != Accessibility::Private
-                && parameter.pattern(ast).type_annotation(ast).is_none()
+                && parameter.type_annotation(ast).is_none()
                 && let Some(initializer) = parameter.initializer(ast)
             {
                 let Some(ty) = self.infer_type_from_expr(initializer, ast) else {
                     continue;
                 };
                 let annotation = ast.ts_type_annotation(initializer.span(ast), ty);
-                parameter
-                    .pattern(ast)
-                    .set_type_annotation(ast, Some(annotation));
+                parameter.set_type_annotation(ast, Some(annotation));
             }
         }
         let properties = items
@@ -472,7 +469,7 @@ impl<'ast> Transformer<'_, 'ast> {
                 Some((
                     property,
                     parameter.optional(ast),
-                    parameter.pattern(ast).type_annotation(ast),
+                    parameter.type_annotation(ast),
                 ))
             })
             .collect::<Vec<_>>();
@@ -532,7 +529,7 @@ impl<'ast> Transformer<'_, 'ast> {
         let type_annotation = if accessibility == Accessibility::Private {
             None
         } else if optional {
-            parameter.pattern(ast).type_annotation(ast)
+            parameter.type_annotation(ast)
         } else {
             original_type
         };
@@ -582,7 +579,7 @@ impl<'ast> Transformer<'_, 'ast> {
             else {
                 continue;
             };
-            parameter.pattern(ast).set_type_annotation(ast, None);
+            parameter.set_type_annotation(ast, None);
             if kind == MethodDefinitionKind::Set
                 && let Some(binding) = parameter.pattern(ast).as_binding_identifier(ast)
             {

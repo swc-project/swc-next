@@ -21,7 +21,7 @@ console.log(generateSync(ast.program).code);
 
 `parseSync(source, options)` parses and opens a view, throwing the first
 diagnostic unless error recovery is enabled. `readAst(buffer, source?)` opens
-existing parser bytes; pass the original source so source-backed strings slice
+parser bytes from the same AST schema version; pass the original source so source-backed strings slice
 it instead of decoding UTF-8. Views read the current storage on access; setters
 write existing fields directly.
 

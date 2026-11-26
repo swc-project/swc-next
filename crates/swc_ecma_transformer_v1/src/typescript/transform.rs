@@ -141,6 +141,7 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                     DUMMY_SP,
                     BindingPattern::BindingIdentifier(binding),
                     None,
+                    None,
                     false,
                 )
             })
@@ -316,10 +317,9 @@ impl<'a, 'ast> Transform<'a, 'ast> {
                     if self.options.flow_syntax {
                         self.convert_flow_component_arrow(declarator);
                     }
-                    let pattern = declarator.id(self.ast);
-                    pattern.set_type_annotation(self.ast, None);
+                    declarator.set_type_annotation(self.ast, None);
                     declarator.set_definite(self.ast, false);
-                    if let Some(pattern) = pattern.visit_mut_with(self) {
+                    if let Some(pattern) = declarator.id(self.ast).visit_mut_with(self) {
                         declarator.set_id(self.ast, pattern);
                     }
                     self.rewrite = old;
@@ -575,9 +575,8 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         &mut self,
         parameter: FormalParameter,
     ) -> Option<FormalParameter> {
-        let pattern = parameter.pattern(self.ast);
-        pattern.set_type_annotation(self.ast, None);
-        pattern.set_optional(self.ast, false);
+        parameter.set_type_annotation(self.ast, None);
+        parameter.set_optional(self.ast, false);
         parameter.visit_mut_children_with(self)
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L110>.
@@ -590,9 +589,7 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L110>.
     fn visit_mut_catch_clause(&mut self, catch: CatchClause) -> Option<CatchClause> {
-        if let Some(param) = catch.param(self.ast) {
-            param.set_type_annotation(self.ast, None);
-        }
+        catch.set_type_annotation(self.ast, None);
         catch.visit_mut_children_with(self)
     }
     /// Next AST adapter for SWC: <https://github.com/swc-project/swc/blob/75848acc40ea51b8409ac57b97f2d7fbbc2a3bdd/crates/swc_ecma_transforms_typescript/src/transform.rs#L429>.
@@ -603,11 +600,10 @@ impl<'ast> VisitMut<'ast> for Transform<'_, 'ast> {
         if self.options.flow_syntax {
             self.convert_flow_component_arrow(declarator);
         }
-        let pattern = declarator.id(self.ast);
-        pattern.set_type_annotation(self.ast, None);
+        declarator.set_type_annotation(self.ast, None);
         declarator.set_definite(self.ast, false);
         let old = mem::replace(&mut self.rewrite, false);
-        if let Some(pattern) = pattern.visit_mut_with(self) {
+        if let Some(pattern) = declarator.id(self.ast).visit_mut_with(self) {
             declarator.set_id(self.ast, pattern);
         }
         self.rewrite = old;
@@ -931,7 +927,7 @@ impl Transform<'_, '_> {
         let Some(id) = declaration.id(self.ast).as_binding_identifier(self.ast) else {
             return;
         };
-        let Some(annotation) = id.type_annotation(self.ast) else {
+        let Some(annotation) = declaration.type_annotation(self.ast) else {
             return;
         };
         let mut ty = annotation.type_annotation(self.ast);
@@ -956,7 +952,7 @@ impl Transform<'_, '_> {
         };
         if function_type.span(self.ast) == DUMMY_SP
             || object.span(self.ast) != function_type.span(self.ast)
-            || object.type_annotation(self.ast).is_some()
+            || parameter.type_annotation(self.ast).is_some()
         {
             return;
         }

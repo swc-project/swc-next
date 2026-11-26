@@ -226,9 +226,7 @@ pub(crate) struct PrivateIdentifierPayload {
 #[derive(Clone, Copy)]
 pub(crate) struct BindingIdentifierPayload {
     pub(crate) name: AstUtf8,
-    pub(crate) type_annotation: u32,
-    pub(crate) optional: bool,
-    pub(crate) _pad0: [u8; 3usize],
+    pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -247,33 +245,27 @@ pub(crate) struct LabelIdentifierPayload {
 pub(crate) struct AssignmentPatternPayload {
     pub(crate) left: BindingPattern,
     pub(crate) right: Expr,
-    pub(crate) type_annotation: u32,
-    pub(crate) _pad0: [u8; 4usize],
+    pub(crate) _pad0: [u8; 8usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct BindingRestElementPayload {
     pub(crate) argument: BindingPattern,
-    pub(crate) type_annotation: u32,
-    pub(crate) _pad0: [u8; 8usize],
+    pub(crate) _pad0: [u8; 12usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ArrayPatternPayload {
+    pub(crate) elements: SubRange<Option<BindingPattern>>,
     pub(crate) rest: u32,
-    pub(crate) type_annotation: u32,
-    pub(crate) optional: bool,
-    pub(crate) _pad0: [u8; 3usize],
-    pub(crate) extra_data_start: ExtraDataId,
+    pub(crate) _pad0: [u8; 4usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct ObjectPatternPayload {
+    pub(crate) properties: SubRange<BindingProperty>,
     pub(crate) rest: u32,
-    pub(crate) type_annotation: u32,
-    pub(crate) optional: bool,
-    pub(crate) _pad0: [u8; 3usize],
-    pub(crate) extra_data_start: ExtraDataId,
+    pub(crate) _pad0: [u8; 4usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -343,9 +335,10 @@ pub(crate) struct VariableDeclarationPayload {
 #[derive(Clone, Copy)]
 pub(crate) struct VariableDeclaratorPayload {
     pub(crate) id: BindingPattern,
+    pub(crate) type_annotation: u32,
     pub(crate) init: u32,
     pub(crate) definite: bool,
-    pub(crate) _pad0: [u8; 7usize],
+    pub(crate) _pad0: [u8; 3usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -406,8 +399,9 @@ pub(crate) struct TryStatementPayload {
 #[derive(Clone, Copy)]
 pub(crate) struct CatchClausePayload {
     pub(crate) param: u32,
+    pub(crate) type_annotation: u32,
     pub(crate) body: BlockStatement,
-    pub(crate) _pad0: [u8; 8usize],
+    pub(crate) _pad0: [u8; 4usize],
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -567,9 +561,11 @@ pub(crate) struct FormalParametersPayload {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub(crate) struct FormalParameterPayload {
-    pub(crate) decorators: SubRange<Decorator>,
     pub(crate) pattern: FormalParameterPattern,
-    pub(crate) initializer: u32,
+    pub(crate) type_annotation: u32,
+    pub(crate) optional: bool,
+    pub(crate) _pad0: [u8; 3usize],
+    pub(crate) extra_data_start: ExtraDataId,
 }
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -779,7 +775,7 @@ pub(crate) struct TsFunctionPayload {
     pub(crate) generator: bool,
     pub(crate) r#async: bool,
     pub(crate) declare: bool,
-    pub(crate) is_method: bool,
+    pub(crate) _pad0: [u8; 1usize],
     pub(crate) extra_data_start: ExtraDataId,
 }
 #[repr(C)]
@@ -1345,10 +1341,6 @@ const _: () = {
     assert!(std::mem::size_of::<BindingIdentifierPayload>() == 16);
     assert!(std::mem::size_of::<AstUtf8>() == 8usize);
     assert!(std::mem::offset_of!(BindingIdentifierPayload, name) == 0usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(BindingIdentifierPayload, type_annotation) == 8usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(BindingIdentifierPayload, optional) == 12usize);
     assert!(std::mem::size_of::<IdentifierNamePayload>() == 16);
     assert!(std::mem::size_of::<AstUtf8>() == 8usize);
     assert!(std::mem::offset_of!(IdentifierNamePayload, name) == 0usize);
@@ -1360,31 +1352,19 @@ const _: () = {
     assert!(std::mem::offset_of!(AssignmentPatternPayload, left) == 0usize);
     assert!(std::mem::size_of::<Expr>() == 4usize);
     assert!(std::mem::offset_of!(AssignmentPatternPayload, right) == 4usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(AssignmentPatternPayload, type_annotation) == 8usize);
     assert!(std::mem::size_of::<BindingRestElementPayload>() == 16);
     assert!(std::mem::size_of::<BindingPattern>() == 4usize);
     assert!(std::mem::offset_of!(BindingRestElementPayload, argument) == 0usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(BindingRestElementPayload, type_annotation) == 4usize);
     assert!(std::mem::size_of::<ArrayPatternPayload>() == 16);
+    assert!(std::mem::size_of::<SubRange<Option<BindingPattern>>>() == 8usize);
+    assert!(std::mem::offset_of!(ArrayPatternPayload, elements) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ArrayPatternPayload, rest) == 0usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ArrayPatternPayload, type_annotation) == 4usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ArrayPatternPayload, optional) == 8usize);
-    assert!(std::mem::size_of::<ExtraDataId>() == 4);
-    assert!(std::mem::offset_of!(ArrayPatternPayload, extra_data_start) == 12usize);
+    assert!(std::mem::offset_of!(ArrayPatternPayload, rest) == 8usize);
     assert!(std::mem::size_of::<ObjectPatternPayload>() == 16);
+    assert!(std::mem::size_of::<SubRange<BindingProperty>>() == 8usize);
+    assert!(std::mem::offset_of!(ObjectPatternPayload, properties) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ObjectPatternPayload, rest) == 0usize);
-    assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(ObjectPatternPayload, type_annotation) == 4usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(ObjectPatternPayload, optional) == 8usize);
-    assert!(std::mem::size_of::<ExtraDataId>() == 4);
-    assert!(std::mem::offset_of!(ObjectPatternPayload, extra_data_start) == 12usize);
+    assert!(std::mem::offset_of!(ObjectPatternPayload, rest) == 8usize);
     assert!(std::mem::size_of::<BindingPropertyPayload>() == 16);
     assert!(std::mem::size_of::<PropertyKey>() == 4usize);
     assert!(std::mem::offset_of!(BindingPropertyPayload, key) == 0usize);
@@ -1445,9 +1425,11 @@ const _: () = {
     assert!(std::mem::size_of::<BindingPattern>() == 4usize);
     assert!(std::mem::offset_of!(VariableDeclaratorPayload, id) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(VariableDeclaratorPayload, init) == 4usize);
+    assert!(std::mem::offset_of!(VariableDeclaratorPayload, type_annotation) == 4usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(VariableDeclaratorPayload, init) == 8usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(VariableDeclaratorPayload, definite) == 8usize);
+    assert!(std::mem::offset_of!(VariableDeclaratorPayload, definite) == 12usize);
     assert!(std::mem::size_of::<IfStatementPayload>() == 16);
     assert!(std::mem::size_of::<Expr>() == 4usize);
     assert!(std::mem::offset_of!(IfStatementPayload, test) == 0usize);
@@ -1500,8 +1482,10 @@ const _: () = {
     assert!(std::mem::size_of::<CatchClausePayload>() == 16);
     assert!(std::mem::size_of::<u32>() == 4usize);
     assert!(std::mem::offset_of!(CatchClausePayload, param) == 0usize);
+    assert!(std::mem::size_of::<u32>() == 4usize);
+    assert!(std::mem::offset_of!(CatchClausePayload, type_annotation) == 4usize);
     assert!(std::mem::size_of::<BlockStatement>() == 4usize);
-    assert!(std::mem::offset_of!(CatchClausePayload, body) == 4usize);
+    assert!(std::mem::offset_of!(CatchClausePayload, body) == 8usize);
     assert!(std::mem::size_of::<BreakStatementPayload>() == 16);
     assert!(std::mem::size_of::<u32>() == 4usize);
     assert!(std::mem::offset_of!(BreakStatementPayload, label) == 0usize);
@@ -1635,12 +1619,14 @@ const _: () = {
     assert!(std::mem::size_of::<FormalParameterKind>() == 1usize);
     assert!(std::mem::offset_of!(FormalParametersPayload, kind) == 12usize);
     assert!(std::mem::size_of::<FormalParameterPayload>() == 16);
-    assert!(std::mem::size_of::<SubRange<Decorator>>() == 8usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, decorators) == 0usize);
     assert!(std::mem::size_of::<FormalParameterPattern>() == 4usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, pattern) == 8usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, pattern) == 0usize);
     assert!(std::mem::size_of::<u32>() == 4usize);
-    assert!(std::mem::offset_of!(FormalParameterPayload, initializer) == 12usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, type_annotation) == 4usize);
+    assert!(std::mem::size_of::<bool>() == 1usize);
+    assert!(std::mem::offset_of!(FormalParameterPayload, optional) == 8usize);
+    assert!(std::mem::size_of::<ExtraDataId>() == 4);
+    assert!(std::mem::offset_of!(FormalParameterPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<FormalParameterRestPayload>() == 16);
     assert!(std::mem::size_of::<SubRange<Decorator>>() == 8usize);
     assert!(std::mem::offset_of!(FormalParameterRestPayload, decorators) == 0usize);
@@ -1813,8 +1799,6 @@ const _: () = {
     assert!(std::mem::offset_of!(TsFunctionPayload, r#async) == 9usize);
     assert!(std::mem::size_of::<bool>() == 1usize);
     assert!(std::mem::offset_of!(TsFunctionPayload, declare) == 10usize);
-    assert!(std::mem::size_of::<bool>() == 1usize);
-    assert!(std::mem::offset_of!(TsFunctionPayload, is_method) == 11usize);
     assert!(std::mem::size_of::<ExtraDataId>() == 4);
     assert!(std::mem::offset_of!(TsFunctionPayload, extra_data_start) == 12usize);
     assert!(std::mem::size_of::<TsMethodDefinitionPayload>() == 16);
@@ -2280,7 +2264,6 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::BindingIdentifier => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
-            bytes[8usize..12usize].reverse();
         }
         NodeKind::IdentifierName => {
             bytes[0usize..4usize].reverse();
@@ -2293,21 +2276,19 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::AssignmentPattern => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
-            bytes[8usize..12usize].reverse();
         }
         NodeKind::BindingRestElement => {
             bytes[0usize..4usize].reverse();
-            bytes[4usize..8usize].reverse();
         }
         NodeKind::ArrayPattern => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
-            bytes[12usize..16usize].reverse();
+            bytes[8usize..12usize].reverse();
         }
         NodeKind::ObjectPattern => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
-            bytes[12usize..16usize].reverse();
+            bytes[8usize..12usize].reverse();
         }
         NodeKind::BindingProperty => {
             bytes[0usize..4usize].reverse();
@@ -2343,6 +2324,7 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::VariableDeclarator => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
         }
         NodeKind::IfStatement => {
             bytes[0usize..4usize].reverse();
@@ -2383,6 +2365,7 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::CatchClause => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
+            bytes[8usize..12usize].reverse();
         }
         NodeKind::BreakStatement => {
             bytes[0usize..4usize].reverse();
@@ -2466,7 +2449,6 @@ pub(crate) fn swap_payload_endian(bytes: &mut [u8; 16], kind: NodeKind) {
         NodeKind::FormalParameter => {
             bytes[0usize..4usize].reverse();
             bytes[4usize..8usize].reverse();
-            bytes[8usize..12usize].reverse();
             bytes[12usize..16usize].reverse();
         }
         NodeKind::FormalParameterRest => {

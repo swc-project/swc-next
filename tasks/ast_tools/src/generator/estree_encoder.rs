@@ -249,8 +249,6 @@ fn write_struct_encoder(
         let source = if !dispatch.is_ts && name == "PropertyDefinition" && field.name == "accessor"
         {
             "n.type === \"AccessorProperty\"".into()
-        } else if name == "TsFunction" && field.name == "is_method" {
-            "n.type === \"TSEmptyBodyFunctionExpression\"".into()
         } else if field.attrs.estree_skip {
             "0".into()
         } else {
@@ -308,7 +306,10 @@ fn write_struct_encoder(
     if name == "FormalParameter" && dispatch.is_ts {
         writeln!(
             output,
-            "    if (_pattern.optional && _pattern.typeAnnotation == null && _hasInitializer) {{\n      const span = {pattern} * 2;\n      // Undo the decoder's optional-marker extension without underflowing empty spans.\n      spans[span + 1] -= spans[span + 1] > spans[span];\n    }}",
+            "    if ({optional} && {annotation} === NULL && {initializer} !== NULL) {{\n      const span = {pattern} * 2;\n      // Undo the decoder's optional-marker extension without underflowing empty spans.\n      spans[span + 1] -= spans[span + 1] > spans[span];\n    }}",
+            optional = value("optional"),
+            annotation = value("type_annotation"),
+            initializer = value("initializer"),
             pattern = value("pattern"),
         )
         .unwrap();
@@ -661,7 +662,9 @@ fn field_source(node: &str, field: &str) -> String {
         ("Program" | "FunctionBody" | "TsModuleBlock", "body") => "_body".into(),
         ("FormalParameter", "pattern") => "_pattern".into(),
         ("FormalParameter", "initializer") => "_initializer".into(),
-        ("FormalParameter", "optional") => "_pattern.optional".into(),
+        ("FormalParameter", "type_annotation" | "optional") => format!("_pattern.{js}"),
+        ("VariableDeclarator", "type_annotation") => "n.id?.typeAnnotation".into(),
+        ("CatchClause", "type_annotation") => "n.param?.typeAnnotation".into(),
         ("TsIndexSignatureParameter", "name") => "n".into(),
         (
             "Function"
@@ -748,10 +751,7 @@ fn is_ts_field(node: &str, field: &str, ty: &AstType, schema: &Schema) -> bool {
     ) || matches!(
         (node, field),
         ("Class", "implements")
-            | (
-                "FormalParameter" | "BindingIdentifier" | "ArrayPattern" | "ObjectPattern",
-                "optional"
-            )
+            | ("FormalParameter", "optional")
             | ("MethodDefinition" | "PropertyDefinition", "optional")
     )
 }

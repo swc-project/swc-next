@@ -1237,10 +1237,6 @@ pub trait Visit<'a> {
         <SubRange<Expr> as VisitWith<'a, Self>>::visit_children_with(node, self)
     }
     #[inline]
-    fn visit_opt_ts_type_annotation(&mut self, node: Option<TsTypeAnnotation>) {
-        <Option<TsTypeAnnotation> as VisitWith<'a, Self>>::visit_children_with(node, self);
-    }
-    #[inline]
     fn visit_opt_binding_pattern(&mut self, node: Option<BindingPattern>) {
         <Option<BindingPattern> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
@@ -1259,6 +1255,10 @@ pub trait Visit<'a> {
     #[inline]
     fn visit_variable_declarators(&mut self, node: SubRange<VariableDeclarator>) {
         <SubRange<VariableDeclarator> as VisitWith<'a, Self>>::visit_children_with(node, self)
+    }
+    #[inline]
+    fn visit_opt_ts_type_annotation(&mut self, node: Option<TsTypeAnnotation>) {
+        <Option<TsTypeAnnotation> as VisitWith<'a, Self>>::visit_children_with(node, self);
     }
     #[inline]
     fn visit_opt_expr(&mut self, node: Option<Expr>) {
@@ -2516,10 +2516,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingIdentifier {
         <V as Visit<'a>>::visit_binding_identifier(visitor, self)
     }
     #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        let field_value_1 = self.type_annotation(visitor.ast());
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-    }
+    fn visit_children_with(self, visitor: &mut V) {}
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IdentifierName {
     #[inline]
@@ -2546,10 +2543,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for AssignmentPattern {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.left(visitor.ast());
         let field_value_1 = self.right(visitor.ast());
-        let field_value_2 = self.type_annotation(visitor.ast());
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Expr as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingRestElement {
@@ -2560,9 +2555,7 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingRestElement {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.argument(visitor.ast());
-        let field_value_1 = self.type_annotation(visitor.ast());
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayPattern {
@@ -2574,10 +2567,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ArrayPattern {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.elements(visitor.ast());
         let field_value_1 = self.rest(visitor.ast());
-        let field_value_2 = self.type_annotation(visitor.ast());
         <SubRange<Option<BindingPattern>> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPattern {
@@ -2589,10 +2580,8 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for ObjectPattern {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.properties(visitor.ast());
         let field_value_1 = self.rest(visitor.ast());
-        let field_value_2 = self.type_annotation(visitor.ast());
         <SubRange<BindingProperty> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <Option<BindingRestElement> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BindingProperty {
@@ -2703,9 +2692,11 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for VariableDeclarator {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.id(visitor.ast());
-        let field_value_1 = self.init(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        let field_value_2 = self.init(visitor.ast());
         <BindingPattern as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for IfStatement {
@@ -2819,9 +2810,11 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for CatchClause {
     #[inline]
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.param(visitor.ast());
-        let field_value_1 = self.body(visitor.ast());
+        let field_value_1 = self.type_annotation(visitor.ast());
+        let field_value_2 = self.body(visitor.ast());
         <Option<BindingPattern> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
-        <BlockStatement as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
+        <BlockStatement as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for BreakStatement {
@@ -3122,10 +3115,12 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameter {
     fn visit_children_with(self, visitor: &mut V) {
         let field_value_0 = self.decorators(visitor.ast());
         let field_value_1 = self.pattern(visitor.ast());
-        let field_value_2 = self.initializer(visitor.ast());
+        let field_value_2 = self.type_annotation(visitor.ast());
+        let field_value_3 = self.initializer(visitor.ast());
         <SubRange<Decorator> as VisitWith<'a, V>>::visit_with(field_value_0, visitor);
         <FormalParameterPattern as VisitWith<'a, V>>::visit_with(field_value_1, visitor);
-        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<TsTypeAnnotation> as VisitWith<'a, V>>::visit_with(field_value_2, visitor);
+        <Option<Expr> as VisitWith<'a, V>>::visit_with(field_value_3, visitor);
     }
 }
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for FormalParameterRest {
@@ -5370,19 +5365,6 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<Expr> {
         }
     }
 }
-impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeAnnotation> {
-    #[inline]
-    fn visit_with(self, visitor: &mut V) {
-        <V as Visit<'a>>::visit_opt_ts_type_annotation(visitor, self)
-    }
-    #[inline]
-    fn visit_children_with(self, visitor: &mut V) {
-        match self {
-            Some(it) => it.visit_with(visitor),
-            None => {}
-        }
-    }
-}
 impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<BindingPattern> {
     #[inline]
     fn visit_with(self, visitor: &mut V) {
@@ -5445,6 +5427,19 @@ impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for SubRange<VariableDeclarator
         for child_idx in self.iter() {
             let child = visitor.ast().get_node_in_sub_range(child_idx);
             child.visit_with(visitor);
+        }
+    }
+}
+impl<'a, V: ?Sized + Visit<'a>> VisitWith<'a, V> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn visit_with(self, visitor: &mut V) {
+        <V as Visit<'a>>::visit_opt_ts_type_annotation(visitor, self)
+    }
+    #[inline]
+    fn visit_children_with(self, visitor: &mut V) {
+        match self {
+            Some(it) => it.visit_with(visitor),
+            None => {}
         }
     }
 }
@@ -7128,13 +7123,6 @@ pub trait VisitMut<'a> {
         <SubRange<Expr> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
-    fn visit_mut_opt_ts_type_annotation(
-        &mut self,
-        node: Option<TsTypeAnnotation>,
-    ) -> Option<Option<TsTypeAnnotation>> {
-        <Option<TsTypeAnnotation> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
-    }
-    #[inline]
     fn visit_mut_opt_binding_pattern(
         &mut self,
         node: Option<BindingPattern>,
@@ -7172,6 +7160,13 @@ pub trait VisitMut<'a> {
         <SubRange<VariableDeclarator> as VisitMutWith<'a, Self>>::visit_mut_children_with(
             node, self,
         )
+    }
+    #[inline]
+    fn visit_mut_opt_ts_type_annotation(
+        &mut self,
+        node: Option<TsTypeAnnotation>,
+    ) -> Option<Option<TsTypeAnnotation>> {
+        <Option<TsTypeAnnotation> as VisitMutWith<'a, Self>>::visit_mut_children_with(node, self)
     }
     #[inline]
     fn visit_mut_opt_expr(&mut self, node: Option<Expr>) -> Option<Option<Expr>> {
@@ -8689,12 +8684,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingIdentifier {
     }
     #[inline]
     fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        let field_value = self.type_annotation(visitor.ast());
-        if let Some(field_value) =
-            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
-        {
-            self.set_type_annotation(visitor.ast(), field_value);
-        }
         None
     }
 }
@@ -8737,12 +8726,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for AssignmentPattern {
         {
             self.set_right(visitor.ast(), field_value);
         }
-        let field_value = self.type_annotation(visitor.ast());
-        if let Some(field_value) =
-            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
-        {
-            self.set_type_annotation(visitor.ast(), field_value);
-        }
         None
     }
 }
@@ -8758,12 +8741,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for BindingRestElement {
             <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_argument(visitor.ast(), field_value);
-        }
-        let field_value = self.type_annotation(visitor.ast());
-        if let Some(field_value) =
-            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
-        {
-            self.set_type_annotation(visitor.ast(), field_value);
         }
         None
     }
@@ -8793,12 +8770,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ArrayPattern {
         {
             self.set_rest(visitor.ast(), field_value);
         }
-        let field_value = self.type_annotation(visitor.ast());
-        if let Some(field_value) =
-            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
-        {
-            self.set_type_annotation(visitor.ast(), field_value);
-        }
         None
     }
 }
@@ -8823,12 +8794,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for ObjectPattern {
             )
         {
             self.set_rest(visitor.ast(), field_value);
-        }
-        let field_value = self.type_annotation(visitor.ast());
-        if let Some(field_value) =
-            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
-        {
-            self.set_type_annotation(visitor.ast(), field_value);
         }
         None
     }
@@ -9012,6 +8977,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for VariableDeclarator {
             <BindingPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_id(visitor.ast(), field_value);
+        }
+        let field_value = self.type_annotation(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_type_annotation(visitor.ast(), field_value);
         }
         let field_value = self.init(visitor.ast());
         if let Some(field_value) =
@@ -9224,6 +9195,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for CatchClause {
             <Option<BindingPattern> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_param(visitor.ast(), field_value);
+        }
+        let field_value = self.type_annotation(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_type_annotation(visitor.ast(), field_value);
         }
         let field_value = self.body(visitor.ast());
         if let Some(field_value) =
@@ -9742,6 +9719,12 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for FormalParameter {
             <FormalParameterPattern as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
         {
             self.set_pattern(visitor.ast(), field_value);
+        }
+        let field_value = self.type_annotation(visitor.ast());
+        if let Some(field_value) =
+            <Option<TsTypeAnnotation> as VisitMutWith<'a, V>>::visit_mut_with(field_value, visitor)
+        {
+            self.set_type_annotation(visitor.ast(), field_value);
         }
         let field_value = self.initializer(visitor.ast());
         if let Some(field_value) =
@@ -13012,16 +12995,6 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<Expr> {
         None
     }
 }
-impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeAnnotation> {
-    #[inline]
-    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
-        <V as VisitMut<'a>>::visit_mut_opt_ts_type_annotation(visitor, self)
-    }
-    #[inline]
-    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
-        self.and_then(|it| it.visit_mut_with(visitor).map(Some))
-    }
-}
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<BindingPattern> {
     #[inline]
     fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
@@ -13088,6 +13061,16 @@ impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for SubRange<VariableDecl
             }
         }
         None
+    }
+}
+impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn visit_mut_with(self, visitor: &mut V) -> Option<Self> {
+        <V as VisitMut<'a>>::visit_mut_opt_ts_type_annotation(visitor, self)
+    }
+    #[inline]
+    fn visit_mut_children_with(self, visitor: &mut V) -> Option<Self> {
+        self.and_then(|it| it.visit_mut_with(visitor).map(Some))
     }
 }
 impl<'a, V: ?Sized + VisitMut<'a>> VisitMutWith<'a, V> for Option<Expr> {
@@ -19355,23 +19338,6 @@ impl<'a, State> TraverseWith<'a, State> for SubRange<Expr> {
         }
     }
 }
-impl<'a, State> TraverseWith<'a, State> for Option<TsTypeAnnotation> {
-    #[inline]
-    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
-        self,
-        traverser: &mut T,
-        ctx: &mut TraverseCtx<'_, 'a, State>,
-    ) {
-        if let Some(child) = self {
-            {
-                let node_id = (child).node_id();
-                traverser.enter_node(node_id, ctx);
-                walk_ts_type_annotation(child, traverser, ctx);
-                traverser.exit_node(node_id, ctx);
-            }
-        }
-    }
-}
 impl<'a, State> TraverseWith<'a, State> for Option<BindingPattern> {
     #[inline]
     fn traverse_with<T: ?Sized + Traverse<'a, State>>(
@@ -19461,6 +19427,23 @@ impl<'a, State> TraverseWith<'a, State> for SubRange<VariableDeclarator> {
                 let node_id = (child).node_id();
                 traverser.enter_node(node_id, ctx);
                 walk_variable_declarator(child, traverser, ctx);
+                traverser.exit_node(node_id, ctx);
+            }
+        }
+    }
+}
+impl<'a, State> TraverseWith<'a, State> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn traverse_with<T: ?Sized + Traverse<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseCtx<'_, 'a, State>,
+    ) {
+        if let Some(child) = self {
+            {
+                let node_id = (child).node_id();
+                traverser.enter_node(node_id, ctx);
+                walk_ts_type_annotation(child, traverser, ctx);
                 traverser.exit_node(node_id, ctx);
             }
         }
@@ -21227,15 +21210,6 @@ fn walk_binding_identifier<'a, State, T: ?Sized + Traverse<'a, State>>(
     ctx: &mut TraverseCtx<'_, 'a, State>,
 ) {
     traverser.enter_binding_identifier(node, ctx);
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
-    }
     traverser.exit_binding_identifier(node, ctx);
 }
 #[inline]
@@ -21281,15 +21255,6 @@ fn walk_assignment_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
         traverser.exit_expr(child, ctx);
         traverser.exit_node(node_id, ctx);
     }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
-    }
     traverser.exit_assignment_pattern(node, ctx);
 }
 #[inline]
@@ -21307,15 +21272,6 @@ fn walk_binding_rest_element<'a, State, T: ?Sized + Traverse<'a, State>>(
         walk_binding_pattern(child, traverser, ctx);
         traverser.exit_binding_pattern(child, ctx);
         traverser.exit_node(node_id, ctx);
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
     }
     traverser.exit_binding_rest_element(node, ctx);
 }
@@ -21349,15 +21305,6 @@ fn walk_array_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
             traverser.exit_node(node_id, ctx);
         }
     }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_ts_type_annotation(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
-    }
     traverser.exit_array_pattern(node, ctx);
 }
 #[inline]
@@ -21383,15 +21330,6 @@ fn walk_object_pattern<'a, State, T: ?Sized + Traverse<'a, State>>(
             let node_id = (child).node_id();
             traverser.enter_node(node_id, ctx);
             walk_binding_rest_element(child, traverser, ctx);
-            traverser.exit_node(node_id, ctx);
-        }
-    }
-    let child = node.type_annotation(ctx.ast);
-    if let Some(child) = child {
-        {
-            let node_id = (child).node_id();
-            traverser.enter_node(node_id, ctx);
-            walk_ts_type_annotation(child, traverser, ctx);
             traverser.exit_node(node_id, ctx);
         }
     }
@@ -21611,6 +21549,15 @@ fn walk_variable_declarator<'a, State, T: ?Sized + Traverse<'a, State>>(
         walk_binding_pattern(child, traverser, ctx);
         traverser.exit_binding_pattern(child, ctx);
         traverser.exit_node(node_id, ctx);
+    }
+    let child = node.type_annotation(ctx.ast);
+    if let Some(child) = child {
+        {
+            let node_id = (child).node_id();
+            traverser.enter_node(node_id, ctx);
+            walk_ts_type_annotation(child, traverser, ctx);
+            traverser.exit_node(node_id, ctx);
+        }
     }
     let child = node.init(ctx.ast);
     if let Some(child) = child {
@@ -21895,6 +21842,15 @@ fn walk_catch_clause<'a, State, T: ?Sized + Traverse<'a, State>>(
             traverser.enter_binding_pattern(child, ctx);
             walk_binding_pattern(child, traverser, ctx);
             traverser.exit_binding_pattern(child, ctx);
+            traverser.exit_node(node_id, ctx);
+        }
+    }
+    let child = node.type_annotation(ctx.ast);
+    if let Some(child) = child {
+        {
+            let node_id = (child).node_id();
+            traverser.enter_node(node_id, ctx);
+            walk_ts_type_annotation(child, traverser, ctx);
             traverser.exit_node(node_id, ctx);
         }
     }
@@ -22522,6 +22478,15 @@ fn walk_formal_parameter<'a, State, T: ?Sized + Traverse<'a, State>>(
         walk_formal_parameter_pattern(child, traverser, ctx);
         traverser.exit_formal_parameter_pattern(child, ctx);
         traverser.exit_node(node_id, ctx);
+    }
+    let child = node.type_annotation(ctx.ast);
+    if let Some(child) = child {
+        {
+            let node_id = (child).node_id();
+            traverser.enter_node(node_id, ctx);
+            walk_ts_type_annotation(child, traverser, ctx);
+            traverser.exit_node(node_id, ctx);
+        }
     }
     let child = node.initializer(ctx.ast);
     if let Some(child) = child {
@@ -33706,19 +33671,6 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<Expr> {
         TraverseAction::Continue
     }
 }
-impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeAnnotation> {
-    #[inline]
-    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
-        self,
-        traverser: &mut T,
-        ctx: &mut TraverseMutCtx<'_, 'a, State>,
-    ) -> TraverseAction<Self> {
-        match self {
-            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
-            None => TraverseAction::Continue,
-        }
-    }
-}
 impl<'a, State> TraverseMutWith<'a, State> for Option<BindingPattern> {
     #[inline]
     fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
@@ -33806,6 +33758,19 @@ impl<'a, State> TraverseMutWith<'a, State> for SubRange<VariableDeclarator> {
             }
         }
         TraverseAction::Continue
+    }
+}
+impl<'a, State> TraverseMutWith<'a, State> for Option<TsTypeAnnotation> {
+    #[inline]
+    fn traverse_mut_with<T: ?Sized + TraverseMut<'a, State>>(
+        self,
+        traverser: &mut T,
+        ctx: &mut TraverseMutCtx<'_, 'a, State>,
+    ) -> TraverseAction<Self> {
+        match self {
+            Some(node) => node.traverse_mut_with(traverser, ctx).map(Some),
+            None => TraverseAction::Continue,
+        }
     }
 }
 impl<'a, State> TraverseMutWith<'a, State> for Option<Expr> {
@@ -35908,18 +35873,7 @@ fn walk_mut_binding_identifier<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             return WalkMut::enter(action);
         }
     }
-    let children = 'children: {
-        if traverse_mut_slot(
-            node.type_annotation(ctx.ast),
-            traverser,
-            ctx,
-            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
-        ) {
-            std::hint::cold_path();
-            break 'children WalkMut::Stopped;
-        }
-        WalkMut::Continue
-    };
+    let children = WalkMut::Continue;
     match traverser.exit_binding_identifier(node, ctx) {
         TraverseAction::Continue => children,
         action => {
@@ -35998,15 +35952,6 @@ fn walk_mut_assignment_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }
-        if traverse_mut_slot(
-            node.type_annotation(ctx.ast),
-            traverser,
-            ctx,
-            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
-        ) {
-            std::hint::cold_path();
-            break 'children WalkMut::Stopped;
-        }
         WalkMut::Continue
     };
     match traverser.exit_assignment_pattern(node, ctx) {
@@ -36036,15 +35981,6 @@ fn walk_mut_binding_rest_element<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             traverser,
             ctx,
             |ctx, replacement| node.set_argument(ctx.ast, replacement),
-        ) {
-            std::hint::cold_path();
-            break 'children WalkMut::Stopped;
-        }
-        if traverse_mut_slot(
-            node.type_annotation(ctx.ast),
-            traverser,
-            ctx,
-            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
         ) {
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
@@ -36088,15 +36024,6 @@ fn walk_mut_array_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }
-        if traverse_mut_slot(
-            node.type_annotation(ctx.ast),
-            traverser,
-            ctx,
-            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
-        ) {
-            std::hint::cold_path();
-            break 'children WalkMut::Stopped;
-        }
         WalkMut::Continue
     };
     match traverser.exit_array_pattern(node, ctx) {
@@ -36133,15 +36060,6 @@ fn walk_mut_object_pattern<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         if traverse_mut_slot(node.rest(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_rest(ctx.ast, replacement)
         }) {
-            std::hint::cold_path();
-            break 'children WalkMut::Stopped;
-        }
-        if traverse_mut_slot(
-            node.type_annotation(ctx.ast),
-            traverser,
-            ctx,
-            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
-        ) {
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }
@@ -36463,6 +36381,15 @@ fn walk_mut_variable_declarator<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         if traverse_mut_slot(node.id(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_id(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
+            break 'children WalkMut::Stopped;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }
@@ -36802,6 +36729,15 @@ fn walk_mut_catch_clause<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         if traverse_mut_slot(node.param(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_param(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
+            break 'children WalkMut::Stopped;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }
@@ -37674,6 +37610,15 @@ fn walk_mut_formal_parameter<'a, State, T: ?Sized + TraverseMut<'a, State>>(
         if traverse_mut_slot(node.pattern(ctx.ast), traverser, ctx, |ctx, replacement| {
             node.set_pattern(ctx.ast, replacement)
         }) {
+            std::hint::cold_path();
+            break 'children WalkMut::Stopped;
+        }
+        if traverse_mut_slot(
+            node.type_annotation(ctx.ast),
+            traverser,
+            ctx,
+            |ctx, replacement| node.set_type_annotation(ctx.ast, replacement),
+        ) {
             std::hint::cold_path();
             break 'children WalkMut::Stopped;
         }

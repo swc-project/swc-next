@@ -1195,9 +1195,7 @@ impl DecoratorPass<'_, '_, '_> {
         let mut props = Vec::new();
         if !e_lhs.is_empty() {
             let elems = self.ast.add_sub_range(e_lhs);
-            let value = BindingPattern::ArrayPattern(
-                self.ast.array_pattern(DUMMY_SP, elems, None, None, false),
-            );
+            let value = BindingPattern::ArrayPattern(self.ast.array_pattern(DUMMY_SP, elems, None));
             let key_name = self.ast.add_utf8("e");
             let key = PropertyKey::IdentifierName(self.ast.identifier_name(DUMMY_SP, key_name));
             props.push(
@@ -1208,9 +1206,7 @@ impl DecoratorPass<'_, '_, '_> {
         if !self.state.class_lhs.is_empty() {
             let class_lhs = mem::take(&mut self.state.class_lhs);
             let elems = self.ast.add_sub_range(class_lhs);
-            let value = BindingPattern::ArrayPattern(
-                self.ast.array_pattern(DUMMY_SP, elems, None, None, false),
-            );
+            let value = BindingPattern::ArrayPattern(self.ast.array_pattern(DUMMY_SP, elems, None));
             let key_name = self.ast.add_utf8("c");
             let key = PropertyKey::IdentifierName(self.ast.identifier_name(DUMMY_SP, key_name));
             props.push(
@@ -1220,13 +1216,8 @@ impl DecoratorPass<'_, '_, '_> {
         }
 
         let props_range = self.ast.add_sub_range(props);
-        let obj_pat = BindingPattern::ObjectPattern(self.ast.object_pattern(
-            DUMMY_SP,
-            props_range,
-            None,
-            None,
-            false,
-        ));
+        let obj_pat =
+            BindingPattern::ObjectPattern(self.ast.object_pattern(DUMMY_SP, props_range, None));
         let left = build::assignment_target(self.ast, self.ctx.resolver, obj_pat);
         let callee = self.ctx.helper(self.ast, "apply_decs_2311");
         let call = build::call(self.ast, callee, combined_args, false);
@@ -1666,6 +1657,8 @@ impl DecoratorPass<'_, '_, '_> {
                                         SubRange::empty(),
                                         FormalParameterPattern::BindingIdentifier(binding),
                                         None,
+                                        None,
+                                        false,
                                     ),
                                 ));
                             }

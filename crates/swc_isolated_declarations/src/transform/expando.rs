@@ -79,7 +79,7 @@ impl<'ast> Transformer<'_, 'ast> {
                         else {
                             continue;
                         };
-                        if declarator.id(ast).type_annotation(ast).is_some()
+                        if declarator.type_annotation(ast).is_some()
                             || !declarator.init(ast).is_some_and(|initializer| {
                                 let initializer = unparenthesized(initializer, ast);
                                 matches!(

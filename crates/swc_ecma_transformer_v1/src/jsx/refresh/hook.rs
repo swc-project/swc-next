@@ -77,6 +77,7 @@ impl<'a, 'ast> HookRegister<'a, 'ast> {
                 self.ast.variable_declarator(
                     DUMMY_SP,
                     BindingPattern::BindingIdentifier(id),
+                    None,
                     Some(init),
                     false,
                 )

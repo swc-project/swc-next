@@ -21,7 +21,7 @@ test("parser options use strings without enum value exports", () => {
   assert.ok(result instanceof AstView);
   assert.equal(result.meta.sourceType, "script");
   assert.deepEqual(result.comments, []);
-  assert.equal(result.program.body.get(0).declarators.get(0).id.typeAnnotation.type, "TsTypeAnnotation");
+  assert.equal(result.program.body.get(0).declarators.get(0).typeAnnotation.type, "TsTypeAnnotation");
 });
 
 test("decoder preserves nested types through the lazy program getter", () => {

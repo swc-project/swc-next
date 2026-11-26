@@ -3041,7 +3041,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             } else {
                 None
             };
-        id.set_type_annotation(&mut self.ast, type_annotation);
         let init = if self.eat(TokenTag::Assign)? {
             let expression =
                 self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?;
@@ -3086,10 +3085,13 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 );
             }
         }
-        Some(
-            self.ast
-                .variable_declarator(Span::new(start, end), id, init, definite),
-        )
+        Some(self.ast.variable_declarator(
+            Span::new(start, end),
+            id,
+            type_annotation,
+            init,
+            definite,
+        ))
     }
 
     // Keep identifier validation and binding construction in the caller.
@@ -3305,7 +3307,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 generator,
                 opts.is_async,
                 opts.is_declare,
-                false,
             );
             Some(ParsedFunction::TsFunction(function))
         }
@@ -4007,7 +4008,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 modifiers.is_generator,
                 modifiers.is_async,
                 false,
-                true,
             );
             let method = self.ast.ts_method_definition(
                 method_span,
@@ -4344,8 +4344,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             type_annotation,
             initializer,
         } = self.parse_parameter_suffix::<IS_TYPESCRIPT>(cover_initializer)?;
-        pattern.set_type_annotation(&mut self.ast, type_annotation);
-        pattern.set_optional(&mut self.ast, optional);
         let end = self.lexer.state.prev_token_end;
         let parameter_decorators = if modifiers.present {
             SubRange::empty()
@@ -4361,7 +4359,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             Span::new(parameter_start, end),
             parameter_decorators,
             pattern,
+            type_annotation,
             initializer,
+            optional,
         );
         if modifiers.present {
             let property = self.ast.ts_parameter_property(
@@ -4866,7 +4866,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         };
         let name = identifier.name(&self.ast);
         self.validate_identifier(parts.name_token, IdentifierRole::Binding);
-        let local = self.ast.binding_identifier(local_span, name, None, false);
+        let local = self.ast.binding_identifier(local_span, name);
         Some(self.ast.import_specifier(
             Span::new(start, local_span.end),
             imported,
@@ -9401,11 +9401,11 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
         debug_assert_eq!(self.current_token.tag(), TokenTag::Catch);
         let start = self.current_token.start();
         self.advance()?;
+        let mut type_annotation = None;
         let param = if self.eat(TokenTag::LeftParen)? {
             let param = self.parse_binding_pattern()?;
             if self.lang.is_typescript() && self.current_token.tag() == TokenTag::Colon {
-                let annotation = self.parse_type_annotation()?;
-                param.set_type_annotation(&mut self.ast, Some(annotation));
+                type_annotation = self.parse_type_annotation()?.into();
             }
             if !self.expect(
                 TokenTag::RightParen,
@@ -9419,10 +9419,12 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             None
         };
         let body = self.parse_block_statement()?;
-        Some(
-            self.ast
-                .catch_clause(Span::new(start, body.span(&self.ast).end), param, body),
-        )
+        Some(self.ast.catch_clause(
+            Span::new(start, body.span(&self.ast).end),
+            param,
+            type_annotation,
+            body,
+        ))
     }
 
     // Expression[In, Yield, Await] :
@@ -10912,11 +10914,15 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             }
             None => (None, cover_initializer, false),
         };
-        pattern.set_type_annotation(&mut self.ast, type_annotation);
-        pattern.set_optional(&mut self.ast, optional);
         Some(FormalParameterItem::FormalParameter(
-            self.ast
-                .formal_parameter(span, SubRange::empty(), pattern, initializer),
+            self.ast.formal_parameter(
+                span,
+                SubRange::empty(),
+                pattern,
+                type_annotation,
+                initializer,
+                optional,
+            ),
         ))
     }
 
@@ -10945,12 +10951,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 ))
             }
             ExprData::IdentifierReference(identifier) => {
-                let binding = self.ast.binding_identifier(
-                    identifier.span(&self.ast),
-                    identifier.name(&self.ast),
-                    None,
-                    false,
-                );
+                let binding = self
+                    .ast
+                    .binding_identifier(identifier.span(&self.ast), identifier.name(&self.ast));
 
                 Some(BindingPattern::BindingIdentifier(binding))
             }
@@ -11046,9 +11049,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let left =
                     self.assignment_target_to_pattern(assignment.left(&self.ast), context)?;
                 let right = assignment.right(&self.ast);
-                let pattern =
-                    self.ast
-                        .assignment_pattern(assignment.span(&self.ast), left, right, None);
+                let pattern = self
+                    .ast
+                    .assignment_pattern(assignment.span(&self.ast), left, right);
 
                 Some(BindingPattern::AssignmentPattern(pattern))
             }
@@ -11200,9 +11203,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let rest_element =
-                            self.ast
-                                .binding_rest_element(spread.span(&self.ast), argument, None);
+                        let rest_element = self
+                            .ast
+                            .binding_rest_element(spread.span(&self.ast), argument);
 
                         if index + 1 == source_elements_len {
                             rest = Some(rest_element);
@@ -11218,7 +11221,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         (*node != none)
                             .then(|| unsafe { BindingPattern::from_node_id_unchecked(*node) })
                     }));
-            Some(self.ast.array_pattern(span, elements, rest, None, false))
+            Some(self.ast.array_pattern(span, elements, rest))
         })();
         self.cover.scratch.reset(checkpoint);
         result
@@ -11356,16 +11359,16 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                                 },
                             );
                         }
-                        let temporary =
-                            self.ast
-                                .binding_rest_element(spread.span(&self.ast), argument, None);
+                        let temporary = self
+                            .ast
+                            .binding_rest_element(spread.span(&self.ast), argument);
                         rest = Some(temporary);
                         break;
                     }
                 }
             }
             let properties = self.add_extra_from_scratch_cover(checkpoint);
-            Some(self.ast.object_pattern(span, properties, rest, None, false))
+            Some(self.ast.object_pattern(span, properties, rest))
         })();
         self.cover.scratch.reset(checkpoint);
         result
@@ -11387,8 +11390,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         let binding = self.ast.binding_identifier(
                             identifier.span(&self.ast),
                             identifier.name(&self.ast),
-                            None,
-                            false,
                         );
 
                         Some(BindingPattern::BindingIdentifier(binding))
@@ -11464,7 +11465,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         assignment.span(&self.ast),
                         left,
                         assignment.right(&self.ast),
-                        assignment.type_annotation(&self.ast),
                     ),
                 ))
             }
@@ -11472,11 +11472,8 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                 let argument =
                     self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
                 Some(BindingPattern::BindingRestElement(
-                    self.ast.binding_rest_element(
-                        rest.span(&self.ast),
-                        argument,
-                        rest.type_annotation(&self.ast),
-                    ),
+                    self.ast
+                        .binding_rest_element(rest.span(&self.ast), argument),
                 ))
             }
             BindingPatternData::ArrayPattern(array) => {
@@ -11495,11 +11492,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let rest = if let Some(rest) = array.rest(&self.ast) {
                         let argument =
                             self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
-                        Some(self.ast.binding_rest_element(
-                            rest.span(&self.ast),
-                            argument,
-                            rest.type_annotation(&self.ast),
-                        ))
+                        Some(
+                            self.ast
+                                .binding_rest_element(rest.span(&self.ast), argument),
+                        )
                     } else {
                         None
                     };
@@ -11516,8 +11512,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         array.span(&self.ast),
                         elements,
                         rest,
-                        array.type_annotation(&self.ast),
-                        false,
                     )))
                 })();
                 self.cover.scratch.reset(checkpoint);
@@ -11543,11 +11537,10 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                     let rest = if let Some(rest) = object.rest(&self.ast) {
                         let argument =
                             self.assignment_pattern_to_binding_pattern(rest.argument(&self.ast))?;
-                        Some(self.ast.binding_rest_element(
-                            rest.span(&self.ast),
-                            argument,
-                            rest.type_annotation(&self.ast),
-                        ))
+                        Some(
+                            self.ast
+                                .binding_rest_element(rest.span(&self.ast), argument),
+                        )
                     } else {
                         None
                     };
@@ -11556,8 +11549,6 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
                         object.span(&self.ast),
                         properties,
                         rest,
-                        object.type_annotation(&self.ast),
-                        false,
                     )))
                 })();
                 self.cover.scratch.reset(checkpoint);
@@ -14289,7 +14280,7 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
     ) -> Option<BindingIdentifier> {
         let token = self.consume_identifier(role)?;
         let name = self.identifier_name(token);
-        Some(self.ast.binding_identifier(token.span(), name, None, false))
+        Some(self.ast.binding_identifier(token.span(), name))
     }
 
     fn parse_label_identifier(&mut self) -> Option<LabelIdentifier> {
@@ -16170,7 +16161,6 @@ mod tests {
                 errors,
                 text(declarator.id(ast).span(ast)),
                 declarator
-                    .id(ast)
                     .type_annotation(ast)
                     .map(|annotation| text(annotation.span(ast))),
                 declarator.init(ast).map(|init| text(init.span(ast))),
@@ -16840,7 +16830,7 @@ mod tests {
             assert!(variable.declare(&ast));
             assert_eq!(variable.declarators(&ast).len(), 1);
             let declarator = variable.declarators(&ast).get_node(&ast, 0).unwrap();
-            assert!(declarator.id(&ast).type_annotation(&ast).is_some());
+            assert!(declarator.type_annotation(&ast).is_some());
             assert!(declarator.init(&ast).is_none());
             let binding = declarator.id(&ast);
             let name = if let Some(identifier) = binding.as_binding_identifier(&ast) {

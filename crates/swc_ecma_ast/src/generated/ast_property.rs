@@ -2469,46 +2469,9 @@ impl BindingIdentifier {
         unsafe { ast.nodes.data_unchecked(self.0).binding_identifier.name }
     }
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .binding_identifier
-                .type_annotation
-        };
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        unsafe { ast.nodes.data_unchecked(self.0).binding_identifier.optional }
-    }
-    #[inline]
     pub fn set_name<'a>(self, ast: &mut crate::Ast<'a>, name: AstUtf8) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).binding_identifier.name = name;
-        }
-    }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .binding_identifier
-                .type_annotation = field_val;
-        }
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .binding_identifier
-                .optional = optional;
         }
     }
 }
@@ -2546,16 +2509,6 @@ impl AssignmentPattern {
         unsafe { ast.nodes.data_unchecked(self.0).assignment_pattern.right }
     }
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .assignment_pattern
-                .type_annotation
-        };
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
     pub fn set_left<'a>(self, ast: &mut crate::Ast<'a>, left: BindingPattern) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).assignment_pattern.left = left;
@@ -2570,20 +2523,6 @@ impl AssignmentPattern {
                 .right = right;
         }
     }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .assignment_pattern
-                .type_annotation = field_val;
-        }
-    }
 }
 impl BindingRestElement {
     #[inline]
@@ -2596,16 +2535,6 @@ impl BindingRestElement {
         }
     }
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .binding_rest_element
-                .type_annotation
-        };
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
     pub fn set_argument<'a>(self, ast: &mut crate::Ast<'a>, argument: BindingPattern) {
         unsafe {
             ast.nodes
@@ -2614,58 +2543,25 @@ impl BindingRestElement {
                 .argument = argument;
         }
     }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .binding_rest_element
-                .type_annotation = field_val;
-        }
-    }
 }
 impl ArrayPattern {
+    #[inline]
+    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
+        unsafe { ast.nodes.data_unchecked(self.0).array_pattern.elements }
+    }
     #[inline]
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw = unsafe { ast.nodes.data_unchecked(self.0).array_pattern.rest };
         (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .array_pattern
-                .type_annotation
-        };
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        unsafe { ast.nodes.data_unchecked(self.0).array_pattern.optional }
-    }
-    #[inline]
-    pub fn elements<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Option<BindingPattern>> {
-        let start = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .array_pattern
-                .extra_data_start
-                .index()
-        };
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
+    pub fn set_elements<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        elements: SubRange<Option<BindingPattern>>,
+    ) {
         unsafe {
-            {
-                let range = (ast.read_extra_data(offset)).sub_range;
-                SubRange::new(range.start, range.end)
-            }
+            ast.nodes.data_mut_unchecked(self.0).array_pattern.elements = elements;
         }
     }
     #[inline]
@@ -2675,117 +2571,16 @@ impl ArrayPattern {
             ast.nodes.data_mut_unchecked(self.0).array_pattern.rest = field_val;
         }
     }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .array_pattern
-                .type_annotation = field_val;
-        }
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        unsafe {
-            ast.nodes.data_mut_unchecked(self.0).array_pattern.optional = optional;
-        }
-    }
-    #[inline]
-    pub fn set_elements<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        elements: SubRange<Option<BindingPattern>>,
-    ) {
-        let start = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .array_pattern
-                .extra_data_start
-                .index()
-        };
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            ast.write_extra_data(
-                offset,
-                ExtraData {
-                    sub_range: SubRange::new((elements).start, (elements).end),
-                },
-            );
-        }
-    }
 }
 impl ObjectPattern {
+    #[inline]
+    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
+        unsafe { ast.nodes.data_unchecked(self.0).object_pattern.properties }
+    }
     #[inline]
     pub fn rest<'a>(self, ast: &crate::Ast<'a>) -> Option<BindingRestElement> {
         let raw = unsafe { ast.nodes.data_unchecked(self.0).object_pattern.rest };
         (raw != u32::MAX).then(|| BindingRestElement(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
-        let raw = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .object_pattern
-                .type_annotation
-        };
-        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
-    }
-    #[inline]
-    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        unsafe { ast.nodes.data_unchecked(self.0).object_pattern.optional }
-    }
-    #[inline]
-    pub fn properties<'a>(self, ast: &crate::Ast<'a>) -> SubRange<BindingProperty> {
-        let start = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .object_pattern
-                .extra_data_start
-                .index()
-        };
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
-        unsafe {
-            {
-                let range = (ast.read_extra_data(offset)).sub_range;
-                SubRange::new(range.start, range.end)
-            }
-        }
-    }
-    #[inline]
-    pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<BindingRestElement>) {
-        let field_val: u32 = rest.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        unsafe {
-            ast.nodes.data_mut_unchecked(self.0).object_pattern.rest = field_val;
-        }
-    }
-    #[inline]
-    pub fn set_type_annotation<'a>(
-        self,
-        ast: &mut crate::Ast<'a>,
-        type_annotation: Option<TsTypeAnnotation>,
-    ) {
-        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
-        unsafe {
-            ast.nodes
-                .data_mut_unchecked(self.0)
-                .object_pattern
-                .type_annotation = field_val;
-        }
-    }
-    #[inline]
-    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
-        unsafe {
-            ast.nodes.data_mut_unchecked(self.0).object_pattern.optional = optional;
-        }
     }
     #[inline]
     pub fn set_properties<'a>(
@@ -2793,23 +2588,18 @@ impl ObjectPattern {
         ast: &mut crate::Ast<'a>,
         properties: SubRange<BindingProperty>,
     ) {
-        let start = unsafe {
-            ast.nodes
-                .data_unchecked(self.0)
-                .object_pattern
-                .extra_data_start
-                .index()
-        };
-        let offset = unsafe { start.unchecked_add(0usize) };
-        debug_assert!(offset + 2usize <= ast.extra_data.len());
-        let offset = ExtraDataId::from_usize_unchecked(offset);
         unsafe {
-            ast.write_extra_data(
-                offset,
-                ExtraData {
-                    sub_range: SubRange::new((properties).start, (properties).end),
-                },
-            );
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .object_pattern
+                .properties = properties;
+        }
+    }
+    #[inline]
+    pub fn set_rest<'a>(self, ast: &mut crate::Ast<'a>, rest: Option<BindingRestElement>) {
+        let field_val: u32 = rest.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        unsafe {
+            ast.nodes.data_mut_unchecked(self.0).object_pattern.rest = field_val;
         }
     }
 }
@@ -3161,6 +2951,16 @@ impl VariableDeclarator {
         unsafe { ast.nodes.data_unchecked(self.0).variable_declarator.id }
     }
     #[inline]
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let raw = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .variable_declarator
+                .type_annotation
+        };
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
     pub fn init<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
         let raw = unsafe { ast.nodes.data_unchecked(self.0).variable_declarator.init };
         (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
@@ -3178,6 +2978,20 @@ impl VariableDeclarator {
     pub fn set_id<'a>(self, ast: &mut crate::Ast<'a>, id: BindingPattern) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).variable_declarator.id = id;
+        }
+    }
+    #[inline]
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        unsafe {
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .variable_declarator
+                .type_annotation = field_val;
         }
     }
     #[inline]
@@ -3456,6 +3270,16 @@ impl CatchClause {
         (raw != u32::MAX).then(|| BindingPattern(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
+        let raw = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .catch_clause
+                .type_annotation
+        };
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
+    }
+    #[inline]
     pub fn body<'a>(self, ast: &crate::Ast<'a>) -> BlockStatement {
         unsafe { ast.nodes.data_unchecked(self.0).catch_clause.body }
     }
@@ -3464,6 +3288,20 @@ impl CatchClause {
         let field_val: u32 = param.map_or(u32::MAX, |node| node.node_id().index() as u32);
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).catch_clause.param = field_val;
+        }
+    }
+    #[inline]
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
+        unsafe {
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .catch_clause
+                .type_annotation = field_val;
         }
     }
     #[inline]
@@ -4759,30 +4597,59 @@ impl FormalParameters {
 }
 impl FormalParameter {
     #[inline]
-    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
-        unsafe { ast.nodes.data_unchecked(self.0).formal_parameter.decorators }
-    }
-    #[inline]
     pub fn pattern<'a>(self, ast: &crate::Ast<'a>) -> FormalParameterPattern {
         unsafe { ast.nodes.data_unchecked(self.0).formal_parameter.pattern }
     }
     #[inline]
-    pub fn initializer<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
+    pub fn type_annotation<'a>(self, ast: &crate::Ast<'a>) -> Option<TsTypeAnnotation> {
         let raw = unsafe {
             ast.nodes
                 .data_unchecked(self.0)
                 .formal_parameter
-                .initializer
+                .type_annotation
         };
-        (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+        (raw != u32::MAX).then(|| TsTypeAnnotation(NodeId::from_raw_unchecked(raw)))
     }
     #[inline]
-    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
-        unsafe {
+    pub fn optional<'a>(self, ast: &crate::Ast<'a>) -> bool {
+        unsafe { ast.nodes.data_unchecked(self.0).formal_parameter.optional }
+    }
+    #[inline]
+    pub fn decorators<'a>(self, ast: &crate::Ast<'a>) -> SubRange<Decorator> {
+        let start = unsafe {
             ast.nodes
-                .data_mut_unchecked(self.0)
+                .data_unchecked(self.0)
                 .formal_parameter
-                .decorators = decorators;
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            {
+                let range = (ast.read_extra_data(offset)).sub_range;
+                SubRange::new(range.start, range.end)
+            }
+        }
+    }
+    #[inline]
+    pub fn initializer<'a>(self, ast: &crate::Ast<'a>) -> Option<Expr> {
+        let start = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .formal_parameter
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            {
+                let raw = (ast.extra_data.get_unchecked(offset)).optional_node_id;
+                (raw != u32::MAX).then(|| Expr(NodeId::from_raw_unchecked(raw)))
+            }
         }
     }
     #[inline]
@@ -4795,13 +4662,66 @@ impl FormalParameter {
         }
     }
     #[inline]
-    pub fn set_initializer<'a>(self, ast: &mut crate::Ast<'a>, initializer: Option<Expr>) {
-        let field_val: u32 = initializer.map_or(u32::MAX, |node| node.node_id().index() as u32);
+    pub fn set_type_annotation<'a>(
+        self,
+        ast: &mut crate::Ast<'a>,
+        type_annotation: Option<TsTypeAnnotation>,
+    ) {
+        let field_val: u32 = type_annotation.map_or(u32::MAX, |node| node.node_id().index() as u32);
         unsafe {
             ast.nodes
                 .data_mut_unchecked(self.0)
                 .formal_parameter
-                .initializer = field_val;
+                .type_annotation = field_val;
+        }
+    }
+    #[inline]
+    pub fn set_optional<'a>(self, ast: &mut crate::Ast<'a>, optional: bool) {
+        unsafe {
+            ast.nodes
+                .data_mut_unchecked(self.0)
+                .formal_parameter
+                .optional = optional;
+        }
+    }
+    #[inline]
+    pub fn set_decorators<'a>(self, ast: &mut crate::Ast<'a>, decorators: SubRange<Decorator>) {
+        let start = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .formal_parameter
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(0usize) };
+        debug_assert!(offset + 2usize <= ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            ast.write_extra_data(
+                offset,
+                ExtraData {
+                    sub_range: SubRange::new((decorators).start, (decorators).end),
+                },
+            );
+        }
+    }
+    #[inline]
+    pub fn set_initializer<'a>(self, ast: &mut crate::Ast<'a>, initializer: Option<Expr>) {
+        let start = unsafe {
+            ast.nodes
+                .data_unchecked(self.0)
+                .formal_parameter
+                .extra_data_start
+                .index()
+        };
+        let offset = unsafe { start.unchecked_add(2usize) };
+        debug_assert!(offset < ast.extra_data.len());
+        let offset = ExtraDataId::from_usize_unchecked(offset);
+        unsafe {
+            *ast.extra_data.get_unchecked_mut(offset) = ExtraDataUnit {
+                optional_node_id: (initializer)
+                    .map_or(u32::MAX, |node| node.node_id().index() as u32),
+            };
         }
     }
 }
@@ -7318,10 +7238,6 @@ impl TsFunction {
         unsafe { ast.nodes.data_unchecked(self.0).ts_function.declare }
     }
     #[inline]
-    pub fn is_method<'a>(self, ast: &crate::Ast<'a>) -> bool {
-        unsafe { ast.nodes.data_unchecked(self.0).ts_function.is_method }
-    }
-    #[inline]
     pub fn this_param<'a>(self, ast: &crate::Ast<'a>) -> Option<TsThisParameter> {
         let start = unsafe {
             ast.nodes
@@ -7410,12 +7326,6 @@ impl TsFunction {
     pub fn set_declare<'a>(self, ast: &mut crate::Ast<'a>, declare: bool) {
         unsafe {
             ast.nodes.data_mut_unchecked(self.0).ts_function.declare = declare;
-        }
-    }
-    #[inline]
-    pub fn set_is_method<'a>(self, ast: &mut crate::Ast<'a>, is_method: bool) {
-        unsafe {
-            ast.nodes.data_mut_unchecked(self.0).ts_function.is_method = is_method;
         }
     }
     #[inline]

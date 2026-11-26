@@ -539,13 +539,8 @@ function encPrivateIdentifier(n) {
 
 function encBindingIdentifier(n) {
   const v_0 = n.name;
-  const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-  const v_2 = n.optional ? 1 : 0;
-  isTs |= v_2;
   const index = allocNode(13, n.start, n.end);
   encStr(v_0, payload, index * 16 + 0);
-  setPayloadU32(index, 8, v_1);
-  setPayloadU8(index, 12, v_2);
   return index;
 }
 
@@ -566,20 +561,16 @@ function encLabelIdentifier(n) {
 function encAssignmentPattern(n) {
   const v_0 = encBindingPattern(n.left);
   const v_1 = encExpr(n.right);
-  const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(16, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  setPayloadU32(index, 8, v_2);
   return index;
 }
 
 function encBindingRestElement(n) {
   const v_0 = encBindingPattern(n.argument);
-  const v_1 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
   const index = allocNode(17, n.start, n.end);
   setPayloadU32(index, 0, v_0);
-  setPayloadU32(index, 4, v_1);
   return index;
 }
 
@@ -597,16 +588,9 @@ function encArrayPattern(n) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
-  const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-  const v_3 = n.optional ? 1 : 0;
-  isTs |= v_3;
-  const extraId = allocExtra(2);
   const index = allocNode(18, n.start, n.end);
-  setPayloadU32(index, 12, extraId);
-  writeRange(v_0, _itemCount, extra, (extraId + 0) * 4);
-  setPayloadU32(index, 0, v_1);
-  setPayloadU32(index, 4, v_2);
-  setPayloadU8(index, 8, v_3);
+  writeRange(v_0, _itemCount, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
   return index;
 }
 
@@ -633,16 +617,9 @@ function encObjectPattern(n) {
   }
   const v_0 = _itemsStart;
   const v_1 = _rest == null ? NULL : encBindingRestElement(_rest);
-  const v_2 = n.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.typeAnnotation);
-  const v_3 = n.optional ? 1 : 0;
-  isTs |= v_3;
-  const extraId = allocExtra(2);
   const index = allocNode(19, n.start, n.end);
-  setPayloadU32(index, 12, extraId);
-  writeRange(v_0, _itemCount, extra, (extraId + 0) * 4);
-  setPayloadU32(index, 0, v_1);
-  setPayloadU32(index, 4, v_2);
-  setPayloadU8(index, 8, v_3);
+  writeRange(v_0, _itemCount, payload, index * 16 + 0);
+  setPayloadU32(index, 8, v_1);
   return index;
 }
 
@@ -737,13 +714,15 @@ function encVariableDeclaration(n) {
 
 function encVariableDeclarator(n) {
   const v_0 = encBindingPattern(n.id);
-  const v_1 = n.init == null ? NULL : encExpr(n.init);
-  const v_2 = n.definite ? 1 : 0;
-  isTs |= v_2;
+  const v_1 = n.id?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.id?.typeAnnotation);
+  const v_2 = n.init == null ? NULL : encExpr(n.init);
+  const v_3 = n.definite ? 1 : 0;
+  isTs |= v_3;
   const index = allocNode(28, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
-  setPayloadU8(index, 8, v_2);
+  setPayloadU32(index, 8, v_2);
+  setPayloadU8(index, 12, v_3);
   return index;
 }
 
@@ -826,10 +805,12 @@ function encTryStatement(n) {
 
 function encCatchClause(n) {
   const v_0 = n.param == null ? NULL : encBindingPattern(n.param);
-  const v_1 = encBlockStatement(n.body);
+  const v_1 = n.param?.typeAnnotation == null ? NULL : encTsTypeAnnotation(n.param?.typeAnnotation);
+  const v_2 = encBlockStatement(n.body);
   const index = allocNode(36, n.start, n.end);
   setPayloadU32(index, 0, v_0);
   setPayloadU32(index, 4, v_1);
+  setPayloadU32(index, 8, v_2);
   return index;
 }
 
@@ -1142,17 +1123,23 @@ function encFormalParameter(n) {
   const _initializer = _hasInitializer ? n.right : null;
   const v_0 = encArray(n.decorators, encDecorator, false);
   const v_1 = encFormalParameterPattern(_pattern);
-  const v_2 = _initializer == null ? NULL : encExpr(_initializer);
-  isTs |= (n.decorators?.length ?? 0);
-  if (_pattern.optional && _pattern.typeAnnotation == null && _hasInitializer) {
+  const v_2 = _pattern.typeAnnotation == null ? NULL : encTsTypeAnnotation(_pattern.typeAnnotation);
+  const v_3 = _initializer == null ? NULL : encExpr(_initializer);
+  const v_4 = _pattern.optional ? 1 : 0;
+  isTs |= (n.decorators?.length ?? 0) | v_4;
+  if (v_4 && v_2 === NULL && v_3 !== NULL) {
     const span = v_1 * 2;
     // Undo the decoder's optional-marker extension without underflowing empty spans.
     spans[span + 1] -= spans[span + 1] > spans[span];
   }
+  const extraId = allocExtra(3);
   const index = allocNode(59, n.start, n.end);
-  writeArrayRange(v_0, n.decorators, payload, index * 16 + 0);
-  setPayloadU32(index, 8, v_1);
-  setPayloadU32(index, 12, v_2);
+  setPayloadU32(index, 12, extraId);
+  writeArrayRange(v_0, n.decorators, extra, (extraId + 0) * 4);
+  setPayloadU32(index, 0, v_1);
+  setPayloadU32(index, 4, v_2);
+  setExtraU32(extraId + 2, 0, v_3);
+  setPayloadU8(index, 8, v_4);
   return index;
 }
 
@@ -1464,7 +1451,6 @@ function encTsFunction(n, parameterKind = "formal") {
   const v_5 = n.generator ? 1 : 0;
   const v_6 = n.async ? 1 : 0;
   const v_7 = n.declare ? 1 : 0;
-  const v_8 = n.type === "TSEmptyBodyFunctionExpression" ? 1 : 0;
   const extraId = allocExtra(3);
   const index = allocNode(87, n.start, n.end);
   setPayloadU32(index, 12, extraId);
@@ -1476,7 +1462,6 @@ function encTsFunction(n, parameterKind = "formal") {
   setPayloadU8(index, 8, v_5);
   setPayloadU8(index, 9, v_6);
   setPayloadU8(index, 10, v_7);
-  setPayloadU8(index, 11, v_8);
   return index;
 }
 

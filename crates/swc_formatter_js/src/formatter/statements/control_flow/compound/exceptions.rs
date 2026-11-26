@@ -216,7 +216,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         );
         let body_start = body.node.span(ast).start;
         let binding = if let Some(pattern) = node.param(ast) {
-            if let Some(annotation) = pattern.type_annotation(ast) {
+            if let Some(annotation) = node.type_annotation(ast) {
                 Some(CatchBinding::Annotated(
                     self.prepare_annotated_catch_binding(
                         pattern,

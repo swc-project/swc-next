@@ -111,12 +111,13 @@ test("native spans and parameter lists retain their owning nodes", () => {
   assert.equal(fn.get("params").get("items").get(0).end, end);
 
   const annotationAst = parseSync("let value: string;", typescript);
-  const binding = annotationAst.program.body.get(0).declarators.get(0).id;
-  const annotationEnd = binding.typeAnnotation.end;
+  const declaration = annotationAst.program.body.get(0).declarators.get(0);
+  const binding = declaration.id;
+  const annotationEnd = declaration.typeAnnotation.end;
   const bindingEnd = binding.end - 1;
   binding.end = bindingEnd;
   assert.equal(binding.end, bindingEnd);
-  assert.equal(binding.typeAnnotation.end, annotationEnd);
+  assert.equal(declaration.typeAnnotation.end, annotationEnd);
 
   const decoratorAst = parseSync("class C { method(@dec value: string) {} }", typescript);
   const pattern = decoratorAst.program.body.get(0).body.body.get(0).value.params.items.get(0);
@@ -494,7 +495,7 @@ test("TypeScript parameter wrappers and annotations survive incremental edits", 
   const annotation = transform(
     'const x: string = "value";',
     (program, ast) => {
-      program.body.get(0).declarators.get(0).id.typeAnnotation.typeAnnotation.type =
+      program.body.get(0).declarators.get(0).typeAnnotation.typeAnnotation.type =
         "TsNumberKeyword";
     },
     typescript,
@@ -510,7 +511,7 @@ test("TypeScript parameter wrappers and annotations survive incremental edits", 
       annotation.set("typeAnnotation", keyword);
       const item = ast.new_node(NodeKind.FormalParameter);
       item.set("pattern", name);
-      name.set("typeAnnotation", annotation);
+      item.typeAnnotation = annotation;
       program.body.get(0).params.items.push(item);
     },
     typescript,
