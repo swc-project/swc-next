@@ -119,12 +119,6 @@ fn jsx(
     let source_self = development && options.source_self.unwrap_or(true);
     let pure = options.pure.unwrap_or(true);
     let display_name = options.display_name.unwrap_or(true);
-    let header_comments: Vec<Comment> = ast
-        .comments()
-        .iter()
-        .copied()
-        .filter(|comment| comment.span.end <= header_end && comment.kind == CommentKind::Block)
-        .collect();
     let mut jsx = Jsx {
         resolver,
         runtime: options.runtime.unwrap_or_default(),
@@ -145,7 +139,7 @@ fn jsx(
         source: source_self.then(|| JsxSrc::new(ast.source())),
         self_ctx: JsxSelfCtx::default(),
         method_functions: FxHashSet::default(),
-        header_comments,
+        header_end,
         diagnostics,
         top_level_node: true,
         pure_positions: FxHashSet::default(),
@@ -192,8 +186,8 @@ struct Jsx<'r, 'ast> {
     source: Option<JsxSrc>,
     self_ctx: JsxSelfCtx,
     method_functions: FxHashSet<NodeId>,
-    // JSX directives are only read from file-header block comments.
-    header_comments: Vec<Comment>,
+    // Byte offset of the original first directive or statement for file-header JSX directives.
+    header_end: u32,
     diagnostics: Vec<Diagnostic>,
     top_level_node: bool,
     pure_positions: FxHashSet<u32>,
@@ -994,22 +988,25 @@ pub(super) fn parse_expr_for_jsx(ast: &mut Ast<'_>, resolver: &mut Resolver, val
 }
 
 #[derive(Default)]
-struct JsxDirectives {
-    runtime: Option<Runtime>,
-    import_source: Option<String>,
-    pragma: Option<(String, Span)>,
-    pragma_frag: Option<(String, Span)>,
+pub(crate) struct JsxDirectives {
+    pub(crate) runtime: Option<Runtime>,
+    pub(crate) import_source: Option<String>,
+    pub(crate) pragma: Option<(String, Span)>,
+    pub(crate) pragma_frag: Option<(String, Span)>,
 }
 
 impl JsxDirectives {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L320>.
-    fn from_comments(
+    pub(crate) fn from_header_comments(
         ast: &Ast<'_>,
-        comments: &[Comment],
-        diagnostics: &mut Vec<Diagnostic>,
+        header_end: u32,
+        mut diagnostics: Option<&mut Vec<Diagnostic>>,
     ) -> Self {
         let mut directives = Self::default();
-        for comment in comments {
+        for comment in ast.comments() {
+            if comment.span.end > header_end || comment.kind != CommentKind::Block {
+                continue;
+            }
             let text = ast.get_utf8(comment.value(ast.source().as_bytes()));
             for line in text.lines() {
                 let line = line.trim();
@@ -1027,10 +1024,14 @@ impl JsxDirectives {
                         ("@jsxRuntime", Some("automatic")) => {
                             directives.runtime = Some(JsxRuntime::Automatic)
                         }
-                        ("@jsxRuntime", Some(_)) => diagnostics.push(Diagnostic::error(
-                            "Runtime must be either `classic` or `automatic`.",
-                            comment.span,
-                        )),
+                        ("@jsxRuntime", Some(_)) => {
+                            if let Some(diagnostics) = diagnostics.as_deref_mut() {
+                                diagnostics.push(Diagnostic::error(
+                                    "Runtime must be either `classic` or `automatic`.",
+                                    comment.span,
+                                ));
+                            }
+                        }
                         ("@jsxImportSource", Some(value)) => {
                             directives.runtime = Some(JsxRuntime::Automatic);
                             directives.import_source = Some(value.to_owned());
@@ -1053,15 +1054,12 @@ impl JsxDirectives {
 impl Jsx<'_, '_> {
     /// SWC directive application: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_react/src/jsx/mod.rs#L1143>.
     pub(super) fn parse_directives(&mut self, ast: &Ast<'_>) {
-        if self.header_comments.is_empty() {
-            return;
-        }
         let JsxDirectives {
             runtime,
             import_source,
             pragma,
             pragma_frag,
-        } = JsxDirectives::from_comments(ast, &self.header_comments, &mut self.diagnostics);
+        } = JsxDirectives::from_header_comments(ast, self.header_end, Some(&mut self.diagnostics));
         if let Some(runtime) = runtime {
             self.runtime = runtime;
         }

@@ -4,7 +4,11 @@ use std::collections::HashSet;
 
 use swc_next_ecma_ast::*;
 
-use crate::{common::resolver::context::Resolver, module::ModuleType};
+use crate::{
+    common::resolver::context::Resolver,
+    jsx::{JsxDirectives, JsxRuntime},
+    module::ModuleType,
+};
 
 mod config;
 mod retain;
@@ -156,47 +160,29 @@ fn jsx_usage(
     header_end: u32,
 ) -> HashSet<SymbolId> {
     let jsx = &options.jsx;
-    let mut automatic = jsx.automatic;
-    let mut pragmas = Vec::new();
-    // Only scan file-header comments before the original first directive or statement,
-    // matching tsc and Jsx::enter_program.
-    for comment in ast.comments() {
-        if comment.span.end > header_end || comment.kind != CommentKind::Block {
-            continue;
-        }
-        for line in ast.get_utf8(comment.value(ast.source().as_bytes())).lines() {
-            let line = line.trim().trim_start_matches('*').trim();
-            if !line.starts_with("@jsx") {
-                continue;
-            }
-            let mut words = line.split_whitespace();
-            while let Some(directive) = words.next() {
-                let Some(value) = words.next() else {
-                    break;
-                };
-                match directive {
-                    "@jsx" | "@jsxFrag" => pragmas.push(value.to_owned()),
-                    "@jsxRuntime" => match value {
-                        "automatic" => automatic = true,
-                        "classic" => automatic = false,
-                        _ => {}
-                    },
-                    _ => {}
-                }
-            }
-        }
-    }
-
+    let directives = JsxDirectives::from_header_comments(ast, header_end, None);
+    let automatic = match directives.runtime {
+        Some(JsxRuntime::Automatic) => true,
+        Some(JsxRuntime::Classic) => false,
+        Some(JsxRuntime::Preserve) | None => jsx.automatic,
+    };
     if automatic {
         return HashSet::new();
     }
     let mut id_usage = HashSet::new();
-    let pragma = jsx.pragma.as_deref().unwrap_or("React.createElement");
-    let pragma_frag = jsx.pragma_frag.as_deref().unwrap_or("React.Fragment");
+    let pragma = directives
+        .pragma
+        .as_ref()
+        .map(|(value, _)| value.as_str())
+        .or(jsx.pragma.as_deref())
+        .unwrap_or("React.createElement");
+    let pragma_frag = directives
+        .pragma_frag
+        .as_ref()
+        .map(|(value, _)| value.as_str())
+        .or(jsx.pragma_frag.as_deref())
+        .unwrap_or("React.Fragment");
     for factory in [pragma, pragma_frag] {
-        id_usage.extend(id_for_jsx(ast, resolver, factory));
-    }
-    for factory in &pragmas {
         id_usage.extend(id_for_jsx(ast, resolver, factory));
     }
     id_usage
