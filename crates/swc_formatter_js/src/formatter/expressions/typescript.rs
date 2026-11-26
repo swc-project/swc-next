@@ -578,6 +578,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let source =
             self.prepare_binary_type_expression(expression, annotation, operator, &context)?;
         writer.group(false, |writer| {
+            let receiver = (context.is_call_or_member_receiver()
+                || matches!(context.position, ExpressionPosition::NewCallee { .. }))
+                && context.parentheses_owner == ParenthesesOwner::Expression;
+            let closing = if receiver {
+                self.expression_closing_constraint(annotation.span(self.ast).end)
+            } else {
+                LineConstraint::Unconstrained
+            };
             let write = |writer: &mut Writer<'ast>| {
                 let tail = self.format_expression(
                     expression,
@@ -592,14 +600,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
                 self.format_binary_type_expression_suffix(source, tail, writer)
             };
-            let receiver = context.is_call_or_member_receiver()
-                || matches!(context.position, ExpressionPosition::NewCallee { .. });
-            if receiver && context.parentheses_owner == ParenthesesOwner::Expression {
+            if receiver {
                 let tail = writer.indent(|writer| {
                     writer.soft_line();
                     write(writer)
                 })?;
-                writer.soft_line();
+                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 Ok(tail)
             } else {
                 write(writer)

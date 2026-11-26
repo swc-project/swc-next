@@ -8,7 +8,7 @@ use super::{
     ExpressionContext, ExpressionOutput, ExpressionPosition, Formatter, ParenthesesOwner, TailOwner,
 };
 use crate::formatter::comments::{CommentRunLayout, NodeHead};
-use crate::formatter::diagnostics::FlatSeparator;
+use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
@@ -25,6 +25,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             && self.enclosing_await.is_some_and(|outer| {
                 self.await_argument_starts_with(outer.argument(self.ast), expression)
             });
+        let closing = if receiver {
+            self.expression_closing_constraint(expression.span(self.ast).end)
+        } else {
+            LineConstraint::Unconstrained
+        };
         let outer = self.enclosing_await.replace(expression);
         let mut write = |writer: &mut Writer<'ast>| {
             writer.text("await");
@@ -41,7 +46,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     writer.soft_line();
                     write(writer)
                 })?;
-                writer.soft_line();
+                closing.write(writer, FlatSeparator::Empty, Writer::soft_line);
                 Ok(tail)
             };
             if shares_group {
