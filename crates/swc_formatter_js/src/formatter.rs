@@ -5,6 +5,7 @@ mod classes;
 mod comments;
 mod decorators;
 mod diagnostics;
+mod es5_identifier;
 mod expressions;
 mod functions;
 mod heritage;

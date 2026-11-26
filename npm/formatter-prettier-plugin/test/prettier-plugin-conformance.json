@@ -26244,6 +26244,36 @@
         "prettierNative": "({\n  // @ts-ignore\n  k:\n    (a = // @ts-expect-error\n      b = // @ts-ignore\n      c =\n        d),\n});\n"
       }
     ],
+    "js/quote-properties-consistent/objects.js": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "const record = {\n  plain: 1,\n  \"quoted-key\": 2,\n  shorthand,\n  get value() {\n    return 3;\n  },\n  set value(next) {},\n  method() {},\n  [computed]: 4,\n  é: 5,\n  \"\\u0061\": 6,\n  \"-1\": 7,\n  0.1: 8,\n  1: 9,\n  1.0: 10,\n  2n: 11,\n};\n\nx = { \"՘\": 1 };\n\nx = { \"a·\": 1 };\n\nx = { \"ⸯ\": 1 };\n\nx = { ä: 1 };\n\nx = { \"ࡠ\": 1, b: 2 };\n",
+        "prettierNative": "const record = {\n  plain: 1,\n  \"quoted-key\": 2,\n  shorthand,\n  get value() {\n    return 3;\n  },\n  set value(next) {},\n  method() {},\n  [computed]: 4,\n  é: 5,\n  \"\\u0061\": 6,\n  \"-1\": 7,\n  0.1: 8,\n  1: 9,\n  1.0: 10,\n  2n: 11,\n};\n\nx = { \"՘\": 1 };\n\nx = { \"a·\": 1 };\n\nx = { ⸯ: 1 };\n\nx = { ä: 1 };\n\nx = { \"ࡠ\": 1, b: 2 };\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "consistent"
+        },
+        "swcPlugin": "const record = {\n  \"plain\": 1,\n  \"quoted-key\": 2,\n  shorthand,\n  get \"value\"() {\n    return 3;\n  },\n  set \"value\"(next) {},\n  \"method\"() {},\n  [computed]: 4,\n  \"é\": 5,\n  \"\\u0061\": 6,\n  \"-1\": 7,\n  \"0.1\": 8,\n  \"1\": 9,\n  1.0: 10,\n  2n: 11,\n};\n\nx = { \"՘\": 1 };\n\nx = { \"a·\": 1 };\n\nx = { \"ⸯ\": 1 };\n\nx = { ä: 1 };\n\nx = { \"ࡠ\": 1, \"b\": 2 };\n",
+        "prettierNative": "const record = {\n  \"plain\": 1,\n  \"quoted-key\": 2,\n  shorthand,\n  get \"value\"() {\n    return 3;\n  },\n  set \"value\"(next) {},\n  \"method\"() {},\n  [computed]: 4,\n  \"é\": 5,\n  \"\\u0061\": 6,\n  \"-1\": 7,\n  \"0.1\": 8,\n  \"1\": 9,\n  1.0: 10,\n  2n: 11,\n};\n\nx = { \"՘\": 1 };\n\nx = { \"a·\": 1 };\n\nx = { ⸯ: 1 };\n\nx = { ä: 1 };\n\nx = { \"ࡠ\": 1, \"b\": 2 };\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "quoteProperties": "consistent",
+          "quoteStyle": "single",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "const record = {\n  'plain': 1,\n  'quoted-key': 2,\n  shorthand,\n  get 'value'() {\n    return 3\n  },\n  set 'value'(next) {},\n  'method'() {},\n  [computed]: 4,\n  'é': 5,\n  '\\u0061': 6,\n  '-1': 7,\n  '0.1': 8,\n  '1': 9,\n  1.0: 10,\n  2n: 11,\n}\n\nx = { '՘': 1 }\n\nx = { 'a·': 1 }\n\nx = { 'ⸯ': 1 }\n\nx = { ä: 1 }\n\nx = { 'ࡠ': 1, 'b': 2 }\n",
+        "prettierNative": "const record = {\n  'plain': 1,\n  'quoted-key': 2,\n  shorthand,\n  get 'value'() {\n    return 3\n  },\n  set 'value'(next) {},\n  'method'() {},\n  [computed]: 4,\n  'é': 5,\n  '\\u0061': 6,\n  '-1': 7,\n  '0.1': 8,\n  '1': 9,\n  1.0: 10,\n  2n: 11,\n}\n\nx = { '՘': 1 }\n\nx = { 'a·': 1 }\n\nx = { ⸯ: 1 }\n\nx = { ä: 1 }\n\nx = { 'ࡠ': 1, 'b': 2 }\n"
+      }
+    ],
     "js/released-diagnostic-tail/block-closer.js": [
       {
         "options": {
