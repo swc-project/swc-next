@@ -59,42 +59,53 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let mut list = ComparisonList::default();
         let mut opening: Option<BinaryExpression> = None;
+        let mut angles = 0;
         let mut previous = None;
         let mut items = items.peekable();
         while let Some(item) = items.next() {
             let Some(item) = item else {
                 opening = None;
+                angles = 0;
                 continue;
             };
             if let (Some(less), Some(previous)) = (opening, previous)
-                && let Some(greater) = self.list_comparison(item, BinaryOperator::GreaterThan)
+                && let Some(greater) = self.list_comparison(item, OperandSide::Left)
+                && greater.operator(ast).as_str().len() <= angles
             {
                 let following = items.peek().copied().flatten().map(|node| node.span(ast));
-                let gap = if self.comparison_requires_fence(greater)
+                let needs_fence = self.comparison_requires_fence(greater)
                     || self.comparison_gap_is_ignored(
                         greater,
                         previous,
                         item.span(ast),
                         following,
                         end,
-                    ) {
+                    );
+                if needs_fence {
                     list.parentheses.push(less.right(ast).span(ast).start);
-                    ComparisonOperatorGap::RetainCommentBoundary
-                } else {
-                    ComparisonOperatorGap::BreakBefore
-                };
-                list.operators
-                    .push((greater.right(ast).span(ast).start, gap));
+                    list.operators.push((
+                        greater.right(ast).span(ast).start,
+                        ComparisonOperatorGap::RetainCommentBoundary,
+                    ));
+                } else if greater.operator(ast) == BinaryOperator::GreaterThan {
+                    list.operators.push((
+                        greater.right(ast).span(ast).start,
+                        ComparisonOperatorGap::BreakBefore,
+                    ));
+                }
                 opening = None;
+                angles = 0;
             }
             if items.peek().is_none() {
                 break;
             }
             previous = Some(item.span(ast));
-            if let Some(less) = self.list_comparison(item, BinaryOperator::LessThan) {
+            if let Some(less) = self.list_comparison(item, OperandSide::Right) {
+                angles += self.comparison_open_angles(less);
                 opening = Some(less);
             } else if opening.is_some() && !self.comparison_type_spelling(item) {
                 opening = None;
+                angles = 0;
             }
         }
         list.operators.sort_unstable_by_key(|entry| entry.0);
@@ -102,18 +113,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         list
     }
 
-    fn list_comparison(
-        &self,
-        mut expression: Expr,
-        operator: BinaryOperator,
-    ) -> Option<BinaryExpression> {
+    fn list_comparison(&self, mut expression: Expr, side: OperandSide) -> Option<BinaryExpression> {
         let ast = self.ast;
-        let closing = operator == BinaryOperator::GreaterThan;
-        let side = if closing {
-            OperandSide::Left
-        } else {
-            OperandSide::Right
-        };
+        let closing = side == OperandSide::Left;
         let mut position = ExpressionPosition::Nested;
         loop {
             let data = self.expression_data_for_position(expression, position);
@@ -124,7 +126,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return None;
             }
             if let ExprData::BinaryExpression(node) = data
-                && node.operator(ast) == operator
+                && match side {
+                    OperandSide::Left => comparison_closing_operator(node.operator(ast)),
+                    OperandSide::Right => node.operator(ast) == BinaryOperator::LessThan,
+                }
                 && self.comparison_type_spelling(if closing {
                     node.left(ast)
                 } else {
@@ -167,6 +172,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 }
             };
         }
+    }
+
+    fn comparison_open_angles(&self, mut expression: BinaryExpression) -> usize {
+        let mut angles = 1;
+        while let ExprData::BinaryExpression(left) = self.expression_data(expression.left(self.ast))
+            && left.operator(self.ast) == BinaryOperator::LessThan
+            && self.comparison_type_spelling(left.right(self.ast))
+        {
+            angles += 1;
+            expression = left;
+        }
+        angles
     }
 
     // Recognize expression spellings that can also occupy a type argument.
@@ -220,7 +237,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let left = greater.left(ast).span(ast);
         let right = greater.right(ast);
-        if self.greater_operand_can_follow_type_arguments(right) {
+        if self.comparison_rhs_can_follow_type_arguments(greater.operator(ast), right) {
             return true;
         }
         let right_span = right.span(ast);
@@ -233,14 +250,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         // Only inline, unbound block comments can move with the optional break.
         // The existing binary printer owns protected and line-dependent gaps.
         let gap = Span::new(left.end, right_span.start);
-        let Some(operator) = self.find_token(gap, comments, ">") else {
+        let token = greater.operator(ast).as_str();
+        let Some(operator) = self.find_token(gap, comments, token) else {
             return true;
         };
         comments[0].span.start <= operator
             || comments
                 .iter()
                 .any(|comment| comment.kind != CommentKind::Block)
-            || self.source_line_breaks(operator + 1, gap.end) != 0
+            || self.source_line_breaks(operator + token.len() as u32, gap.end) != 0
             || !matches!(
                 self.comment_binding(comments, gap, Some(right_span)),
                 CommentBinding::Unbound
@@ -264,10 +282,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             greater.right(ast).span(ast).start,
         );
         let comments = self.comments.in_range(gap);
-        let Some(operator) = self.find_token(gap, comments, ">") else {
+        let token = greater.operator(ast).as_str();
+        let Some(operator) = self.find_token(gap, comments, token) else {
             return false;
         };
-        if self.source_line_breaks(operator + 1, gap.end) == 0 {
+        if self.source_line_breaks(operator + token.len() as u32, gap.end) == 0 {
             return false;
         }
         let (next, following) = following.map_or((list_end, DelimitedFollowing::End), |span| {
@@ -281,9 +300,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     // Even inline, these heads can follow a completed expression type list.
-    fn greater_operand_can_follow_type_arguments(&self, mut expression: Expr) -> bool {
+    fn comparison_rhs_can_follow_type_arguments(
+        &self,
+        operator: BinaryOperator,
+        mut expression: Expr,
+    ) -> bool {
         let mut context = ExpressionContext::at(ExpressionPosition::BinaryOperand {
-            operator: BinaryOperatorKind::Binary(BinaryOperator::GreaterThan),
+            operator: BinaryOperatorKind::Binary(operator),
             side: OperandSide::Right,
         });
         loop {
@@ -332,7 +355,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         binary: BinaryLike,
     ) -> Option<ComparisonOperatorGap> {
         if self.comparison_lists.is_empty()
-            || binary.operator != BinaryOperatorKind::Binary(BinaryOperator::GreaterThan)
+            || !matches!(binary.operator, BinaryOperatorKind::Binary(operator)
+                if comparison_closing_operator(operator))
         {
             return None;
         }
@@ -345,4 +369,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Some(list.operators[index].1)
         })
     }
+}
+
+fn comparison_closing_operator(operator: BinaryOperator) -> bool {
+    matches!(
+        operator,
+        BinaryOperator::GreaterThan
+            | BinaryOperator::RightShift
+            | BinaryOperator::UnsignedRightShift
+    )
 }

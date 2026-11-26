@@ -3,6 +3,10 @@ source: crates/swc_formatter/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
 x = a < b > c;
+
+f(a < b < c, d >> e + g);
+
+f(a < b < c < d, e >>> g + h);
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":8}
 ---------- Output ----------
@@ -11,7 +15,30 @@ x =
     b) >
   c;
 
+f(
+  (a <
+    b <
+    c),
+  d >>
+    (e +
+      g),
+);
+
+f(
+  (a <
+    b <
+    c <
+    d),
+  e >>>
+    (g +
+      h),
+);
+
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 x = (a < b) > c;
+
+f((a < b < c), d >> (e + g));
+
+f((a < b < c < d), e >>> (g + h));
