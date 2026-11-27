@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{DUMMY_SP, Diagnostic, Lang, SourceType};
+use swc_next_ecma_ast::{AstCtx, DUMMY_SP, Diagnostic, Lang, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
@@ -17,7 +17,10 @@ use swc_next_ecma_transformer_v1::{
 
 use crate::{
     BoolOr,
-    js::{CommentsOption, JsOutput, JsTransformApiOptions, serialize_source_map},
+    js::{
+        CommentsOption, JsOutput, JsTransformApiOptions, parser::JsParserConfig,
+        serialize_source_map,
+    },
 };
 
 use super::{
@@ -284,83 +287,87 @@ pub fn transform_js<const TRANSFORM: bool>(
     source: &str,
     options: JsTransformApiOptions,
 ) -> JsOutput {
-    let mut output = JsOutput::default();
+    let Ok(output) = transform_with_hooks::<TRANSFORM, _>(source, options, &mut NoHooks);
+    output
+}
 
-    // ======================= Options =======================
+pub(super) enum Stage {
+    AfterParse,
+    BeforeCodegen,
+}
+
+pub(super) trait Hooks {
+    const HAS_JS_PLUGINS: bool = true;
+    type Error;
+
+    fn run_js_plugins<'a>(
+        &mut self,
+        stage: Stage,
+        ast: &mut AstCtx<'a>,
+        allocator: &'a Allocator,
+    ) -> Result<bool, Self::Error>;
+}
+
+struct NoHooks;
+
+impl Hooks for NoHooks {
+    const HAS_JS_PLUGINS: bool = false;
+    type Error = std::convert::Infallible;
+
+    #[inline(always)]
+    fn run_js_plugins(
+        &mut self,
+        _stage: Stage,
+        _ast: &mut AstCtx<'_>,
+        _allocator: &Allocator,
+    ) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
+}
+
+pub(super) fn transform_with_hooks<const TRANSFORM: bool, H: Hooks>(
+    source: &str,
+    options: JsTransformApiOptions,
+    hooks: &mut H,
+) -> Result<JsOutput, H::Error> {
     let parser_options = options.parser.unwrap_or_default();
     let output_comments = options.comments.unwrap_or(CommentsOption::All);
-    let lang = {
-        let inferred = options.filename.as_deref().map(Lang::from_path);
-        let explicit = parser_options.lang.map(Into::into);
-        explicit.or(inferred).unwrap_or_default()
-    };
-    let transform = {
-        let mut transform = options.transformer.unwrap_or_default();
-        let typescript = BoolOr::Bool(lang.is_typescript());
-        let jsx = BoolOr::Bool(lang.is_jsx());
-        transform.typescript.get_or_insert(typescript);
-        transform.jsx.get_or_insert(jsx);
-        transform
-    };
-
-    // ======================= Parse =======================
     let allocator = Allocator::default();
-    let mut ast = {
-        let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
-        let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
-        let amd_enabled = matches!(
-            transform.module.and_then(|module| module.r#type),
-            Some(JsModuleType::Amd)
-        );
-        let collect_pragmas = TRANSFORM
-            && parser_options.comments.is_none()
-            && (jsx_enabled || (typescript_enabled && lang.is_jsx()) || amd_enabled);
-        let parser_comments = if collect_pragmas {
-            CommentsOption::All
-        } else {
-            parser_options.comments.unwrap_or(output_comments)
-        };
-        let source_type = {
-            let inferred = options.filename.as_deref().map(SourceType::from_path);
-            let explicit = parser_options.source_type.map(Into::into);
-            explicit.or(inferred).unwrap_or_default()
-        };
-        let parser_options = ParserOptions {
-            source_type,
-            lang,
-            comments: parser_comments.into(),
-            ..parser_options.into()
-        };
-        let parser = Parser::init(&allocator, source, parser_options, NoTokenParserConfig);
-        let parsed = parser.parse();
-        output.diagnostics.extend(parsed.diagnostics);
-        if has_errors(&output.diagnostics) {
-            return output;
-        }
-        parsed.ast
+    let parsed_options = parser_config::<TRANSFORM>(
+        parser_options,
+        options.filename.as_deref(),
+        output_comments,
+        options.transformer.as_ref(),
+    );
+    let parsed = Parser::init(&allocator, source, parsed_options, NoTokenParserConfig).parse();
+    let mut ast = parsed.ast;
+    let mut output = JsOutput {
+        diagnostics: parsed.diagnostics,
+        ..Default::default()
     };
-
-    // ======================= Analyze and Transform =======================
-    let semantic_errors = parser_options.semantic_errors.unwrap_or(false);
-    if semantic_errors {
-        output
-            .diagnostics
-            .extend(check_syntax(&ast, SyntaxChecks::all()));
+    check_input(&ast, parser_options, &mut output.diagnostics);
+    if has_errors(&output.diagnostics) {
+        return Ok(output);
+    }
+    if hooks.run_js_plugins(Stage::AfterParse, &mut ast, &allocator)? {
+        check_input(&ast, parser_options, &mut output.diagnostics);
         if has_errors(&output.diagnostics) {
-            return output;
+            return Ok(output);
         }
     }
-    if TRANSFORM {
-        match to_options(transform, options.filename.clone()) {
-            Ok(transform_options) => {
-                let transformed = Transformer::transform(&mut ast, transform_options);
-                output.diagnostics.extend(transformed.diagnostics);
-            }
-            Err(diagnostic) => {
-                output.diagnostics.push(diagnostic);
-                return output;
-            }
-        }
+    if TRANSFORM
+        && let Err(diagnostic) = transform_ast(
+            &mut ast,
+            options.transformer,
+            options.filename.clone(),
+            &mut output.diagnostics,
+        )
+    {
+        output.diagnostics.push(diagnostic);
+        return Ok(output);
+    }
+    if H::HAS_JS_PLUGINS && !has_errors(&output.diagnostics) {
+        hooks.run_js_plugins(Stage::BeforeCodegen, &mut ast, &allocator)?;
     }
 
     // ======================= Generate =======================
@@ -379,5 +386,80 @@ pub fn transform_js<const TRANSFORM: bool>(
         output.map = generated.map.as_ref().map(serialize_source_map);
     }
 
-    output
+    Ok(output)
+}
+
+fn parser_config<const TRANSFORM: bool>(
+    config: JsParserConfig,
+    filename: Option<&str>,
+    comments: CommentsOption,
+    transformer: Option<&JsTransformerConfig>,
+) -> ParserOptions {
+    let lang = config
+        .lang
+        .map(Into::into)
+        .or_else(|| filename.map(Lang::from_path))
+        .unwrap_or_default();
+    let source_type = config
+        .source_type
+        .map(Into::into)
+        .or_else(|| filename.map(SourceType::from_path))
+        .unwrap_or_default();
+    let typescript = transform_enabled(
+        transformer.and_then(|config| config.typescript.as_ref()),
+        lang.is_typescript(),
+    );
+    let jsx = transform_enabled(
+        transformer.and_then(|config| config.jsx.as_ref()),
+        lang.is_jsx(),
+    );
+    let amd = matches!(
+        transformer
+            .and_then(|config| config.module)
+            .and_then(|module| module.r#type),
+        Some(JsModuleType::Amd)
+    );
+    let comments = config.comments.unwrap_or_else(|| {
+        if TRANSFORM && (jsx || (typescript && lang.is_jsx()) || amd) {
+            CommentsOption::All
+        } else {
+            comments
+        }
+    });
+    ParserOptions {
+        lang,
+        source_type,
+        comments: comments.into(),
+        ..config.into()
+    }
+}
+
+fn transform_enabled<T>(option: Option<&BoolOr<T>>, default: bool) -> bool {
+    match option {
+        None => default,
+        Some(BoolOr::Bool(value)) => *value,
+        Some(BoolOr::Options(_)) => true,
+    }
+}
+
+fn check_input(ast: &AstCtx<'_>, parser: JsParserConfig, diagnostics: &mut Vec<Diagnostic>) {
+    if parser.semantic_errors.unwrap_or(false) && !has_errors(diagnostics) {
+        diagnostics.extend(check_syntax(ast, SyntaxChecks::all()));
+    }
+}
+
+fn transform_ast(
+    ast: &mut AstCtx<'_>,
+    config: Option<JsTransformerConfig>,
+    filename: Option<String>,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Result<(), Diagnostic> {
+    let mut config = config.unwrap_or_default();
+    config
+        .typescript
+        .get_or_insert(BoolOr::Bool(ast.lang().is_typescript()));
+    config.jsx.get_or_insert(BoolOr::Bool(ast.lang().is_jsx()));
+    let options = to_options(config, filename)?;
+    diagnostics.extend(Transformer::transform(ast, options).diagnostics);
+    Ok(())
 }

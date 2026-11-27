@@ -27,17 +27,19 @@ export interface DecodeResult {
   readonly diagnostics: Diagnostic[];
 }
 
-/** Decode a buffer produced by a matching SWC Next parser crate into ESTree.
+/** Decode a buffer produced by a matching SWC Next crate into ESTree.
+ * For a transformed AST, pass the original UTF-8 source to decode string
+ * handles independently of the node's span, which may have changed.
  * Internal use only: this API and format do not follow semver and may change in any release.
  */
-export declare function decode(buffer: Uint8Array, source: string): DecodeResult;
+export declare function decode(buffer: Uint8Array, source: string, transformedSource?: Uint8Array): DecodeResult;
 
 /** Decode a JavaScript buffer produced by a matching SWC Next parser crate.
  * Internal API/format, not covered by semver.
  */
-export declare function decodeJs(buffer: Uint8Array, source: string): DecodeResult;
+export declare function decodeJs(buffer: Uint8Array, source: string, transformedSource?: Uint8Array): DecodeResult;
 
 /** Decode a TypeScript buffer produced by a matching SWC Next parser crate.
  * Internal API/format, not covered by semver.
  */
-export declare function decodeTs(buffer: Uint8Array, source: string): DecodeResult;
+export declare function decodeTs(buffer: Uint8Array, source: string, transformedSource?: Uint8Array): DecodeResult;

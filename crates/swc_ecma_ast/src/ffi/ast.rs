@@ -349,6 +349,72 @@ pub struct BorrowedAst<'a> {
     ast: AstCtx<'a>,
 }
 
+impl BorrowedAst<'_> {
+    /// Copy the transfer tables into mutable arena storage, remapping UTF-16
+    /// spans into byte positions in `source`.
+    ///
+    /// Use only when the transfer was encoded with the original source section.
+    pub fn to_owned_with_source<'a>(
+        &self,
+        source: &'a str,
+        allocator: &'a Allocator,
+    ) -> AstCtx<'a> {
+        assert_eq!(source, self.source());
+        let original = unsafe { self.ast.ast() };
+        let mut tree = unsafe { Ast::new(source, allocator) };
+        let length = original.node_count();
+        tree.reserve(length, original.extra_data_count());
+        let offsets = if source.is_ascii() {
+            Vec::new()
+        } else {
+            let mut offsets = Vec::with_capacity(source.len() + 1);
+            for (byte, character) in source.char_indices() {
+                offsets.extend(std::iter::repeat_n(byte as u32, character.len_utf16()));
+            }
+            offsets.push(source.len() as u32);
+            offsets
+        };
+        let byte_offset = |offset: u32| {
+            if offsets.is_empty() {
+                offset.min(source.len() as u32)
+            } else {
+                offsets
+                    .get(offset as usize)
+                    .copied()
+                    .unwrap_or(source.len() as u32)
+            }
+        };
+        unsafe {
+            let spans = slice::from_raw_parts(original.nodes.span.as_ptr(), length);
+            for (index, span) in spans.iter().enumerate() {
+                tree.nodes
+                    .span
+                    .as_ptr()
+                    .add(index)
+                    .write(Span::new(byte_offset(span.start), byte_offset(span.end)));
+            }
+            std::ptr::copy_nonoverlapping(
+                original.nodes.kind.as_ptr(),
+                tree.nodes.kind.as_ptr(),
+                length,
+            );
+            std::ptr::copy_nonoverlapping(
+                original.nodes.data.as_ptr(),
+                tree.nodes.data.as_ptr(),
+                length,
+            );
+            tree.nodes.len = length as u32;
+        }
+        tree.extra_data
+            .extend_from_slice_copy(original.extra_data.as_raw_slice());
+        tree.strings
+            .initialize_extra(original.strings.extra_bytes());
+        tree.root = original.root;
+        tree.set_source_metadata(original.source_type(), original.lang());
+        tree.into()
+    }
+}
+
 impl<'a> Deref for BorrowedAst<'a> {
     type Target = AstCtx<'a>;
 

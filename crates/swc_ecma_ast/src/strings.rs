@@ -129,7 +129,6 @@ impl<'a> StringPool<'a> {
         }
     }
 
-    #[cfg(target_endian = "big")]
     pub(crate) fn initialize_extra(&mut self, bytes: &[u8]) {
         assert!(self.extra.is_empty());
         self.extra.extend_from_slice_copy(bytes);

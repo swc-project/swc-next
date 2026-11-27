@@ -9,9 +9,11 @@ use anyhow::Result;
 
 pub(super) fn generate(input: &Path, output_dir: &Path, name: &str, version: &str) -> Result<()> {
     let bytes = fs::read(input)?;
-    let (descriptors, stripped) = wasm::extract_metadata(&bytes)?;
+    let (descriptors, mut stripped) = wasm::extract_metadata(&bytes)?;
     let runtime_name = format!("{name}.runtime.mjs");
+    let runtime_module = format!("./{runtime_name}");
     let binding = render::render_binding(descriptors, &runtime_name)?;
+    wasm::bind_plugin_import(&mut stripped, &runtime_module)?;
 
     fs::create_dir_all(output_dir)?;
     for (name, content) in [

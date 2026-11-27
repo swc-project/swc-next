@@ -11,6 +11,9 @@ use crate::BoolOr;
 
 #[cfg(all(feature = "bridge", feature = "js_transformer_v1"))]
 pub mod bridge;
+#[cfg(all(feature = "bridge", feature = "js_transformer_v1"))]
+#[doc(hidden)]
+pub mod plugins;
 #[cfg(feature = "js_transformer_v1")]
 mod v1;
 #[cfg(feature = "js_transformer_v2")]

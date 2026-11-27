@@ -16,6 +16,7 @@ export type EncodedAstParts = [
 /** Encode an ESTree Program into sections consumed by SWC Next crates.
  * Infer JS/TS from the nodes using the TypeScript-capable encoder.
  * Source type comes from program.sourceType.
+ * If supplied, `source` is the original UTF-8 text used by the native transformer.
  * Internal use only: this API and format do not follow semver and may change
  * in any release. Use a matching SWC Next native/Wasm consumer.
  *
@@ -23,8 +24,8 @@ export type EncodedAstParts = [
  * and Proxy traps must not reenter the active encoder, including via generateSync.
  * encode and encodeTs share the same state.
  */
-export declare function encode(program: Program): EncodedAstParts;
+export declare function encode(program: Program, source?: Uint8Array): EncodedAstParts;
 /** JavaScript-only variant of encode; internal API/format, not covered by semver. */
-export declare function encodeJs(program: Program): EncodedAstParts;
+export declare function encodeJs(program: Program, source?: Uint8Array): EncodedAstParts;
 /** TypeScript-capable variant of encode; internal API/format, not covered by semver. */
-export declare function encodeTs(program: Program): EncodedAstParts;
+export declare function encodeTs(program: Program, source?: Uint8Array): EncodedAstParts;

@@ -6,12 +6,12 @@ export { decodeJs, decodeTs };
 const FLAGS_OFFSET = 32;
 const LANG_SHIFT = 2;
 
-export function decode(buffer, source) {
+export function decode(buffer, source, transformedSource) {
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const view = new DataView(arrayBuffer, buffer.byteOffset ?? 0, buffer.byteLength);
   const flags = view.getInt32(FLAGS_OFFSET, true);
   const lang = (flags >> LANG_SHIFT) & 7;
   return lang === 1 || lang === 3 || lang === 4
-    ? decodeTs(buffer, source)
-    : decodeJs(buffer, source);
+    ? decodeTs(buffer, source, transformedSource)
+    : decodeJs(buffer, source, transformedSource);
 }
