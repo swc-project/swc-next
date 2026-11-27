@@ -5,6 +5,7 @@ set -euo pipefail
 current_worktree="$(git rev-parse --show-toplevel)"
 common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
 repository_root="$common_git_dir/swc-next/testsuite-fixture-cache/repositories"
+revisions="${1:-$current_worktree/scripts/fixture-revisions.txt}"
 
 # Ensure the shared bare repository contains the fixture's pinned commit.
 update_fixture_cache() {
@@ -38,11 +39,10 @@ restore_fixture() {
 }
 
 prepare_fixture() {
-    local repo="$1"
-    local relative_path="$2"
+    local name="$1"
+    local repo="$2"
     local ref="$3"
-    local name="$4"
-    local path="$current_worktree/$relative_path"
+    local path="$current_worktree/tasks/testsuite/fixtures/$name"
 
     echo "Preparing $name..."
 
@@ -51,10 +51,10 @@ prepare_fixture() {
     echo "✓ Prepared $name"
 }
 
-prepare_fixture "tc39/test262" "tasks/testsuite/fixtures/test262" "d53ebc8b1931d9f1541e43d59650776e4b766248" "test262"
-prepare_fixture "microsoft/TypeScript" "tasks/testsuite/fixtures/typescript" "5237fd46890956e4bb8177a1a05dcd69e4166560" "typescript"
-prepare_fixture "babel/babel" "tasks/testsuite/fixtures/babel" "93e39e4d0b657efe7f569f9d25acbff96ddb89dc" "babel"
-prepare_fixture "oxc-project/estree-conformance" "tasks/testsuite/fixtures/estree-conformance" "eb050aeacb0d0588f84829da0a5cbf0c63676637" "estree-conformance"
-prepare_fixture "swc-project/swc" "tasks/testsuite/fixtures/swc" "3ad7952d41f6ee568ce1e7084a44e2b6aafa3752" "swc"
-prepare_fixture "CPunisher/swc-conformance" "tasks/testsuite/fixtures/swc-conformance" "33fa9c69d4ec84ff5a728835a616add6e3b2e82f" "swc-conformance"
-prepare_fixture "prettier/prettier" "tasks/testsuite/fixtures/prettier" "deda65fd47c285b974e2a4397f26a33cfc1746b8" "prettier"
+while read -r name repo ref _; do
+    if [[ ! "$name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ || ! "$ref" =~ ^[0-9a-f]{40}$ ]]; then
+        echo "Invalid fixture revision: $name $repo $ref" >&2
+        exit 1
+    fi
+    prepare_fixture "$name" "$repo" "$ref"
+done < "$revisions"

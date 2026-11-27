@@ -19,6 +19,7 @@ const SOURCE_TS = path.resolve(FIXTURE_DIR, "typescript/tsc/testdata/tests/cases
 // ====================== Output Snapshots ==========================
 const SNAPSHOT_TEST262 = path.resolve(SNAPSHOT_DIR, "estree_test262.snap");
 const SNAPSHOT_TS = path.resolve(SNAPSHOT_DIR, "estree_typescript.snap");
+const updateSnapshots = process.argv.includes("--update");
 
 // ========================= Test Runner ============================
 const pool = new Tinypool({
@@ -49,7 +50,7 @@ async function runTestSuite(oracle: string, source: string, snapshot: string) {
   await fs.writeFile(snapshot, output);
   if (output !== expected) {
     console.error(`Snapshot changed: ${snapshot}`);
-    process.exitCode = 1;
+    if (!updateSnapshots) process.exitCode = 1;
   }
 }
 
