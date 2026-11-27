@@ -39,7 +39,11 @@ fn get_amd_module_id_from_comments<'a>(ast: &Ast<'a>) -> Option<&'a str> {
 
 fn parse_amd_module_id(text: &str) -> Option<&str> {
     let rest = text.strip_prefix('/')?.trim_start();
-    if rest.len() < 11 || !rest[..11].eq_ignore_ascii_case("<amd-module") {
+    if !rest
+        .as_bytes()
+        .get(..11)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"<amd-module"))
+    {
         return None;
     }
     let tail = &rest[11..];

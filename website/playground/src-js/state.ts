@@ -75,45 +75,52 @@ export function loadState(): PlaygroundState {
     const saved = JSON.parse(
       localStorage.getItem("swc-next-playground") ?? "null",
     );
-    if (saved && typeof saved.source === "string" && saved.options) {
-      const { parser, transformer, generator } = saved.options;
-      const assumptions = transformer?.assumptions;
-      const validBooleans = [
-        parser?.preserveParens,
-        parser?.semanticErrors,
-        transformer?.typescript?.enabled,
-        transformer?.typescript?.verbatimModuleSyntax,
-        transformer?.jsx?.enabled,
-        transformer?.jsx?.development,
-        transformer?.jsx?.sourceSelf,
-        transformer?.decorators?.enabled,
-        transformer?.decorators?.metadata,
-        assumptions?.constantSuper,
-        assumptions?.ignoreFunctionLength,
-        assumptions?.noDocumentAll,
-        assumptions?.objectRestNoSymbols,
-        assumptions?.privateFieldsAsProperties,
-        assumptions?.pureGetters,
-        assumptions?.setPublicClassFields,
-        assumptions?.setSpreadProperties,
-        generator?.minify,
-        generator?.asciiOnly,
-        generator?.inlineScript,
-        generator?.comments,
-      ].every((value) => typeof value === "boolean");
-      if (
-        validBooleans &&
-        ["js", "jsx", "ts", "tsx", "dts"].includes(parser.lang) &&
-        ["module", "script", "commonjs", "unambiguous"].includes(
-          parser.sourceType,
-        ) &&
-        TARGETS.includes(transformer.target) &&
-        MODULES.includes(transformer.module) &&
-        JSX_RUNTIMES.includes(transformer.jsx.runtime) &&
-        DECORATOR_VERSIONS.includes(transformer.decorators.version)
-      ) {
-        return saved;
+    if (saved && typeof saved.source === "string") {
+      const options = saved.options;
+      if (options) {
+        const { parser, transformer, generator } = options;
+        const assumptions = transformer?.assumptions;
+        const validBooleans = [
+          parser?.preserveParens,
+          parser?.semanticErrors,
+          transformer?.typescript?.enabled,
+          transformer?.typescript?.verbatimModuleSyntax,
+          transformer?.jsx?.enabled,
+          transformer?.jsx?.development,
+          transformer?.jsx?.sourceSelf,
+          transformer?.decorators?.enabled,
+          transformer?.decorators?.metadata,
+          assumptions?.constantSuper,
+          assumptions?.ignoreFunctionLength,
+          assumptions?.noDocumentAll,
+          assumptions?.objectRestNoSymbols,
+          assumptions?.privateFieldsAsProperties,
+          assumptions?.pureGetters,
+          assumptions?.setPublicClassFields,
+          assumptions?.setSpreadProperties,
+          generator?.minify,
+          generator?.asciiOnly,
+          generator?.inlineScript,
+          generator?.comments,
+        ].every((value) => typeof value === "boolean");
+        if (
+          validBooleans &&
+          ["js", "jsx", "ts", "tsx", "dts"].includes(parser.lang) &&
+          ["module", "script", "commonjs", "unambiguous"].includes(
+            parser.sourceType,
+          ) &&
+          TARGETS.includes(transformer.target) &&
+          MODULES.includes(transformer.module) &&
+          JSX_RUNTIMES.includes(transformer.jsx.runtime) &&
+          DECORATOR_VERSIONS.includes(transformer.decorators.version)
+        ) {
+          return saved;
+        }
       }
+      return {
+        source: saved.source,
+        options: structuredClone(defaultState.options),
+      };
     }
   } catch {
     /* Storage can be unavailable or contain an older state. */
