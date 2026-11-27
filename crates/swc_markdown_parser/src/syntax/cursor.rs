@@ -31,7 +31,7 @@ pub struct SyntaxCursor<'a> {
     pub kind: K,
     pub span: Span,
     lines: &'a [SourceLine],
-    source: &'a str,
+    document: &'a Document<'a>,
     origin: Origin<'a>,
 }
 
@@ -62,7 +62,7 @@ impl Document<'_> {
     /// Borrow the root of the lexical tree. Children and fields are computed on demand.
     pub fn syntax(&self) -> SyntaxCursor<'_> {
         SyntaxCursor::new(
-            self.source,
+            self,
             Origin::Document(&self.blocks),
             K::Document,
             Span::new(0, self.source.len()),
@@ -74,14 +74,14 @@ impl Document<'_> {
 impl<'a> SyntaxCursor<'a> {
     #[inline]
     fn new(
-        source: &'a str,
+        document: &'a Document<'a>,
         origin: Origin<'a>,
         kind: K,
         span: Span,
         lines: &'a [SourceLine],
     ) -> Self {
         Self {
-            source,
+            document,
             origin,
             kind,
             span,
@@ -89,9 +89,15 @@ impl<'a> SyntaxCursor<'a> {
         }
     }
 
-    fn block(source: &'a str, block: &'a Block) -> Self {
+    fn block(document: &'a Document<'a>, block: &'a Block) -> Self {
         let kind = block_kind(block);
-        let mut cursor = Self::new(source, Origin::Block(block), kind, block.span, &block.lines);
+        let mut cursor = Self::new(
+            document,
+            Origin::Block(block),
+            kind,
+            block.span,
+            &block.lines,
+        );
         match &block.kind {
             BlockKind::Fence(fence) => cursor.lines = &fence.code.lines,
             BlockKind::IndentedCode(code) => cursor.lines = &code.lines,
@@ -100,9 +106,9 @@ impl<'a> SyntaxCursor<'a> {
         cursor
     }
 
-    fn inline(source: &'a str, lines: &'a [SourceLine], inline: &'a Inline) -> Self {
-        let kind = inline_kind(inline);
-        Self::new(source, Origin::Inline(inline), kind, inline.span, lines)
+    fn inline(document: &'a Document<'a>, lines: &'a [SourceLine], inline: &'a Inline) -> Self {
+        let kind = inline_kind(document, inline);
+        Self::new(document, Origin::Inline(inline), kind, inline.span, lines)
     }
 
     /// Logical lines covered by the node. Code nodes expose the guest body's lines.
@@ -117,7 +123,7 @@ impl<'a> SyntaxCursor<'a> {
     /// Lines inside a quote, alert or list item after its own prefix is removed.
     /// Blank lines, fence delimiters and deeper container prefixes are preserved.
     pub fn container_lines(&self) -> Option<impl Iterator<Item = SourceLine> + 'a> {
-        container_lines(self.kind, self.lines, self.source)
+        container_lines(self.kind, self.lines, self.document.source)
     }
     /// Source fragments covered by this node, excluding enclosing container prefixes.
     pub fn fragments(&self) -> impl Iterator<Item = Span> + 'a {
@@ -160,9 +166,10 @@ impl<'a> SyntaxCursor<'a> {
         else {
             return None;
         };
+        let children = self.document.inlines(h.children);
         Some(Span::new(
-            h.children.first()?.span.start,
-            h.children.last()?.span.end,
+            children.first()?.span.start,
+            children.last()?.span.end,
         ))
     }
 
@@ -202,23 +209,24 @@ impl<'a> SyntaxCursor<'a> {
     /// Visit the immediate lexical children in source order.
     pub fn for_each_child<F: FnMut(Self)>(&self, mut visit: F) {
         let visit = &mut visit;
-        let source = self.source;
+        let document = self.document;
+        let source = document.source;
         let lines = self.enclosing_lines();
         let blocks = |children: &'a [Block], emit: &mut F| {
             for child in children {
-                emit(Self::block(source, child));
+                emit(Self::block(document, child));
             }
         };
-        let inlines = |children: &'a [Inline], emit: &mut F| {
-            for child in children {
-                emit(Self::inline(source, lines, child));
+        let inlines = |group: crate::InlineNodes, emit: &mut F| {
+            for child in document.inlines(group) {
+                emit(Self::inline(document, lines, child));
             }
         };
         match self.origin {
             Origin::Document(children) => blocks(children, visit),
             Origin::Block(b) => match &b.kind {
-                BlockKind::Paragraph(v) => inlines(v, visit),
-                BlockKind::Heading(h) => inlines(&h.children, visit),
+                BlockKind::Paragraph(v) => inlines(*v, visit),
+                BlockKind::Heading(h) => inlines(h.children, visit),
                 BlockKind::BlockQuote(v)
                 | BlockKind::Extension(
                     BlockExtension::Alert { blocks: v, .. }
@@ -227,7 +235,7 @@ impl<'a> SyntaxCursor<'a> {
                 BlockKind::List(list) => {
                     for item in &list.items {
                         visit(Self::new(
-                            source,
+                            document,
                             Origin::Item(item),
                             K::ListItem,
                             item.span,
@@ -237,13 +245,13 @@ impl<'a> SyntaxCursor<'a> {
                 }
                 BlockKind::Definition(d) => {
                     definition_leaves(source, lines, d, |kind, span, row| {
-                        visit(Self::new(source, Origin::FieldLeaf, kind, span, row));
+                        visit(Self::new(document, Origin::FieldLeaf, kind, span, row));
                     })
                 }
                 BlockKind::Table(t) => {
                     let header = &lines[..1];
                     visit(Self::new(
-                        source,
+                        document,
                         Origin::Row(&t.header),
                         K::Row { header: true },
                         header[0].content,
@@ -251,7 +259,7 @@ impl<'a> SyntaxCursor<'a> {
                     ));
                     for (line, cells) in lines[2..].iter().zip(&t.rows) {
                         visit(Self::new(
-                            source,
+                            document,
                             Origin::Row(cells),
                             K::Row { header: false },
                             line.content,
@@ -262,13 +270,13 @@ impl<'a> SyntaxCursor<'a> {
                 BlockKind::Extension(BlockExtension::DescriptionList { entries }) => {
                     for e in entries {
                         for term in &e.terms {
-                            let mut item = Self::block(source, term);
+                            let mut item = Self::block(document, term);
                             item.kind = K::Term;
                             visit(item);
                         }
                         for d in &e.descriptions {
                             visit(Self::new(
-                                source,
+                                document,
                                 Origin::Description(d),
                                 K::Description,
                                 d.span,
@@ -281,22 +289,23 @@ impl<'a> SyntaxCursor<'a> {
             },
             Origin::Inline(i) => match &i.kind {
                 InlineKind::Emphasis(v) | InlineKind::Strong(v) | InlineKind::Delete(v) => {
-                    inlines(v, visit)
+                    inlines(*v, visit)
                 }
-                InlineKind::Link(l) | InlineKind::Image(l) => {
-                    inlines(&l.children, visit);
+                InlineKind::Link(id) | InlineKind::Image(id) => {
+                    let l = document.link(*id);
+                    inlines(l.children, visit);
                     link_leaves(source, lines, l, |kind, span, row| {
-                        visit(Self::new(source, Origin::FieldLeaf, kind, span, row));
+                        visit(Self::new(document, Origin::FieldLeaf, kind, span, row));
                     });
                 }
                 _ => {}
             },
             Origin::Row(cells) => {
                 for c in cells {
-                    visit(Self::new(source, Origin::Cell(c), K::Cell, c.span, lines));
+                    visit(Self::new(document, Origin::Cell(c), K::Cell, c.span, lines));
                 }
             }
-            Origin::Cell(c) => inlines(&c.children, visit),
+            Origin::Cell(c) => inlines(c.children, visit),
             Origin::Item(i) => blocks(&i.blocks, visit),
             Origin::Description(d) => blocks(&d.blocks, visit),
             Origin::FieldLeaf => {}
@@ -312,10 +321,10 @@ impl<'a> SyntaxCursor<'a> {
 
     fn write_parts(&self, output: &mut Vec<SyntaxPart>) {
         match self.origin {
-            Origin::Block(block) => block_parts(self.source, block, output),
-            Origin::Inline(inline) => inline_parts(self.source, inline, self.kind, output),
+            Origin::Block(block) => block_parts(self.document.source, block, output),
+            Origin::Inline(inline) => inline_parts(self.document, inline, self.kind, output),
             Origin::Item(item) => item_parts(item, output),
-            Origin::Row(_) => row_parts(self.source, self.span, output),
+            Origin::Row(_) => row_parts(self.document.source, self.span, output),
             Origin::Description(d) => output.push(SyntaxPart {
                 role: R::Marker,
                 span: d.marker,

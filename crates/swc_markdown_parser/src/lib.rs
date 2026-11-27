@@ -2,6 +2,8 @@
 
 mod block;
 mod inline;
+mod inline_store;
+pub use inline_store::{InlineNodes, InlineText, LinkId};
 mod reference;
 mod source;
 pub use block::{
@@ -60,35 +62,44 @@ pub enum RecoveryReason {
 pub fn parse_with_options(source: &str, mut options: ParseOptions) -> Document<'_> {
     options.max_nesting = options.max_nesting.min(MAX_DEPTH);
     let lines = SourceLines::from(source::lines(source));
-    let mut parser = block::Parser::new(source, options);
-    let blocks = if options
-        .max_input_bytes
-        .is_some_and(|limit| source.len() > limit)
-    {
-        vec![Block {
-            span: Span::new(0, source.len()),
-            lines: lines.clone(),
-            kind: BlockKind::Recovery(RecoveryReason::InputSize),
-        }]
-    } else {
-        let blocks = parser.blocks(lines.clone(), 0, true);
-        if parser.needs_reference_lookup.get() {
-            drop(blocks);
-            // Forward references can decide which link or emphasis opener wins.
-            block::Parser::new(source, options)
-                .with_reference_definitions(&parser.first_definitions)
-                .blocks(lines.clone(), 0, true)
+    let mut inline_store = inline_store::InlineStore::default();
+    let (mut blocks, definitions, first_definitions, needs_lookup) = {
+        let mut parser = block::Parser::new(source, options, &mut inline_store);
+        let blocks = if options
+            .max_input_bytes
+            .is_some_and(|limit| source.len() > limit)
+        {
+            vec![Block {
+                span: Span::new(0, source.len()),
+                lines: lines.clone(),
+                kind: BlockKind::Recovery(RecoveryReason::InputSize),
+            }]
         } else {
-            blocks
-        }
+            parser.blocks(lines.clone(), 0, true)
+        };
+        (
+            blocks,
+            parser.definitions,
+            parser.first_definitions,
+            parser.needs_reference_lookup.get(),
+        )
     };
+    if needs_lookup {
+        // Forward definitions can change the winner between a link and an emphasis opener.
+        drop(blocks);
+        inline_store = inline_store::InlineStore::default();
+        blocks = block::Parser::new(source, options, &mut inline_store)
+            .with_reference_definitions(&first_definitions)
+            .blocks(lines.clone(), 0, true);
+    }
     Document {
         source,
         dialect: options.dialect,
         lines,
         blocks,
-        definitions: parser.definitions,
-        first_definitions: parser.first_definitions,
+        definitions,
+        first_definitions,
+        inline_store,
     }
 }
 
@@ -97,6 +108,7 @@ pub struct Document<'a> {
     pub source: &'a str,
     pub lines: SourceLines,
     pub blocks: Vec<Block>,
+    inline_store: inline_store::InlineStore,
     /// Every occurrence in document order, including duplicate definitions.
     pub definitions: Vec<DefinitionEntry>,
     first_definitions: HashMap<String, usize>,
@@ -124,18 +136,30 @@ impl<'a> Document<'a> {
 
 fn identifier(label: &str) -> String {
     let mut normalized = String::with_capacity(label.len());
+    append_identifier(&mut normalized, label);
+    normalized
+}
+
+fn append_identifier(normalized: &mut String, label: &str) {
+    let start = normalized.len();
+    if label.bytes().all(|byte| matches!(byte, b'!'..=b'~')) {
+        normalized.push_str(label);
+        normalized[start..].make_ascii_lowercase();
+        return;
+    }
     for word in label.split_whitespace() {
-        if !normalized.is_empty() {
+        if normalized.len() != start {
             normalized.push(' ');
         }
         normalized.push_str(word);
     }
-    if normalized.is_ascii() {
-        normalized.make_ascii_lowercase();
-        normalized
+    if normalized[start..].is_ascii() {
+        normalized[start..].make_ascii_lowercase();
     } else {
         // TODO: Use `str::to_casefold_unnormalized` once stable (rust-lang/rust#157000).
-        unicase::UniCase::unicode(normalized).to_folded_case()
+        let folded = unicase::UniCase::unicode(&normalized[start..]).to_folded_case();
+        normalized.truncate(start);
+        normalized.push_str(&folded);
     }
 }
 
@@ -435,28 +459,25 @@ pub enum Ignore {
     End,
 }
 
-/// Inline children of a paragraph, heading, link label or table cell.
-pub type InlineNodes = smallvec::SmallVec<[Inline; 1]>;
-
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Inline {
     pub span: Span,
     pub kind: InlineKind,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum InlineKind {
     Text,
     Escape,
     CodeSpan {
         /// Byte length of each bounding backtick run.
         width: usize,
-        value: String,
+        value: InlineText,
     },
-    Emphasis(Vec<Inline>),
-    Strong(Vec<Inline>),
-    Delete(Vec<Inline>),
-    Link(Box<Link>),
-    Image(Box<Link>),
+    Emphasis(InlineNodes),
+    Strong(InlineNodes),
+    Delete(InlineNodes),
+    Link(LinkId),
+    Image(LinkId),
     Autolink,
     Html,
     SoftBreak,
@@ -465,6 +486,7 @@ pub enum InlineKind {
     Extension(InlineExtension),
     Recovery(RecoveryReason),
 }
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InlineExtension {
     Entity,
@@ -497,7 +519,7 @@ pub enum LinkTarget {
     },
     Reference {
         label: Option<Span>,
-        identifier: String,
+        identifier: InlineText,
         kind: ReferenceKind,
     },
 }
@@ -531,11 +553,11 @@ mod tests {
         value
     }
 
-    fn paragraph(block: &Block) -> &[Inline] {
+    fn paragraph<'a>(doc: &'a Document<'_>, block: &Block) -> &'a [Inline] {
         let BlockKind::Paragraph(nodes) = &block.kind else {
             panic!("expected paragraph")
         };
-        nodes
+        doc.inlines(*nodes)
     }
 
     impl SyntaxCursor<'_> {
@@ -681,7 +703,7 @@ mod tests {
         let first = &doc.definition("  a   B ").unwrap().definition;
         assert_eq!(doc.text(first.destination), "<somewhere>");
         assert_eq!(doc.text(first.title.unwrap()), "'title'");
-        let nodes = paragraph(doc.blocks.last().unwrap());
+        let nodes = paragraph(&doc, doc.blocks.last().unwrap());
         let InlineKind::Link(reference) = &nodes[0].kind else {
             panic!()
         };
@@ -689,7 +711,7 @@ mod tests {
             label: Some(label),
             kind,
             ..
-        } = &reference.target
+        } = &doc.link(*reference).target
         else {
             panic!()
         };
@@ -698,7 +720,7 @@ mod tests {
         let InlineKind::Image(image) = &nodes[2].kind else {
             panic!()
         };
-        assert_eq!(doc.text(image.label), "");
+        assert_eq!(doc.text(doc.link(*image).label), "");
         assert!(matches!(nodes[4].kind, InlineKind::Link(_)));
         assert!(doc.definition("missing").is_none());
 
@@ -714,22 +736,46 @@ mod tests {
         assert!(doc.definition("\u{16ebb}").is_some());
 
         let doc = parse("*text [label* tail]");
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert!(matches!(nodes[0].kind, InlineKind::Emphasis(_)));
         assert_eq!(doc.text(nodes[0].span), "*text [label*");
         assert_eq!(doc.text(nodes[1].span), " tail]");
 
         let doc = parse("*text [label* tail]\n\n[label* tail]: /url");
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert!(matches!(nodes[0].kind, InlineKind::Text));
         assert!(matches!(nodes[1].kind, InlineKind::Link(_)));
         assert_eq!(doc.text(nodes[1].span), "[label* tail]");
 
         let doc = parse("*outer [*label*] text*");
-        let InlineKind::Emphasis(children) = &paragraph(&doc.blocks[0])[0].kind else {
+        let InlineKind::Emphasis(children) = &paragraph(&doc, &doc.blocks[0])[0].kind else {
             panic!()
         };
-        assert!(matches!(children[1].kind, InlineKind::Link(_)));
+        assert!(matches!(
+            doc.inlines(*children)[1].kind,
+            InlineKind::Link(_)
+        ));
+    }
+
+    #[test]
+    fn inline_values() {
+        let doc = parse("` first ` [x][ẞ] `second\nline`");
+        let nodes = paragraph(&doc, &doc.blocks[0]);
+        let InlineKind::CodeSpan { value: first, .. } = nodes[0].kind else {
+            panic!()
+        };
+        let InlineKind::Link(link) = nodes[2].kind else {
+            panic!()
+        };
+        let LinkTarget::Reference { identifier, .. } = doc.link(link).target else {
+            panic!()
+        };
+        let InlineKind::CodeSpan { value: second, .. } = nodes[4].kind else {
+            panic!()
+        };
+        assert_eq!(doc.inline_text(first), "first");
+        assert_eq!(doc.inline_text(identifier), "ss");
+        assert_eq!(doc.inline_text(second), "second line");
     }
 
     #[test]
@@ -760,14 +806,18 @@ mod tests {
         assert_eq!(spans.first(), Some(&"[outer [missing]](/o)"));
 
         let doc = parse("[a <i title=\"]\"> b](/target)");
-        let InlineKind::Link(link) = &paragraph(&doc.blocks[0])[0].kind else {
+        let InlineKind::Link(link) = &paragraph(&doc, &doc.blocks[0])[0].kind else {
             panic!()
         };
+        let link = doc.link(*link);
         assert_eq!(doc.text(link.label), "a <i title=\"]\"> b");
-        assert!(matches!(link.children[1].kind, InlineKind::Html));
+        assert!(matches!(
+            doc.inlines(link.children)[1].kind,
+            InlineKind::Html
+        ));
 
         let doc = parse("[x <https://example.org/?q=](x)>");
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert!(matches!(nodes[0].kind, InlineKind::Text));
         assert!(matches!(nodes[1].kind, InlineKind::Autolink));
         assert_eq!(doc.text(nodes[1].span), "<https://example.org/?q=](x)>");
@@ -776,7 +826,7 @@ mod tests {
     #[test]
     fn inline_delimiters() {
         let doc = parse("a <!--> b <!---> c");
-        let comments: Vec<_> = paragraph(&doc.blocks[0])
+        let comments: Vec<_> = paragraph(&doc, &doc.blocks[0])
             .iter()
             .filter(|node| matches!(node.kind, InlineKind::Html))
             .map(|node| doc.text(node.span))
@@ -784,13 +834,13 @@ mod tests {
         assert_eq!(comments, ["<!-->", "<!--->"]);
 
         let doc = parse("*£*word");
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert_eq!(nodes.len(), 1);
         assert!(matches!(nodes[0].kind, InlineKind::Text));
 
         let doc = parse("*\u{20dd}*word");
         assert!(matches!(
-            paragraph(&doc.blocks[0])[0].kind,
+            paragraph(&doc, &doc.blocks[0])[0].kind,
             InlineKind::Emphasis(_)
         ));
     }
@@ -904,7 +954,7 @@ mod tests {
         );
 
         let doc = parse("Read https://example.com/a_(b). Then a@b.example!");
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert_eq!(doc.text(nodes[1].span), "https://example.com/a_(b)");
         assert_eq!(doc.text(nodes[3].span), "a@b.example");
     }
@@ -1082,7 +1132,7 @@ mod tests {
         };
 
         let doc = parse_with_options("https://example.org/日本", limited);
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert!(matches!(nodes[0].kind, InlineKind::Text));
         assert!(matches!(
             nodes[1].kind,
@@ -1090,7 +1140,7 @@ mod tests {
         ));
 
         let doc = parse_with_options("editor@markdown.example.org", limited);
-        let nodes = paragraph(&doc.blocks[0]);
+        let nodes = paragraph(&doc, &doc.blocks[0]);
         assert!(matches!(
             nodes.last().unwrap().kind,
             InlineKind::Recovery(RecoveryReason::InlineWork)

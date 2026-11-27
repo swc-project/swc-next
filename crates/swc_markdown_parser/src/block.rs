@@ -18,15 +18,23 @@ pub(crate) struct Parser<'a> {
     reference_definitions: Option<&'a HashMap<String, usize>>,
     /// Reused to collect one container's projected rows before building its children.
     projected_lines: Vec<SourceLine>,
+    inline_scratch: inline::PendingNodes,
+    inline_store: &'a mut crate::inline_store::InlineStore,
     pub needs_reference_lookup: Cell<bool>,
     pub definitions: Vec<DefinitionEntry>,
     pub first_definitions: HashMap<String, usize>,
 }
 impl<'a> Parser<'a> {
-    pub fn new(source: &'a str, options: ParseOptions) -> Self {
+    pub fn new(
+        source: &'a str,
+        options: ParseOptions,
+        inline_store: &'a mut crate::inline_store::InlineStore,
+    ) -> Self {
         Self {
             source,
             options,
+            inline_store,
+            inline_scratch: Default::default(),
             reference_definitions: None,
             projected_lines: Vec::new(),
             needs_reference_lookup: Cell::new(false),
@@ -40,9 +48,11 @@ impl<'a> Parser<'a> {
         self
     }
 
-    fn inline_options(&self) -> inline::Options<'_> {
+    fn inline_options(&mut self) -> inline::Options<'_> {
         inline::Options {
             parse: self.options,
+            store: self.inline_store,
+            scratch: &mut self.inline_scratch,
             references: match self.reference_definitions {
                 Some(definitions) => inline::References::Indexed(definitions),
                 None => inline::References::Pending(&self.needs_reference_lookup),
@@ -176,7 +186,7 @@ impl<'a> Parser<'a> {
 
     #[inline(always)]
     fn finish_block(
-        &self,
+        &mut self,
         mut lines: SourceLines,
         mut kind: BlockKind,
         first_task: Option<&mut Option<Task>>,
@@ -279,7 +289,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn paragraph(&self, lines: &[SourceLine]) -> (usize, BlockKind) {
+    fn paragraph(&mut self, lines: &[SourceLine]) -> (usize, BlockKind) {
         let source = self.source;
         let mut n = 1;
         while let Some(&line) = lines.get(n) {
@@ -309,26 +319,27 @@ impl<'a> Parser<'a> {
             }
         }
         // Parse the inlines after removing a task marker in the first paragraph of a list item.
-        (n, BlockKind::Paragraph(crate::InlineNodes::new()))
+        (n, BlockKind::Paragraph(crate::InlineNodes::default()))
     }
 
     fn table(
-        &self,
+        &mut self,
         lines: &[SourceLine],
         header: CellSpans,
         alignments: Alignments,
     ) -> (usize, BlockKind) {
-        let cells = |line, spans: CellSpans| {
+        let source = self.source;
+        let mut cells = |line, spans: CellSpans| {
             spans
                 .into_iter()
-                .map(|span| table_cell(self.source, line, span, self.inline_options()))
+                .map(|span| table_cell(source, line, span, self.inline_options()))
                 .collect()
         };
         let rows: Vec<_> = lines[2..]
             .iter()
             .copied()
-            .take_while(|&line| table_row(self.source, line))
-            .map(|line| cells(line, cell_spans(self.source, line.content)))
+            .take_while(|&line| table_row(source, line))
+            .map(|line| cells(line, cell_spans(source, line.content)))
             .collect();
         (
             2 + rows.len(),

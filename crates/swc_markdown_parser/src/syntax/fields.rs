@@ -3,7 +3,7 @@ use super::{
     Block, BlockExtension, BlockKind, Inline, InlineExtension, InlineKind, LinkTarget, SourceLine,
     Span, SyntaxKind as K, SyntaxPart, SyntaxRole as R, between, covering_lines,
 };
-use crate::{Definition, Link, ListItem};
+use crate::{Definition, Document, Link, ListItem};
 
 pub(super) fn block_kind(block: &Block) -> K {
     match &block.kind {
@@ -35,7 +35,7 @@ pub(super) fn block_kind(block: &Block) -> K {
     }
 }
 
-pub(super) fn inline_kind(inline: &Inline) -> K {
+pub(super) fn inline_kind(document: &Document<'_>, inline: &Inline) -> K {
     match &inline.kind {
         InlineKind::Text => K::Text,
         InlineKind::Escape => K::Escape,
@@ -45,7 +45,7 @@ pub(super) fn inline_kind(inline: &Inline) -> K {
         InlineKind::Delete(_) => K::Delete,
         InlineKind::Image(l) | InlineKind::Link(l) => K::Link {
             image: matches!(inline.kind, InlineKind::Image(_)),
-            reference: match l.target {
+            reference: match document.link(*l).target {
                 LinkTarget::Reference { kind, .. } => Some(kind),
                 _ => None,
             },
@@ -172,8 +172,14 @@ pub(super) fn block_parts(source: &str, b: &Block, output: &mut Vec<SyntaxPart>)
     }
 }
 
-pub(super) fn inline_parts(source: &str, i: &Inline, kind: K, output: &mut Vec<SyntaxPart>) {
+pub(super) fn inline_parts(
+    document: &Document<'_>,
+    i: &Inline,
+    kind: K,
+    output: &mut Vec<SyntaxPart>,
+) {
     let mut fields = Fields(output);
+    let source = document.source;
     let s = i.span;
     match &i.kind {
         InlineKind::Escape => fields.0.push(escape_marker(s)),
@@ -189,7 +195,8 @@ pub(super) fn inline_parts(source: &str, i: &Inline, kind: K, output: &mut Vec<S
             };
             fields.delimiters(s, width);
         }
-        InlineKind::Link(l) | InlineKind::Image(l) => {
+        InlineKind::Link(id) | InlineKind::Image(id) => {
+            let l = document.link(*id);
             if matches!(i.kind, InlineKind::Image(_)) {
                 fields.push(R::Marker, Span::new(s.start, s.start + 1));
             }

@@ -22,7 +22,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 row.iter()
                     .zip(&mut widths)
                     .map(|(cell, widest)| {
-                        let text = self.inline_text(block, &cell.children);
+                        let text = self.inline_text(block, self.document.inlines(cell.children));
                         let width = measure_text_width(&text);
                         *widest = (*widest).max(width);
                         Cell { text, width }

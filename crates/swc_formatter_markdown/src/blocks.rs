@@ -221,7 +221,12 @@ impl<'a> Formatter<'a, '_, '_> {
     ) -> Result<(), EmbeddedError> {
         match &block.kind {
             BlockKind::Paragraph(inlines) => {
-                self.inlines(block, inlines, self.options.prose_wrap, writer);
+                self.inlines(
+                    block,
+                    self.document.inlines(*inlines),
+                    self.options.prose_wrap,
+                    writer,
+                );
             }
             BlockKind::Heading(heading) => self.heading(block, heading, writer),
             BlockKind::ThematicBreak => writer.text(match container {
@@ -307,8 +312,9 @@ impl<'a> Formatter<'a, '_, '_> {
     }
 
     fn heading(&mut self, block: &Block, heading: &Heading, writer: &mut Writer<'a>) {
+        let children = self.document.inlines(heading.children);
         if heading.opening.is_none() {
-            self.inlines(block, &heading.children, self.options.prose_wrap, writer);
+            self.inlines(block, children, self.options.prose_wrap, writer);
             if let Some(underline) = heading.closing {
                 writer.hard_line();
                 writer.text(self.text(underline));
@@ -317,11 +323,11 @@ impl<'a> Formatter<'a, '_, '_> {
         }
 
         writer.text("#".repeat(usize::from(heading.level)));
-        let Some(last) = heading.children.last() else {
+        let Some(last) = children.last() else {
             return;
         };
         writer.space();
-        self.inlines(block, &heading.children, ProseWrap::Never, writer);
+        self.inlines(block, children, ProseWrap::Never, writer);
 
         // A final, space-separated run of literal hashes would become the closer.
         if let Some(closing) = heading.closing

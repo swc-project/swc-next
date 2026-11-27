@@ -247,7 +247,7 @@ fn footnotes() {
         let BlockKind::Paragraph(children) = &paragraph.kind else {
             panic!("expected a paragraph");
         };
-        let [_, hard_break, next] = children.as_slice() else {
+        let [_, hard_break, next] = document.inlines(*children) else {
             panic!("expected text on both sides of a hard break");
         };
         assert!(matches!(hard_break.kind, InlineKind::HardBreak));
@@ -287,8 +287,8 @@ fn prose() {
 
         let document = parse(source);
         let inlines = match &document.blocks[0].kind {
-            BlockKind::Heading(heading) => heading.children.as_slice(),
-            BlockKind::Paragraph(inlines) => inlines.as_slice(),
+            BlockKind::Heading(heading) => document.inlines(heading.children),
+            BlockKind::Paragraph(inlines) => document.inlines(*inlines),
             _ => panic!("expected a heading or paragraph"),
         };
         let [open, link, close] = inlines else {
@@ -305,11 +305,11 @@ fn prose() {
             kind: ReferenceKind::Shortcut,
             identifier,
             ..
-        } = &link.target
+        } = &document.link(*link).target
         else {
             panic!("expected a shortcut reference");
         };
-        let definition = document.definition(identifier).unwrap();
+        let definition = document.reference_definition(*identifier).unwrap();
         assert_eq!(document.text(definition.definition.destination), "target");
     }
 
@@ -429,7 +429,8 @@ fn prose_wrap_boundaries() {
         let BlockKind::Paragraph(inlines) = &block.kind else {
             panic!("expected a paragraph");
         };
-        inlines
+        document
+            .inlines(*inlines)
             .iter()
             .filter(|node| matches!(node.kind, InlineKind::HardBreak))
             .count()
