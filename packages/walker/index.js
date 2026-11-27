@@ -46,6 +46,28 @@ function assertSync(result) {
     );
 }
 
+function validHandlers(value) {
+  if (typeof value === "function") return true;
+  if (!Array.isArray(value)) return false;
+  for (let index = 0; index < value.length; index++) {
+    if (!owns(value, index) || typeof value[index] !== "function") return false;
+  }
+  return true;
+}
+
+function append(handlers, value, prepend = false) {
+  if (value === undefined) return;
+  if (typeof value !== "function" && Array.isArray(value)) {
+    if (prepend) handlers.unshift(...value);
+    else handlers.push(...value);
+  } else if (prepend) handlers.unshift(value);
+  else handlers.push(value);
+}
+
+function compact(handlers) {
+  return handlers.length === 0 ? null : handlers.length === 1 ? handlers[0] : handlers;
+}
+
 function compile(hooks) {
   if (!hooks || typeof hooks !== "object")
     throw new TypeError("Expected a hooks object");
@@ -53,26 +75,31 @@ function compile(hooks) {
   const table = new Map();
   let enter, leave;
   const add = (name, value) => {
-    const pair = typeof value === "function" ? { enter: value } : value;
-    if (!pair || typeof pair !== "object")
+    if (typeof value === "function") {
+      const entry = table.get(name);
+      if (entry === undefined) table.set(name, { enter: [value], leave: [] });
+      else entry.enter.push(value);
+      return;
+    }
+    if (!value || typeof value !== "object")
       throw new TypeError(`Invalid hook: ${name}`);
-    for (const key of Object.keys(pair)) {
+    for (const key of Object.keys(value)) {
       if (
         (key !== "enter" && key !== "leave") ||
-        (pair[key] !== undefined && typeof pair[key] !== "function")
+        (value[key] !== undefined && !validHandlers(value[key]))
       ) {
         throw new TypeError(`Invalid hook: ${name}.${key}`);
       }
     }
     const entry = table.get(name) ?? { enter: [], leave: [] };
-    if (pair.enter) entry.enter.push(pair.enter);
-    if (pair.leave) entry.leave.unshift(pair.leave);
+    append(entry.enter, value.enter);
+    append(entry.leave, value.leave, true);
     table.set(name, entry);
   };
   for (const [name, value] of entries) {
     if (value === undefined) continue;
     if (name === "enter" || name === "leave") {
-      if (typeof value !== "function")
+      if (!validHandlers(value))
         throw new TypeError(`Invalid hook: ${name}`);
       if (name === "enter") enter = value;
       else leave = value;
@@ -90,15 +117,11 @@ function compile(hooks) {
     if (value !== undefined && isNodeType(name)) add(name, value);
   }
   for (const pair of table.values()) {
-    if (enter) pair.enter.unshift(enter);
-    if (leave) pair.leave.push(leave);
+    append(pair.enter, enter, true);
+    append(pair.leave, leave);
   }
-  const compact = (handlers) =>
-    handlers.length === 0
-      ? null
-      : handlers.length === 1
-        ? handlers[0]
-        : handlers;
+  if (enter !== undefined && typeof enter !== "function") enter = compact(enter.slice());
+  if (leave !== undefined && typeof leave !== "function") leave = compact(leave.slice());
   const dispatch =
     table.size === 0 ? baseDispatch : Object.create(baseDispatch);
   for (const [type, pair] of table) {
@@ -123,6 +146,47 @@ function compile(hooks) {
     globalEnter: enter ?? null,
     globalLeave: leave ?? null,
   };
+}
+
+/** Merge visitors into a snapshot of concrete enter/leave callback lists. */
+export function merge(visitors) {
+  if (!Array.isArray(visitors)) throw new TypeError("Expected an array of visitors");
+  const compiled = visitors.map(compile);
+  const hooks = Object.create(null);
+  const append = (handlers, hook) => {
+    if (Array.isArray(hook)) handlers.push(...hook);
+    else if (hook !== null) handlers.push(hook);
+  };
+  const hasGlobalHooks = compiled.some(
+    (visitor) => visitor.globalEnter !== null || visitor.globalLeave !== null,
+  );
+  let types;
+  if (hasGlobalHooks) {
+    types = Object.keys(baseDispatch);
+  } else {
+    const sparseTypes = new Set();
+    for (const { dispatch } of compiled) {
+      if (dispatch !== baseDispatch) {
+        for (const type of Object.keys(dispatch)) sparseTypes.add(type);
+      }
+    }
+    types = [...sparseTypes].sort();
+  }
+  for (const type of types) {
+    const enter = [];
+    const leave = [];
+    for (const visitor of compiled) {
+      const entry = visitor.dispatch[type];
+      append(enter, entry.enter ?? visitor.globalEnter);
+      append(leave, entry.leave ?? visitor.globalLeave);
+    }
+    if (enter.length === 0 && leave.length === 0) continue;
+    hooks[type] = Object.freeze({
+      enter: Object.freeze(enter),
+      leave: Object.freeze(leave),
+    });
+  }
+  return Object.freeze(hooks);
 }
 
 function walkEnter(node, walker, parent, key, list, index) {

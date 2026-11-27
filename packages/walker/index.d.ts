@@ -93,6 +93,13 @@ export type WalkHooks<State = unknown, Node extends AstNode = AstNode> = {
   >;
 };
 
+declare const mergedHooks: unique symbol;
+
+/** A merged snapshot for {@link walk}, {@link createWalker}, or another {@link merge}. */
+export interface MergedWalkHooks<State = unknown> {
+  readonly [mergedHooks]: (state: State) => void;
+}
+
 /**
  * Traverse and edit an existing ESTree / TS-ESTree tree synchronously in place.
  *
@@ -101,7 +108,7 @@ export type WalkHooks<State = unknown, Node extends AstNode = AstNode> = {
  * Use {@link createWalker} to reuse compiled hooks across trees.
  *
  * @param root - An acyclic supported node or subtree.
- * @param hooks - Node-type, alias, and/or global callbacks.
+ * @param hooks - Node-type, alias, and/or global callbacks, or a merged snapshot.
  * @param state - Optional value exposed as `ctx.state`.
  * @returns The original root, mutated in place.
  * @throws {TypeError} For invalid hooks, unsupported nodes, or non-undefined returns.
@@ -121,7 +128,11 @@ export declare function walk<
   Root extends AstNode,
   State = unknown,
   Node extends AstNode = AstNode,
->(root: Root, hooks: WalkHooks<State, Node>, state?: State): Root;
+>(
+  root: Root,
+  hooks: WalkHooks<State, Node> | MergedWalkHooks<State>,
+  state?: State,
+): Root;
 
 /** A snapshot of hook functions, reusable across independent or nested walks. */
 export interface CompiledWalker<State = unknown> {
@@ -137,6 +148,7 @@ export interface CompiledWalker<State = unknown> {
 /**
  * Validate and snapshot hooks once for repeated synchronous tree traversal.
  * Later hook changes do not affect the snapshot; callback closures remain shared.
+ * Use {@link merge} to combine multiple visitors before creating a walker.
  *
  * @param hooks - Callbacks with the same rules as {@link walk}.
  * @returns A frozen walker with a `walk(root, state?)` method.
@@ -159,4 +171,18 @@ export interface CompiledWalker<State = unknown> {
 export declare function createWalker<
   State = unknown,
   Node extends AstNode = AstNode,
->(hooks: WalkHooks<State, Node>): CompiledWalker<State>;
+>(hooks: WalkHooks<State, Node> | MergedWalkHooks<State>): CompiledWalker<State>;
+
+/**
+ * Merge visitors into a frozen snapshot.
+ * Pass the result to {@link walk} or {@link createWalker} for one traversal.
+ * At each node, callbacks run in visitor array order, preserving each visitor's
+ * global/alias/concrete hook order. Traversal controls are shared as documented
+ * on WalkContext. Later changes to the input visitors do not affect the result.
+ */
+export declare function merge<
+  State = unknown,
+  Node extends AstNode = AstNode,
+>(
+  visitors: readonly (WalkHooks<State, Node> | MergedWalkHooks<State>)[],
+): MergedWalkHooks<State>;
