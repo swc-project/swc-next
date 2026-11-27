@@ -28,6 +28,19 @@ if git diff --cached --quiet -- scripts/fixture-revisions.txt; then
     exit 0
 fi
 
+fixture_updates="$(
+    git diff --cached --no-color --unified=0 -- scripts/fixture-revisions.txt |
+        awk '
+            /^-[^-]/ { previous[substr($1, 2)] = $3 }
+            /^\+[^+]/ {
+                name = substr($1, 2)
+                if (name in previous && $3 != previous[name]) {
+                    printf "- `%s` `%s` → `%s`\n", name, substr(previous[name], 1, 7), substr($3, 1, 7)
+                }
+            }
+        '
+)"
+
 remote_tip="$(git ls-remote --refs origin "$remote_ref")"
 remote_sha="${remote_tip%%[[:space:]]*}"
 if [[ -n "$remote_sha" ]]; then
@@ -42,11 +55,14 @@ if [[ -z "$remote_sha" ]] || ! git diff --cached --quiet "$remote_sha" --; then
     git push --force-with-lease="$remote_ref:$remote_sha" origin "HEAD:$remote_ref"
 fi
 
-body='Advance the tracked conformance fixtures to their upstream heads.'
 if [[ "$REPORTS_OUTCOME" == success ]]; then
-    body+=' Includes the regenerated conformance reports.'
+    status='✅ Conformance reports regenerated.'
 else
     run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-    body+=" Report generation failed. Apply any runner fixes and commit the regenerated reports on this branch. [Update workflow log]($run_url) · [Regeneration commands](https://github.com/swc-project/swc-next/blob/main/tasks/testsuite/README.md)"
+    status="❌ Conformance report generation failed. [Workflow log]($run_url)"
 fi
-gh pr create --base main --head "$branch" --title "$title" --body "$body"
+
+body_file="$(mktemp)"
+trap 'rm -- "$body_file"' EXIT
+printf '%s\n\n%s\n' "$status" "$fixture_updates" > "$body_file"
+gh pr create --base main --head "$branch" --title "$title" --body-file "$body_file"
