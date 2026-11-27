@@ -9,7 +9,7 @@ use swc_next_ecma_ast::{Lang, SourceType};
 
 use crate::{
     cases::{Case, fixtures, test262::parse_meta},
-    util::workspace_root,
+    util::{read_optional, workspace_root},
 };
 
 pub struct SwcResolverCase {
@@ -34,20 +34,22 @@ impl SwcResolverCase {
 
         oracle_paths
             .into_par_iter()
-            .map(|oracle_path| Self::read_case(&workspace_root, &oracle_root, oracle_path))
+            .filter_map(|oracle_path| Self::read_case(&workspace_root, &oracle_root, oracle_path))
             .collect()
     }
 
-    fn read_case(workspace_root: &Path, oracle_root: &Path, oracle_path: PathBuf) -> Self {
+    fn read_case(workspace_root: &Path, oracle_root: &Path, oracle_path: PathBuf) -> Option<Self> {
         let oracle_relative = oracle_path.strip_prefix(oracle_root).unwrap();
         let mut components = oracle_relative.components();
         let suite = components.next().unwrap().as_os_str();
         let fixture_root = workspace_root.join("tasks/testsuite/fixtures").join(suite);
         let relative_source = components.as_path().with_extension("");
         let path = fixture_root.join(relative_source);
+        // The reference snapshots and source fixtures have independent pins.
+        let mut code = read_optional(&path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))?;
         let relative_path = path.strip_prefix(workspace_root).unwrap().to_path_buf();
         let name = oracle_relative.display().to_string().replace('\\', "/");
-        let mut code = read_to_string(&path).unwrap();
         let expected = read_to_string(&oracle_path).unwrap();
         let lang = if suite == "swc" {
             // swc-conformance enables JSX for every minifier fixture.
@@ -69,7 +71,7 @@ impl SwcResolverCase {
             code = format!("\"use strict\";\n{code}");
         }
 
-        Self {
+        Some(Self {
             path,
             relative_path,
             name,
@@ -77,7 +79,7 @@ impl SwcResolverCase {
             expected,
             lang,
             source_type,
-        }
+        })
     }
 }
 

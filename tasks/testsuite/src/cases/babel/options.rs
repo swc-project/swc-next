@@ -231,10 +231,11 @@ impl BabelOptions {
         }
 
         let mut options = babel_options.unwrap_or_default();
-        if let Some(plugins_json) = plugins_json {
+        // A selected null masks inherited entries and leaves the list empty.
+        if let Some(plugins_json) = plugins_json.filter(|value| !value.is_null()) {
             options.plugins = serde_json::from_value(plugins_json).unwrap();
         }
-        if let Some(presets_json) = presets_json {
+        if let Some(presets_json) = presets_json.filter(|value| !value.is_null()) {
             options.presets = serde_json::from_value(presets_json).unwrap();
         }
         options

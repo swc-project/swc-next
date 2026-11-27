@@ -1,8 +1,8 @@
 semantic * swc_resolver
 ========================
-Positive Passed: 20207/20355 (99.27%)
+Positive Passed: 20173/20323 (99.26%)
 Negative Passed: 0/0 (0.00%)
-Panicked: 0/20355 (0.00%)
+Panicked: 0/20323 (0.00%)
 Failed: tasks/testsuite/fixtures/test262/test/annexB/language/eval-code/direct/global-block-decl-eval-global-existing-block-fn-update.js - test262/test/annexB/language/eval-code/direct/global-block-decl-eval-global-existing-block-fn-update.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/annexB/language/eval-code/direct/global-if-decl-else-decl-a-eval-global-existing-block-fn-update.js - test262/test/annexB/language/eval-code/direct/global-if-decl-else-decl-a-eval-global-existing-block-fn-update.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/annexB/language/eval-code/direct/global-if-decl-else-decl-b-eval-global-existing-block-fn-update.js - test262/test/annexB/language/eval-code/direct/global-if-decl-else-decl-b-eval-global-existing-block-fn-update.js.snap: name resolution differs
@@ -130,6 +130,8 @@ Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/pri
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/protected.js - test262/test/language/future-reserved-words/protected.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/public.js - test262/test/language/future-reserved-words/public.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/future-reserved-words/static.js - test262/test/language/future-reserved-words/static.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/literals/regexp/S7.8.5_A1.4_T2.js - test262/test/language/literals/regexp/S7.8.5_A1.4_T2.js.snap: name resolution differs
+Failed: tasks/testsuite/fixtures/test262/test/language/literals/regexp/S7.8.5_A2.4_T2.js - test262/test/language/literals/regexp/S7.8.5_A2.4_T2.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js - test262/test/language/statements/await-using/initializer-Symbol.asyncDispose-called-at-end-of-each-iteration-of-forofstatement.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js - test262/test/language/statements/await-using/initializer-Symbol.dispose-called-at-end-of-each-iteration-of-forofstatement.js.snap: name resolution differs
 Failed: tasks/testsuite/fixtures/test262/test/language/statements/await-using/syntax/await-using-invalid-assignment-statement-body-for-of.js - test262/test/language/statements/await-using/syntax/await-using-invalid-assignment-statement-body-for-of.js.snap: name resolution differs

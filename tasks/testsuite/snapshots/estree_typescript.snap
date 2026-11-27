@@ -1,23 +1,21 @@
-AST Parsed     : 11748/11748 (100.00%)
-Positive Passed: 11632/11748 (99.01%)
+AST Parsed     : 12156/12156 (100.00%)
+Positive Passed: 12041/12156 (99.05%)
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/accessorBodyInTypeContext.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/arraySigChecking.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignToInvalidLHS.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignmentToInstantiationExpression.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/assignmentToParenthesizedExpression1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/controlFlowInstanceofWithSymbolHasInstance.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/correlatedUnions.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationEmitCommonJsModuleReferencedType.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declarationsWithRecursiveInternalTypesProduceUniqueTypeParams.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declareAbstractModifierOrder.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/declareAlreadySeen.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/exportAssignmentWithDeclareAndExportModifiers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/exportAssignmentWithDeclareModifier.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/exportDestructuringIterator.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/expressionWithJSDocTypeArguments.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/extendedUnicodeEscapeSequenceIdentifiers.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/fatarrowfunctionsOptionalArgsErrors1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeclWithDeclareModifier.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/importDeclWithDeclareModifierInAmbientContext.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/indexSignatureMissingType.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/indexSignatureMustHaveTypeAnnotation.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/indexSignatureTypeCheck.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/indexSignatureTypeCheck2.ts
@@ -34,6 +32,9 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/letDeclarations-invalidContexts.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/letDeclarations-scopes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/letDeclarations-validContexts.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/malformedDestructuringAssignmentTransformVariants.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/malformedObjectDestructuringAssignmentESDecorators.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/moduleExportsUnaryExpression.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/narrowingUnionToUnion.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/noCrashOnMixin2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/compiler/noCrashOnMixin2_promoted.ts
@@ -60,8 +61,6 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conforman
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/dynamicImport/importCallExpressionWithTypeArgument.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/destructuring/restElementWithInitializer1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/es6/destructuring/restPropertyWithBindingPattern.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/esDecorators/classDeclaration/esDecorators-classDeclaration-setFunctionName.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/esDecorators/classDeclaration/methods/esDecorators-classDeclaration-methods-staticPrivate.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/expressions/binaryOperators/instanceofOperator/instanceofOperatorWithRHSHasSymbolHasInstance.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/expressions/objectLiterals/objectLiteralErrors.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/expressions/optionalChaining/taggedTemplateChain/taggedTemplateChain.ts
@@ -101,12 +100,12 @@ Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conforman
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/statements/labeledStatements/labeledStatementWithLabel_es2015.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/statements/labeledStatements/labeledStatementWithLabel_strict.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/conditional/conditionalTypes1.ts
+Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/conditional/inferTypes1.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/import/importTypeGeneric.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/import/importTypeNested.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/import/importTypeNestedNoRef.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/import/importTypeNonString.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/import/importWithTypeArguments.ts
-Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/mapped/mappedTypeConstraints2.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParameterWithoutAnnotationIsAnyArray.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParametersOfNonArrayTypes.ts
 Mismatch: tasks/testsuite/fixtures/typescript/tsc/testdata/tests/cases/conformance/types/objectTypeLiteral/callSignatures/restParametersOfNonArrayTypes2.ts
