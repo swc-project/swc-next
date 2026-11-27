@@ -3,9 +3,8 @@ import {
   encodeFormatterConfig,
   decodeFormatDocOutput,
 } from "@swc-next/protocol/formatter";
-import { formatDocBufferSync as formatBuffer } from "./binding.js";
 
-export function formatDocBufferSync(source, parser, options) {
+export function formatJsDoc(formatBuffer, source, parser, options) {
   if (typeof source !== "string")
     throw new TypeError("source must be a string");
   const result = decodeFormatDocOutput(

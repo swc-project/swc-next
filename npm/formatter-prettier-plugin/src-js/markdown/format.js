@@ -1,12 +1,11 @@
 import { readDocument } from "@swc-next/protocol/document";
-import { formatDocBufferSync as formatBuffer } from "./binding.js";
 
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const proseWrapModes = ["preserve", "always", "never"];
 const lineEndings = ["lf", "crlf", "cr"];
 const invalidBlock = () => new Error("Invalid Markdown embedded block");
 
-export function formatDocSync(source, options = {}) {
+export function formatMarkdownDoc(formatBuffer, source, options = {}) {
   if (typeof source !== "string")
     throw new TypeError("source must be a string");
   const {
@@ -50,13 +49,7 @@ export function formatDocSync(source, options = {}) {
   const embeds = includeEmbeds
     ? decodeBlocks(readDocument(doc).labelData, source)
     : [];
-  return {
-    doc,
-    embeds,
-    get fences() {
-      return embeds.filter((block) => !("opening" in block));
-    },
-  };
+  return { doc, embeds };
 }
 
 function decodeBlocks(records, source) {

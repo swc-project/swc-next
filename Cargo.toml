@@ -1,5 +1,5 @@
 [workspace]
-exclude = ["npm/core-browser", "npm/formatter-prettier-plugin"]
+exclude = ["npm/core-browser"]
 members = [
     "crates/*",
     "npm/*",

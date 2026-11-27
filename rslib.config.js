@@ -2,23 +2,21 @@ import path from "node:path";
 import { defineConfig, mergeRslibConfig } from "@rslib/core";
 
 const root = import.meta.dirname;
-const components = [
-  "core",
-  "parser",
-  "generator",
-  "transformer",
-  "core-browser",
-  "formatter",
-  "formatter-js",
-  "formatter-markdown",
-  "formatter-prettier-plugin",
-];
+const components = {
+  core: ["index"],
+  parser: ["index"],
+  generator: ["index"],
+  transformer: ["index"],
+  "core-browser": ["index"],
+  formatter: ["index", "document"],
+  "formatter-prettier-plugin": ["javascript/index", "markdown/index"],
+};
 
 const pifeHint = "@swc-next-pife-(start|end)";
 const pifeComment = new RegExp(`/\\* ${pifeHint} \\*/`, "g");
 
 const baseConfig = defineConfig({
-  lib: components.map((component) => {
+  lib: Object.entries(components).map(([component, entries]) => {
     const directory = path.join(root, "npm", component);
     const source = path.join(directory, "src-js");
     const eagerDecoder = component === "core" || component === "parser";
@@ -28,9 +26,9 @@ const baseConfig = defineConfig({
       bundle: true,
       syntax: "es2022",
       source: {
-        entry: {
-          index: path.join(source, "index.js"),
-        },
+        entry: Object.fromEntries(
+          entries.map((entry) => [entry, path.join(source, `${entry}.js`)]),
+        ),
       },
       ...(eagerDecoder && { tools: { rspack: restoreDecoderHints } }),
       output: {
@@ -38,9 +36,7 @@ const baseConfig = defineConfig({
         distPath: { root: path.join(directory, "dist") },
         // Native/Wasm build tools also write artifacts to dist.
         cleanDistPath: false,
-        copy: [
-          { from: path.join(source, "{*.d.ts,binding.js}"), to: "[name][ext]" },
-        ],
+        copy: [{ from: "{**/*.d.ts,binding.js}", context: source }],
         autoExternal: false,
         externals: [
           "./binding.js",
@@ -77,31 +73,9 @@ export default mergeRslibConfig(baseConfig, {
       },
     },
     {
-      id: "formatter",
-      source: {
-        entry: {
-          document: path.join(root, "npm/formatter/src-js/document.js"),
-        },
-      },
-    },
-    {
       id: "formatter-prettier-plugin",
-      source: {
-        entry: {
-          markdown: path.join(
-            root,
-            "npm/formatter-prettier-plugin/src-js/markdown.js",
-          ),
-        },
-      },
       output: {
-        cleanDistPath: true,
-        externals: [
-          "@swc-next/formatter-js",
-          "@swc-next/formatter-markdown",
-          "prettier/doc",
-          "prettier/plugins/estree",
-        ],
+        externals: ["../binding.js", "prettier/doc", "prettier/plugins/estree"],
       },
     },
   ],

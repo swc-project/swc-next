@@ -1,9 +1,7 @@
-import { decodeDoc } from "./decode.js";
+import { decodeDoc } from "../decode.js";
+import { formatJsDoc } from "./format.js";
 import { toFormatterConfig } from "./options.js";
 export { options } from "./options.js";
-
-let binding;
-const loadBinding = () => (binding ??= import("@swc-next/formatter-js"));
 
 function sourceTypeForPath(path) {
   if (/\.(?:mjs|mts)$/iu.test(path)) return "module";
@@ -31,7 +29,7 @@ function parser(lang) {
         throw new Error("SWCFMT does not yet support pragma options");
       }
       const formatOptions = toFormatterConfig(options);
-      const { formatDocBufferSync } = await loadBinding();
+      const { formatJsDocBufferSync } = await import("../binding.js");
       const path = options.filepath ?? "";
       const declaration = lang === "ts" && /\.d\.(?:ts|mts|cts)$/iu.test(path);
       const language = declaration ? "dts" : lang;
@@ -39,7 +37,12 @@ function parser(lang) {
       const parserOptions = { lang: language, sourceType };
       let buffer;
       try {
-        buffer = formatDocBufferSync(source, parserOptions, formatOptions);
+        buffer = formatJsDoc(
+          formatJsDocBufferSync,
+          source,
+          parserOptions,
+          formatOptions,
+        );
       } catch (error) {
         if (
           error instanceof SyntaxError &&

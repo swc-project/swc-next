@@ -79,4 +79,7 @@ export declare const enum SourceType {
   Unambiguous = 'unambiguous'
 }
 /** Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper. */
-export declare function formatDocBufferSync(source: string, parser: number, options: Uint8Array): Uint8Array
+export declare function formatJsDocBufferSync(source: string, parser: number, options: Uint8Array): Uint8Array
+
+/** Produces a SWCD document with optional records for deferred Markdown blocks. */
+export declare function formatMarkdownDocBufferSync(source: string, proseWrap: number, singleQuote: boolean, lineWidth: number, indentWidth: number, useTabs: boolean, lineEnding: number, includeEmbeds: boolean): Uint8Array
