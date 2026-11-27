@@ -571,7 +571,7 @@ fn interrupts(source: &str, line: SourceLine) -> bool {
         return false;
     };
     match b {
-        b'{' => liquid_open(s).is_some(),
+        b'{' => liquid_block_delimiter(s).is_some(),
         b'[' => starts_footnote_definition(s),
         b'$' => math_open(s).is_some(),
         b'>' => true,
@@ -995,7 +995,7 @@ fn opaque(
             .map_or(lines.len(), |i| i + usize::from(includes_closer));
         return Some((n, BlockKind::Html));
     }
-    if let Some(delimiter) = liquid_open(s) {
+    if let Some(delimiter) = liquid_block_delimiter(s) {
         let i = liquid_end(delimiter)?;
         let (prefix, tail) = lines[i].content.text(source).split_once(delimiter)?;
         if tail.trim().is_empty() {
@@ -1016,6 +1016,12 @@ fn opaque(
 fn math_open(text: &str) -> Option<usize> {
     let width = text.bytes().take_while(|b| *b == b'$').count();
     (width >= 2 && !text[width..].contains('$')).then_some(width)
+}
+
+/// Whether the first physical line starts with a display math opener.
+pub fn starts_display_math(text: &str) -> bool {
+    text.starts_with('$')
+        && math_open(text.split(['\r', '\n']).next().unwrap_or_default()).is_some()
 }
 
 /// Whether the line content begins with a footnote definition marker such as `[^label]:`.
@@ -1046,7 +1052,9 @@ fn footnote_label(text: &str) -> Option<&str> {
     None
 }
 
-fn liquid_open(text: &str) -> Option<&'static str> {
+/// The closing delimiter for a potential Liquid block at the start of the text.
+/// Non-whitespace after the first closing delimiter keeps the tag inline.
+pub fn liquid_block_delimiter(text: &str) -> Option<&'static str> {
     let close = if text.starts_with("{%") {
         "%}"
     } else if text.starts_with("{{") {

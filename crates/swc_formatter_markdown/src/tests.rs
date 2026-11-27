@@ -170,6 +170,39 @@ fn prose_wrap_boundaries() {
     let source = "hello [^n] note\n";
     assert_eq!(wrap(source), "hello\n[^n]\nnote\n");
 
+    let source = "hello $$ world\n";
+    assert_eq!(wrap(source), "hello $$\nworld\n");
+
+    let source = "$$$meta long $ tail\n";
+    assert_eq!(wrap(source), "$$$meta long $\ntail\n");
+
+    let source = "hi\\\n$$ long $\n";
+    assert_eq!(wrap(source), source);
+
+    let source = "hello $$x$$ world\n";
+    assert_eq!(wrap(source), "hello\n$$x$$\nworld\n");
+
+    let source = "hello $$x\nb$$ tail\n";
+    assert_eq!(wrap(source), "hello $$x\nb$$\ntail\n");
+
+    let source = "hello {% raw %}\n";
+    assert_eq!(wrap(source), source);
+
+    let source = "hello {{ value }} tail\n";
+    assert_eq!(wrap(source), "hello {{ value }}\ntail\n");
+
+    let source = "{{ value }} tail end\n";
+    assert_eq!(wrap(source), "{{ value }} tail\nend\n");
+
+    let source = "hello {% raw %}. tail\n";
+    assert_eq!(wrap(source), "hello\n{% raw %}.\ntail\n");
+
+    let source = "hello {{ multi\nline }}. tail\n";
+    assert_eq!(wrap(source), "hello {{ multi\nline }}.\ntail\n");
+
+    let source = "hello {{ a\n{{ b }} tail end\n";
+    assert_eq!(wrap(source), "hello {{ a\n{{ b }} tail\nend\n");
+
     let source = "hello |---|\n";
     assert_eq!(wrap(source), source);
 

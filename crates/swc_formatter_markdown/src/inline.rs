@@ -7,7 +7,8 @@ use std::{
 use swc_next_formatter_core::Writer;
 use swc_next_markdown_parser::{
     Block, BlockKind, Definition, Inline, InlineKind, Link, LinkTarget, ReferenceKind, SourceLine,
-    Span, can_continue_link_definition, is_table_delimiter_row, parse, starts_footnote_definition,
+    Span, can_continue_link_definition, is_table_delimiter_row, liquid_block_delimiter, parse,
+    starts_display_math, starts_footnote_definition,
 };
 use swc_next_simd::{cmp::SimdPartialEq, u8x16};
 
@@ -53,6 +54,27 @@ impl Word {
             LinePrefix::Escape => Cow::Owned(format!("\\{value}")),
             LinePrefix::Indent => Cow::Owned(format!("    {value}")),
         }
+    }
+
+    fn liquid_needs_following_word(self, buffer: &str) -> bool {
+        let text = self.text(buffer).trim_end();
+        if !text.ends_with('}') {
+            return false;
+        }
+        let standalone =
+            |tag: &str| liquid_block_delimiter(tag).is_some_and(|end| tag.ends_with(end));
+        if (self.before == Separation::None || self.before >= Separation::HardLine)
+            && self.prefix == LinePrefix::None
+            && standalone(text)
+        {
+            return true;
+        }
+        // A verbatim inline can itself put a Liquid opener at the start of its last line.
+        text.rsplit_once(['\r', '\n']).is_some_and(|(_, line)| {
+            let content = line.trim_start_matches([' ', '\t']);
+            // A tab in a container can consume fewer than four columns.
+            line.len() - content.len() < 4 && standalone(content)
+        })
     }
 }
 
@@ -262,6 +284,18 @@ impl<'a> Prose<'a> {
         (end, prefix)
     }
 
+    // At a required line start, keep the later dollar sign that made this line prose.
+    fn anchor_math_opener(&self, index: usize) -> usize {
+        if !starts_display_math(self.words[index].text(&self.buffer)) {
+            return index;
+        }
+        self.words[index + 1..]
+            .iter()
+            .take_while(|word| word.before == Separation::Space)
+            .position(|word| word.text(&self.buffer).contains('$'))
+            .map_or(index, |offset| index + offset + 1)
+    }
+
     fn finish(&mut self) {
         let wrap = self.wrap;
         self.finish_word();
@@ -269,7 +303,13 @@ impl<'a> Prose<'a> {
             return;
         }
         let mut count = 1;
-        let mut join_through = 0;
+        // A group can grow as words join. Inspect only its last original word for Liquid.
+        let mut previous_word = self.words[0];
+        let mut join_through = if wrap == ProseWrap::Always {
+            self.anchor_math_opener(0)
+        } else {
+            0
+        };
         for index in 1..self.words.len() {
             let mut word = self.words[index];
             let value = word.text(&self.buffer);
@@ -284,10 +324,10 @@ impl<'a> Prose<'a> {
                 word.before = Separation::Space;
                 word.prefix = LinePrefix::None;
             }
-            let previous = self.words[count - 1];
-            let left = previous.text(&self.buffer);
+            let previous_group = self.words[count - 1];
+            let left = previous_group.text(&self.buffer);
             let cjk = || has_ambiguous_cjk_boundary(left, value);
-            let adjacent_html = previous.html_only && word.html_only;
+            let adjacent_html = previous_group.html_only && word.html_only;
             word.before = match word.before {
                 Separation::SourceLine if wrap == ProseWrap::Preserve || adjacent_html || cjk() => {
                     Separation::HardLine
@@ -298,11 +338,12 @@ impl<'a> Prose<'a> {
             if word.before >= Separation::HardLine {
                 if setext {
                     word.prefix = LinePrefix::Escape;
-                } else if wrap == ProseWrap::Always
-                    && word.prefix == LinePrefix::None
-                    && self.starts_table_delimiter(index)
-                {
-                    (join_through, word.prefix) = self.anchor_table_delimiter(index);
+                } else if wrap == ProseWrap::Always && word.prefix == LinePrefix::None {
+                    if self.starts_table_delimiter(index) {
+                        (join_through, word.prefix) = self.anchor_table_delimiter(index);
+                    } else {
+                        join_through = self.anchor_math_opener(index);
+                    }
                 }
             }
             if word.before == Separation::Space
@@ -311,6 +352,7 @@ impl<'a> Prose<'a> {
                     || index <= join_through
                     || cjk()
                     || ends_with_unescaped_backslash(left)
+                    || previous_word.liquid_needs_following_word(&self.buffer)
                     || self.starts_table_delimiter(index)
                     || requires_prefix_word(value)
                         && !(adjacent_html && html_can_start_line(value)))
@@ -328,6 +370,7 @@ impl<'a> Prose<'a> {
                 self.words[count] = word;
                 count += 1;
             }
+            previous_word = word;
         }
         self.words.truncate(count);
     }
@@ -857,26 +900,26 @@ fn html_can_start_line(fragment: &str) -> bool {
 }
 
 fn requires_prefix_word(word: &str) -> bool {
-    if word.starts_with('[') {
-        return starts_footnote_definition(word);
-    }
-    if word.starts_with(['>', '<']) || matches!(word, "-" | "+" | "*") {
-        return true;
-    }
-    if word.bytes().all(|byte| byte == b'#') && word.len() <= 6 {
-        return true;
-    }
-    if word.starts_with("```")
-        || word.starts_with("~~~")
-        || word
+    match word.as_bytes().first() {
+        Some(b'<' | b'>') => true,
+        Some(b'[') => starts_footnote_definition(word),
+        Some(b'$') => starts_display_math(word),
+        Some(b'{') => {
+            let first_line = word.split(['\r', '\n']).next().unwrap_or(word);
+            liquid_block_delimiter(first_line).is_some()
+        }
+        Some(b'#') => word.len() <= 6 && word.bytes().all(|byte| byte == b'#'),
+        Some(b'+') => word.len() == 1,
+        Some(b'`') => word.starts_with("```"),
+        Some(b'~') => word.starts_with("~~~"),
+        Some(b'=' | b'-' | b'*' | b'_') => word
             .bytes()
-            .all(|byte| matches!(byte, b'=' | b'-' | b'*' | b'_'))
-    {
-        return true;
+            .all(|byte| matches!(byte, b'=' | b'-' | b'*' | b'_')),
+        Some(b'0'..=b'9') => word.strip_suffix(['.', ')']).is_some_and(|digits| {
+            digits.len() <= 9 && digits.bytes().all(|byte| byte.is_ascii_digit())
+        }),
+        _ => false,
     }
-    word.strip_suffix(['.', ')']).is_some_and(|digits| {
-        !digits.is_empty() && digits.len() <= 9 && digits.bytes().all(|byte| byte.is_ascii_digit())
-    })
 }
 
 fn has_ambiguous_cjk_boundary(previous: &str, next: &str) -> bool {

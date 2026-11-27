@@ -21,7 +21,7 @@ Use `ast_to_doc` with a parsed Markdown document. Configure layout through the f
 
 SWC intentionally preserves literal `*` and `_` where Prettier may add escapes. It changes the surrounding delimiters only when the emphasis spans and their nesting stay the same. For example, `*foo**bar*` formats as `_foo**bar_`, and `x*a**b*` keeps its original spelling.
 
-With `ProseWrap::Always`, SWC may exceed the print width to keep a literal backslash visible, avoid introducing a GFM table or footnote definition, or keep a link destination such as `#` on the same line as its definition label. Indented code at the start of a footnote stays on its own line. These line breaks can differ from Prettier.
+With `ProseWrap::Always`, SWC may exceed the print width to keep a literal backslash visible or a link destination such as `#` beside its definition label. It also keeps paragraph text together where a line break would introduce a GFM table, footnote definition, display math block, or Liquid block. Indented code at the start of a footnote stays on its own line. These line breaks can differ from Prettier.
 
 Markdown prints the delimiters and indentation for code fences and front matter. The host installs an `EmbeddedDispatcher` to select a formatter and supply the child Doc. It receives the decoded fence language and metadata. Markdown keeps their source spelling when printing the decoded text would change their meaning. When embedding is disabled or the host declines a language, Markdown preserves the body and reapplies the surrounding indentation. Ignored blocks and opaque syntax retain their source content.
 
