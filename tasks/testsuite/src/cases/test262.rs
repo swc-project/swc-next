@@ -23,10 +23,10 @@ pub struct Test262Case {
 }
 
 #[derive(Debug, Default)]
-pub(super) struct Meta {
+struct Meta {
     negative: Option<MetaNegative>,
-    pub(super) module: bool,
-    pub(super) only_strict: bool,
+    module: bool,
+    only_strict: bool,
     no_strict: bool,
     raw: bool,
 }
@@ -130,7 +130,7 @@ impl Test262Case {
     }
 }
 
-pub(super) fn parse_meta(source: &str) -> Option<Meta> {
+fn parse_meta(source: &str) -> Option<Meta> {
     let meta_start = source.find("/*---")?;
     let meta_end = source.find("---*/")?;
     let meta_str = &source[meta_start + 5..meta_end];

@@ -13,10 +13,10 @@ running conformance.
 cargo run --locked -p testsuite --bin conformance --profile conformance
 ```
 
-The runner checks parsing, AST round trips, identifier resolution, transforms,
-and minification. Transform checks skip unsupported SWC settings and cases that
-require diagnostics, source maps, or declarations. Minifier checks skip cases
-that use mangling or lack reference output.
+The runner checks parsing, AST round trips, transforms, and minification.
+Transform checks skip unsupported SWC settings and cases that require
+diagnostics, source maps, or declarations. Minifier checks skip cases that use
+mangling or lack reference output.
 
 Check for mismatches even when the command succeeds by reviewing the generated
 [snapshots](snapshots).

@@ -5,7 +5,6 @@ use testsuite::{
         babel::BabelTransformCase,
         babel_parser::BabelParserCase,
         minifier::{SwcMinifierCase, TerserMinifierCase},
-        swc_resolver::SwcResolverCase,
         swc_transform::SwcTransformCase,
         test262::Test262Case,
         typescript::{
@@ -18,7 +17,6 @@ use testsuite::{
         codegen::CodegenRunner,
         minifier::MinifierRunner,
         parser::ParserRunner,
-        semantic::SemanticRunner,
         transform::{TransformerV1Runner, TransformerV2Runner},
     },
 };
@@ -30,7 +28,6 @@ enum RunnerName {
     Transform,
     TransformV1,
     TransformV2,
-    Semantic,
     Minifier,
 }
 
@@ -41,8 +38,6 @@ enum CaseSet {
     #[value(name = "typescript")]
     TypeScript,
     Babel,
-    #[value(name = "swc_resolver")]
-    SwcResolver,
     Swc,
     Terser,
 }
@@ -114,10 +109,6 @@ fn main() {
                     .into(),
             ),
         },
-        RunnerName::Semantic if matches!(args.case, CaseSet::SwcResolver) => {
-            run_filtered::<SemanticRunner, SwcResolverCase>(&args.filter)
-        }
-        RunnerName::Semantic => Err("`semantic` runner requires `--case swc_resolver`".into()),
         RunnerName::Minifier => match args.case {
             CaseSet::Terser => run_filtered::<MinifierRunner, TerserMinifierCase>(&args.filter),
             CaseSet::Swc => run_filtered::<MinifierRunner, SwcMinifierCase>(&args.filter),
@@ -135,9 +126,9 @@ where
         CaseSet::Test262 => run_filtered::<R, Test262Case>(filter),
         CaseSet::TypeScript => run_filtered::<R, TypeScriptParserCase>(filter),
         CaseSet::Babel => run_filtered::<R, BabelParserCase>(filter),
-        CaseSet::SwcResolver | CaseSet::Swc | CaseSet::Terser => {
-            Err("parser/codegen do not run SWC transform/semantic/minifier cases".into())
-        }
+        CaseSet::Swc | CaseSet::Terser => Err(
+            "parser/codegen require `--case test262`, `--case typescript` or `--case babel`".into(),
+        ),
     }
 }
 
