@@ -448,8 +448,8 @@ pub enum InlineKind {
     Text,
     Escape,
     CodeSpan {
-        opening: Span,
-        closing: Span,
+        /// Byte length of each bounding backtick run.
+        width: usize,
         value: String,
     },
     Emphasis(Vec<Inline>),
@@ -476,8 +476,7 @@ pub enum InlineExtension {
         label: Span,
     },
     Math {
-        opening: Span,
-        closing: Span,
+        display: bool,
     },
 }
 

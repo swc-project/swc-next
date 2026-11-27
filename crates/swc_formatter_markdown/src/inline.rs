@@ -565,11 +565,14 @@ impl<'a> Formatter<'a, '_, '_> {
                         prose.prefix = LinePrefix::Indent;
                     }
                 }
-                InlineKind::CodeSpan { opening, value, .. } => {
-                    if wrap == ProseWrap::Preserve && self.text(node.span).contains(['\r', '\n']) {
+                InlineKind::CodeSpan { width, value } => {
+                    let raw = self.text(node.span);
+                    if wrap == ProseWrap::Preserve
+                        && memchr::memchr2(b'\r', b'\n', raw.as_bytes()).is_some()
+                    {
                         self.raw_inline(block, node.span, prose);
                     } else {
-                        write_code_span(value, *opening, self.document.source, prose);
+                        write_code_span(value, *width, node.span.start, raw, prose);
                     }
                 }
                 InlineKind::Emphasis(children) | InlineKind::Strong(children) => {
@@ -865,7 +868,13 @@ fn write_separator(writer: &mut Writer<'_>, separation: Separation) {
     }
 }
 
-fn write_code_span(value: &str, opening: Span, source: &str, prose: &mut Prose<'_>) {
+fn write_code_span(
+    value: &str,
+    original_width: usize,
+    start: usize,
+    raw: &str,
+    prose: &mut Prose<'_>,
+) {
     let width = if let Some(first) = value.find('`') {
         let runs: HashSet<_> = value.as_bytes()[first..]
             .split(|&byte| byte != b'`')
@@ -880,20 +889,28 @@ fn write_code_span(value: &str, opening: Span, source: &str, prose: &mut Prose<'
     } else {
         1
     };
-    let original = opening.text(source);
-    let marker =
-        if width < original.len() && prose.source.literal_tick_precedes(width, opening.start) {
-            Cow::Borrowed(original)
-        } else if let Some(shorter) = original.get(..width) {
-            Cow::Borrowed(shorter)
-        } else {
-            Cow::Owned("`".repeat(width))
-        };
+    let original = &raw[..original_width];
+    let marker = if width < original.len() && prose.source.literal_tick_precedes(width, start) {
+        Cow::Borrowed(original)
+    } else if let Some(shorter) = original.get(..width) {
+        Cow::Borrowed(shorter)
+    } else {
+        Cow::Owned("`".repeat(width))
+    };
     let pad = value.starts_with('`')
         || value.ends_with('`')
         || (value.starts_with(' ')
             && value.ends_with(' ')
             && value.bytes().any(|byte| byte != b' '));
+    // A canonical source spelling can be emitted in one piece.
+    if width == original_width
+        && !pad
+        && raw.get(width..raw.len().saturating_sub(width)) == Some(value)
+        && raw.ends_with(&*marker)
+    {
+        prose.atom(raw);
+        return;
+    }
     prose.atom(&marker);
     if pad {
         prose.atom(" ");

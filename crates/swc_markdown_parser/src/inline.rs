@@ -509,15 +509,7 @@ impl Parser<'_> {
                         } else {
                             raw
                         };
-                        Some((
-                            p,
-                            close + size,
-                            InlineKind::CodeSpan {
-                                opening: self.input.span(p, p + size),
-                                closing: self.input.span(close, close + size),
-                                value,
-                            },
-                        ))
+                        Some((p, close + size, InlineKind::CodeSpan { width: size, value }))
                     } else {
                         p += size;
                         continue;
@@ -729,8 +721,7 @@ impl Parser<'_> {
                             p,
                             after,
                             InlineKind::Extension(InlineExtension::Math {
-                                opening: self.input.span(p, body),
-                                closing: self.input.span(i, after),
+                                display: width == 2,
                             }),
                         ));
                     }
