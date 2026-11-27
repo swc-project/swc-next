@@ -141,6 +141,12 @@ test("transform validates configuration values", () => {
 
     assert.throws(() => transform("", { transformer: true }), TypeError);
 
+    assert.throws(() => transform("", { unknownOption: true }), TypeError);
+
+    assert.throws(() => transform("", { parser: { unknownOption: true } }), TypeError);
+
+    assert.throws(() => transform("", { generator: { unknownOption: true } }), TypeError);
+
     assert.throws(() => transform("", { transformer: { unknownOption: true } }), TypeError);
 
     assert.throws(

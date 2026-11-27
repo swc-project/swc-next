@@ -11,6 +11,22 @@ const jsxRuntimes = ["classic", "automatic"];
 const decoratorVersions = ["2023-11", "legacy"];
 const moduleTypes = ["preserve", "commonjs", "amd", "umd", "systemjs"];
 
+const transformApiKeys = new Set([
+  "filename",
+  "sourceMap",
+  "comments",
+  "parser",
+  "transformer",
+  "generator",
+]);
+const parserKeys = new Set([
+  "sourceType",
+  "lang",
+  "preserveParens",
+  "comments",
+  "semanticErrors",
+]);
+const generatorKeys = new Set(["asciiOnly", "inlineScript", "minify"]);
 const transformerKeys = new Set([
   "filename",
   "target",
@@ -327,8 +343,17 @@ function writeTransformerConfig(transformer) {
 export function encodeTransformApiOptions(options) {
   if (options == null) return empty;
   assertObject(options, "options");
+  assertKnownKeys(options, transformApiKeys, "transform");
   const parser = options.parser;
+  if (parser != null) {
+    assertObject(parser, "parser");
+    assertKnownKeys(parser, parserKeys, "parser");
+  }
   const generator = options.generator;
+  if (generator != null) {
+    assertObject(generator, "generator");
+    assertKnownKeys(generator, generatorKeys, "generator");
+  }
   const filename = string(options.filename, "filename");
   const transformer = options.transformer;
   if (transformer != null) assertObject(transformer, "transformer");
