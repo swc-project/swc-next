@@ -709,6 +709,7 @@ impl<'a> Formatter<'a, '_, '_> {
 
     fn reference_label_can_fold(&self, nodes: &[Inline]) -> bool {
         nodes.iter().all(|node| match &node.kind {
+            InlineKind::HardBreak => false,
             // Folding part of an opaque value could change what the link shows.
             InlineKind::CodeSpan { .. }
             | InlineKind::Html

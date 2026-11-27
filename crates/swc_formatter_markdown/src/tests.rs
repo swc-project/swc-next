@@ -278,6 +278,34 @@ fn inline_links() {
         format(source, narrow, wrap),
         "[top]:\n  #topic\n  \"long title\"\n\n[top]\n"
     );
+
+    for prose_wrap in [ProseWrap::Preserve, ProseWrap::Always, ProseWrap::Never] {
+        let syntax = SyntaxOptions {
+            prose_wrap,
+            ..options
+        };
+
+        let source = "[hello  \nworld][]\n\n[hello world]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[hello\\\nworld][]\n\n[hello\\ world]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[*hello  \nworld*]\n\n[*hello world*]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[hello\\\nworld]\n\n[hello\\ world]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[hello\nworld][]\n\n[hello world]: target\n";
+        assert_eq!(
+            format(source, layout, syntax),
+            "[hello world][]\n\n[hello world]: target\n"
+        );
+
+        let source = "[hello  \nworld][ref]\n\n[ref]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+    }
 }
 
 #[test]
