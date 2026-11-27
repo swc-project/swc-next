@@ -101,42 +101,42 @@ test("merged visitors preserve per-visitor hook order in one traversal", () => {
   ]));
   expect(directEvents).toEqual(["A:direct", "B:direct"]);
   expect(Object.isFrozen(merged)).toBe(true);
-  expect(Reflect.ownKeys(merged)).toEqual([]);
+  expect(Object.isFrozen(merged.FunctionDeclaration.enter)).toBe(true);
   expect(createWalker(merge([])).walk(ast)).toBe(ast);
   expect(() => merge([{}, { UnknownNode() {} }])).toThrow(/Unknown/);
   expect(() => merge({})).toThrow(/array/);
 });
 
-test("merge accepts merged visitors and snapshots their hooks", () => {
+test("merge accepts merged visitors and snapshots callback arrays", () => {
   const events = [];
-  const first = { enter() { events.push("A"); } };
-  const inner = merge([first, { enter() { events.push("B"); } }]);
-  const merged = merge([inner, { Identifier() { events.push("C"); } }]);
-  first.enter = () => { throw new Error("callback snapshot changed"); };
+  const callbacks = [() => { events.push("A"); }, () => { events.push("B"); }];
+  const merged = merge([merge([{ enter: callbacks }]), { Identifier() { events.push("C"); } }]);
+  callbacks[0] = () => { throw new Error("callback snapshot changed"); };
   walk(id("value"), merged);
   expect(events).toEqual(["A", "B", "C"]);
+  expect(() => merge([{ Identifier: { enter: [1] } }])).toThrow(/Invalid hook/);
 });
 
-test("public hooks reject callback arrays before traversal", () => {
-  const callbacks = [() => {}];
-  expect(() => walk(id("value"), { enter: callbacks })).toThrow(TypeError);
-  expect(() => walk(id("value"), { leave: callbacks })).toThrow(TypeError);
+test("compiled and merged walkers reject sparse callbacks before traversal", () => {
+  const callbacks = [() => {}, ,];
+  expect(() => createWalker({ enter: callbacks })).toThrow(TypeError);
   expect(() => createWalker({ Identifier: { enter: callbacks } })).toThrow(TypeError);
-  expect(() => merge([{ Function: { leave: callbacks } }])).toThrow(TypeError);
+  expect(() => merge([{ Identifier: { leave: callbacks } }])).toThrow(TypeError);
 });
 
-test("merge combines targeted, alias, and global hooks across nested merges", () => {
-  const events = [];
+test("merge expands only targeted types unless a visitor has a global hook", () => {
   const targeted = merge([
-    { Identifier() { events.push("identifier"); } },
-    { Function() { events.push("function"); } },
+    { Identifier() {} },
+    { Function() {} },
   ]);
-  const mixed = merge([targeted, { enter(node) { events.push(node.type); } }]);
-  walk({ type: "Program", body: [program()] }, mixed);
-  expect(events).toEqual([
-    "Program", "function", "FunctionDeclaration", "identifier", "Identifier",
-    "BlockStatement", "DebuggerStatement",
+  expect(Object.keys(targeted)).toEqual([
+    "ArrowFunctionExpression", "FunctionDeclaration", "FunctionExpression",
+    "Identifier", "TSDeclareFunction", "TSEmptyBodyFunctionExpression",
   ]);
+  const enter = () => {};
+  const mixed = merge([targeted, { enter }]);
+  expect(mixed.Program.enter).toEqual([enter]);
+  expect(mixed.Identifier.enter).toEqual([targeted.Identifier.enter[0], enter]);
 });
 
 test("merged visitors share skip, replacement, removal, and stop controls", () => {
