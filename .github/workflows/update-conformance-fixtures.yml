@@ -12,38 +12,67 @@ concurrency:
 
 jobs:
   update:
-    name: Regenerate conformance reports
+    name: Update fixtures and regenerate conformance reports
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.update.outputs.changed }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+      reports: ${{ steps.reports.outcome }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
+      - name: Update fixture revisions
+        id: revisions
+        run: |
+          ./scripts/update_fixtures.sh
+          if ! git diff --quiet -- scripts/fixture-revisions.txt; then
+            git add -- scripts/fixture-revisions.txt
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions-rust-lang/setup-rust-toolchain@dc354b3df5a8e4db0bff5361fa176da74fcf3151 # v1v1
+        if: steps.revisions.outputs.changed == 'true'
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        if: steps.revisions.outputs.changed == 'true'
         with:
           version: 11.17.0
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        if: steps.revisions.outputs.changed == 'true'
         with:
           node-version: 24.16.0
           cache: pnpm
       - name: Install Node.js dependencies
+        if: steps.revisions.outputs.changed == 'true'
         run: pnpm install --frozen-lockfile
-      - name: Update fixture revisions and reports
-        id: update
+      - name: Regenerate conformance reports
+        id: reports
+        if: steps.revisions.outputs.changed == 'true'
         run: |
-          ./scripts/update_fixtures.sh
-          if git diff --quiet -- scripts/fixture-revisions.txt; then
-            exit 0
+          ./scripts/clone_fixtures.sh
+          cargo run --locked -p testsuite --bin conformance --profile conformance
+          unset PRETTIER_FILTER
+          cargo run --locked -p testsuite --bin formatter --profile conformance
+          pnpm build --release
+          pnpm build:js
+          node npm/core/test/estree-conformance.ts --update
+          node npm/core/test/codec-conformance.ts --update
+          node npm/formatter-prettier-plugin/test/prettier-plugin-conformance.js
+      - name: Prepare fixture update
+        id: patch
+        if: ${{ !cancelled() && steps.revisions.outputs.changed == 'true' }}
+        env:
+          REPORTS_OUTCOME: ${{ steps.reports.outcome }}
+        run: |
+          files=(scripts/fixture-revisions.txt)
+          if [[ "$REPORTS_OUTCOME" == success ]]; then
+            reports=(':(glob)tasks/testsuite/snapshots/*.snap' npm/formatter-prettier-plugin/test/prettier-plugin-conformance.json)
+            git add -- "${reports[@]}"
+            files+=("${reports[@]}")
           fi
-          git add -- scripts/fixture-revisions.txt tasks/testsuite/snapshots \
-            npm/formatter-prettier-plugin/test/prettier-plugin-conformance.json
-          git diff --cached --binary > "$RUNNER_TEMP/fixture-update.patch"
-          echo 'changed=true' >> "$GITHUB_OUTPUT"
+          git diff --cached --binary -- "${files[@]}" > "$RUNNER_TEMP/fixture-update.patch"
       - name: Upload fixture update
-        if: steps.update.outputs.changed == 'true'
+        id: upload
+        if: ${{ !cancelled() && steps.patch.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: fixture-update
@@ -52,9 +81,9 @@ jobs:
           overwrite: true
 
   publish:
-    name: Create or update fixture PR
+    name: Open fixture update PR
     needs: update
-    if: needs.update.outputs.changed == 'true'
+    if: ${{ !cancelled() && needs.update.outputs.artifact-id != '' }}
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App token
@@ -68,10 +97,11 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: fixture-update
+          artifact-ids: ${{ needs.update.outputs.artifact-id }}
           path: ${{ runner.temp }}
       - name: Publish fixture update
         env:
           APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPORTS_OUTCOME: ${{ needs.update.outputs.reports }}
         run: bash .github/scripts/publish-fixture-update.sh "$RUNNER_TEMP/fixture-update.patch"

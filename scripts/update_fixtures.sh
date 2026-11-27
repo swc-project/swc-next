@@ -31,15 +31,5 @@ if cmp -s "$revisions" "$updated_revisions"; then
     exit 0
 fi
 
-./scripts/clone_fixtures.sh "$updated_revisions"
-cargo run --locked -p testsuite --bin conformance --profile conformance
-unset PRETTIER_FILTER
-cargo run --locked -p testsuite --bin formatter --profile conformance
-pnpm build --release
-pnpm build:js
-node npm/core/test/estree-conformance.ts --update
-node npm/core/test/codec-conformance.ts --update
-node npm/formatter-prettier-plugin/test/prettier-plugin-conformance.js
-
 chmod 644 "$updated_revisions"
 mv -- "$updated_revisions" "$revisions"

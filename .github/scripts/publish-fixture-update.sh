@@ -6,6 +6,14 @@ branch=automation/update-conformance-fixtures
 remote_ref="refs/heads/$branch"
 title="chore(testsuite): update conformance fixtures"
 
+# Keep the PR branch available for fixes while its checks are being resolved.
+pr_url="$(gh pr list --base main --head "$branch" --state open \
+    --json url,isCrossRepository --jq 'map(select(.isCrossRepository | not))[0].url // empty')"
+if [[ -n "$pr_url" ]]; then
+    echo "Fixture update PR: $pr_url"
+    exit 0
+fi
+
 git apply --cached "$1"
 if ! git diff --cached --no-renames --quiet -- \
     ':!scripts/fixture-revisions.txt' \
@@ -34,11 +42,11 @@ if [[ -z "$remote_sha" ]] || ! git diff --cached --quiet "$remote_sha" --; then
     git push --force-with-lease="$remote_ref:$remote_sha" origin "HEAD:$remote_ref"
 fi
 
-pr_url="$(gh pr list --base main --head "$branch" --state open \
-    --json url,isCrossRepository --jq 'map(select(.isCrossRepository | not))[0].url // empty')"
-if [[ -n "$pr_url" ]]; then
-    echo "$pr_url"
+body='Advance the tracked conformance fixtures to their upstream heads.'
+if [[ "$REPORTS_OUTCOME" == success ]]; then
+    body+=' Includes the regenerated conformance reports.'
 else
-    gh pr create --base main --head "$branch" --title "$title" --body \
-        'Advance the conformance fixture revisions to their upstream heads and regenerate the Rust, JavaScript, and formatter reports.'
+    run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+    body+=" Report generation failed. Apply any runner fixes and commit the regenerated reports on this branch. [Update workflow log]($run_url) · [Regeneration commands](https://github.com/swc-project/swc-next/blob/main/tasks/testsuite/README.md)"
 fi
+gh pr create --base main --head "$branch" --title "$title" --body "$body"

@@ -5,7 +5,7 @@ set -euo pipefail
 current_worktree="$(git rev-parse --show-toplevel)"
 common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
 repository_root="$common_git_dir/swc-next/testsuite-fixture-cache/repositories"
-revisions="${1:-$current_worktree/scripts/fixture-revisions.txt}"
+revisions="$current_worktree/scripts/fixture-revisions.txt"
 
 # Ensure the shared bare repository contains the fixture's pinned commit.
 update_fixture_cache() {
