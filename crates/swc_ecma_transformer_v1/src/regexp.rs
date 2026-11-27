@@ -29,10 +29,7 @@ pub struct RegExpOptions {
 
 impl RegExpOptions {
     fn is_enabled(self) -> bool {
-        self.dot_all_regex
-            || self.sticky_regex
-            || self.unicode_regex
-            || self.unicode_sets_regex
+        self.dot_all_regex || self.sticky_regex || self.unicode_regex || self.unicode_sets_regex
     }
 }
 
