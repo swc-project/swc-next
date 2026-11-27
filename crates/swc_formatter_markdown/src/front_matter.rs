@@ -1,6 +1,6 @@
 use swc_next_formatter_core::{LabelId, LineEnding, PrintOptions, Writer};
 use swc_next_formatter_host::{EmbeddedError, EmbeddedOutcome, InputKind};
-use swc_next_markdown_parser::{Block, FrontMatter};
+use swc_next_markdown_parser::{Block, FrontMatter, is_front_matter_closing_line};
 
 use crate::{EmbeddedBlock, Formatter, blocks::write_source_lines};
 
@@ -38,31 +38,38 @@ impl<'a> Formatter<'a, '_, '_> {
             writer.label(label, |writer| write_source_lines(writer, raw));
             return Ok(());
         }
-        match self
+        let outcome = self
             .context
             .embed_with(language, InputKind::Document, |arena| {
                 arena.alloc_str(&body())
-            })? {
-            EmbeddedOutcome::Formatted(doc) => {
-                // Front matter starts at the document root. Let the guest own
-                // all its line endings, including those inside a final scalar.
-                let formatted = doc.print(PrintOptions {
-                    line_ending: LineEnding::Lf,
-                    ..self.context.print_options()
-                });
-                writer.mark_as_root(|writer| {
-                    writer.text(delimiter);
-                    writer.text(explicit);
-                    writer.hard_line();
-                    write_source_lines(writer, &formatted);
-                    if !formatted.is_empty() && !formatted.ends_with('\n') {
-                        writer.literal_line();
-                    }
-                    writer.text(closing);
-                });
+            })?;
+        let formatted = match outcome {
+            // Front matter starts at the document root. Let the guest own
+            // all its line endings, including those inside a final scalar.
+            EmbeddedOutcome::Formatted(doc) => Some(doc.print(PrintOptions {
+                line_ending: LineEnding::Lf,
+                ..self.context.print_options()
+            })),
+            EmbeddedOutcome::PreserveOriginal(_) => None,
+        };
+        let Some(formatted) = formatted.filter(|body| {
+            !body
+                .split(['\r', '\n'])
+                .any(|line| is_front_matter_closing_line(line, delimiter, explicit))
+        }) else {
+            write_source_lines(writer, raw);
+            return Ok(());
+        };
+        writer.mark_as_root(|writer| {
+            writer.text(delimiter);
+            writer.text(explicit);
+            writer.hard_line();
+            write_source_lines(writer, &formatted);
+            if !formatted.is_empty() && !formatted.ends_with('\n') {
+                writer.literal_line();
             }
-            EmbeddedOutcome::PreserveOriginal(_) => write_source_lines(writer, raw),
-        }
+            writer.text(closing);
+        });
         Ok(())
     }
 }

@@ -599,6 +599,12 @@ fn interrupts(source: &str, line: SourceLine) -> bool {
     }
 }
 
+/// Whether a line without its ending closes front matter with the given opener and language tag.
+pub fn is_front_matter_closing_line(line: &str, opening: &str, explicit_language: &str) -> bool {
+    let line = line.trim_end_matches([' ', '\t']);
+    line == opening || opening == "---" && matches!(explicit_language, "" | "yaml") && line == "..."
+}
+
 fn frontmatter(source: &str, lines: &[SourceLine], dialect: Dialect) -> Option<(usize, BlockKind)> {
     let s = lines[0].content.text(source);
     let mark = if s.starts_with("---") {
@@ -618,11 +624,10 @@ fn frontmatter(source: &str, lines: &[SourceLine], dialect: Dialect) -> Option<(
     {
         return None;
     }
-    let i = lines[1..].iter().position(|l| {
-        let closing = l.content.text(source).trim_end_matches([' ', '\t']);
-        closing == mark
-            || mark == "---" && (language.is_empty() || language == "yaml") && closing == "..."
-    })? + 1;
+    let i = lines[1..]
+        .iter()
+        .position(|line| is_front_matter_closing_line(line.content.text(source), mark, language))?
+        + 1;
     let body = Span::new(lines[0].ending.end, lines[i].raw.start);
     Some((
         i + 1,
