@@ -38,6 +38,19 @@ fn blocks() {
     let result = format(source, layout, syntax);
     assert_eq!(result, "# heading\n");
 
+    let source = "#  heading ##   ###\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, "# heading ## ###\n");
+
+    let source = "> ## # #\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "# C# #\n";
+    assert_eq!(format(source, layout, syntax), "# C#\n");
+
+    let source = "# \\# #\n";
+    assert_eq!(format(source, layout, syntax), "# \\#\n");
+
     let source = "> * first\n>   + nested\n>\n> paragraph\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, "> - first\n>   - nested\n>\n> paragraph\n");
