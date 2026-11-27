@@ -59,6 +59,15 @@ fn blocks() {
     let result = format(source, layout, syntax);
     assert_eq!(result, "2. [x] done\n3. next\n\n4) different\n");
 
+    let source = "<!-- prettier-ignore -->\n* first\n\n- second\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "<!-- prettier-ignore -->\n1) first\n\n1. second\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "* first\n\n- second\n";
+    assert_eq!(format(source, layout, syntax), "- first\n\n* second\n");
+
     let source = "-    item\n\n    separate code block\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, source);

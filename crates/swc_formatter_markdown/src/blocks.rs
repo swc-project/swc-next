@@ -60,12 +60,18 @@ impl<'a> Formatter<'a, '_, '_> {
                 }
             }
 
-            let consecutive_lists = matches!(
-                (previous.map(|block: &Block| &block.kind), &block.kind),
-                (Some(BlockKind::List(previous)), BlockKind::List(current))
-                    if previous.ordered == current.ordered
-            );
-            alternate_list = consecutive_lists && !alternate_list;
+            alternate_list = match &block.kind {
+                BlockKind::List(list) if ignore_next => list
+                    .items
+                    .first()
+                    .is_some_and(|item| self.text(item.marker).ends_with(['*', ')'])),
+                BlockKind::List(list) => {
+                    !alternate_list && previous.is_some_and(|before| {
+                        matches!(&before.kind, BlockKind::List(other) if other.ordered == list.ordered)
+                    })
+                }
+                _ => false,
+            };
             if ignore_next {
                 self.raw_block(block, container, writer);
                 if matches!(container, Container::Quote)
