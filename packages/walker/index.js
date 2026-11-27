@@ -49,6 +49,22 @@ function assertSync(result) {
 function compile(hooks) {
   if (!hooks || typeof hooks !== "object")
     throw new TypeError("Expected a hooks object");
+  const validHandlers = (value) => {
+    if (typeof value === "function") return true;
+    if (!Array.isArray(value)) return false;
+    for (let index = 0; index < value.length; index++) {
+      if (!owns(value, index) || typeof value[index] !== "function") return false;
+    }
+    return true;
+  };
+  const append = (handlers, value, prepend = false) => {
+    if (value === undefined) return;
+    if (Array.isArray(value)) {
+      if (prepend) handlers.unshift(...value);
+      else handlers.push(...value);
+    } else if (prepend) handlers.unshift(value);
+    else handlers.push(value);
+  };
   const entries = Object.entries(hooks);
   const table = new Map();
   let enter, leave;
@@ -59,20 +75,20 @@ function compile(hooks) {
     for (const key of Object.keys(pair)) {
       if (
         (key !== "enter" && key !== "leave") ||
-        (pair[key] !== undefined && typeof pair[key] !== "function")
+        (pair[key] !== undefined && !validHandlers(pair[key]))
       ) {
         throw new TypeError(`Invalid hook: ${name}.${key}`);
       }
     }
     const entry = table.get(name) ?? { enter: [], leave: [] };
-    if (pair.enter) entry.enter.push(pair.enter);
-    if (pair.leave) entry.leave.unshift(pair.leave);
+    append(entry.enter, pair.enter);
+    append(entry.leave, pair.leave, true);
     table.set(name, entry);
   };
   for (const [name, value] of entries) {
     if (value === undefined) continue;
     if (name === "enter" || name === "leave") {
-      if (typeof value !== "function")
+      if (!validHandlers(value))
         throw new TypeError(`Invalid hook: ${name}`);
       if (name === "enter") enter = value;
       else leave = value;
@@ -90,8 +106,8 @@ function compile(hooks) {
     if (value !== undefined && isNodeType(name)) add(name, value);
   }
   for (const pair of table.values()) {
-    if (enter) pair.enter.unshift(enter);
-    if (leave) pair.leave.push(leave);
+    append(pair.enter, enter, true);
+    append(pair.leave, leave);
   }
   const compact = (handlers) =>
     handlers.length === 0
@@ -99,6 +115,8 @@ function compile(hooks) {
       : handlers.length === 1
         ? handlers[0]
         : handlers;
+  if (Array.isArray(enter)) enter = compact(enter.slice());
+  if (Array.isArray(leave)) leave = compact(leave.slice());
   const dispatch =
     table.size === 0 ? baseDispatch : Object.create(baseDispatch);
   for (const [type, pair] of table) {
@@ -123,6 +141,32 @@ function compile(hooks) {
     globalEnter: enter ?? null,
     globalLeave: leave ?? null,
   };
+}
+
+/** Merge visitors into a snapshot of concrete enter/leave callback lists. */
+export function merge(visitors) {
+  if (!Array.isArray(visitors)) throw new TypeError("Expected an array of visitors");
+  const compiled = visitors.map(compile);
+  const hooks = Object.create(null);
+  const append = (handlers, hook) => {
+    if (Array.isArray(hook)) handlers.push(...hook);
+    else if (hook !== null) handlers.push(hook);
+  };
+  for (const type of Object.keys(baseDispatch)) {
+    const enter = [];
+    const leave = [];
+    for (const visitor of compiled) {
+      const entry = visitor.dispatch[type];
+      append(enter, entry.enter ?? visitor.globalEnter);
+      append(leave, entry.leave ?? visitor.globalLeave);
+    }
+    if (enter.length === 0 && leave.length === 0) continue;
+    hooks[type] = Object.freeze({
+      enter: Object.freeze(enter),
+      leave: Object.freeze(leave),
+    });
+  }
+  return Object.freeze(hooks);
 }
 
 function walkEnter(node, walker, parent, key, list, index) {
