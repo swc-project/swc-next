@@ -14,7 +14,7 @@
     "build:wasm:ffi2": "pnpm --filter @swc-next/core-ffi2 build:wasm:ffi2",
     "build:browser": "pnpm --filter @swc-next/core-browser build:browser",
     "prepare:browser": "pnpm --filter @swc-next/core-browser prepare:browser",
-    "test": "pnpm --filter @swc-next/core --filter @swc-next/formatter --filter @swc-next/formatter-prettier-plugin test",
+    "test": "pnpm --filter @swc-next/core --filter @swc-next/loader --filter @swc-next/formatter --filter @swc-next/formatter-prettier-plugin test",
     "test:ffi2": "pnpm --filter @swc-next/core-ffi2 test",
     "test:wasm": "pnpm --filter @swc-next/core --filter @swc-next/formatter --filter @swc-next/formatter-prettier-plugin test:wasm",
     "test:wasm:ffi2": "pnpm --filter @swc-next/core-ffi2 test:wasm",

@@ -1,0 +1,48 @@
+{
+  "name": "@swc-next/loader",
+  "version": "0.8.1",
+  "description": "Webpack and Rspack loader for SWC Next",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/swc-project/swc-next.git",
+    "directory": "packages/loader"
+  },
+  "main": "index.js",
+  "type": "module",
+  "sideEffects": false,
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "default": "./index.js"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "options.js",
+    "diagnostics.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@swc-next/core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "javascript",
+    "loader",
+    "rspack",
+    "swc",
+    "transformer",
+    "typescript",
+    "webpack"
+  ],
+  "license": "Apache-2.0"
+}

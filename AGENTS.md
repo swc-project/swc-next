@@ -33,7 +33,7 @@
 ### Adding JavaScript Unit Tests
 
 - Test only JS API and FFI boundaries (encoding/decoding, strings/offsets, option forwarding). Keep parser/codegen correctness tests in Rust.
-- JavaScript API tests belong to `@swc-next/core`, except formatter tests The browser package should only have a simple smoke test.
+- JavaScript API tests belong to `@swc-next/core`, except formatter tests. The browser and loader packages should only have a simple smoke test.
 
 ## README Writing
 
