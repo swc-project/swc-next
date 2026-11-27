@@ -4071,6 +4071,7 @@ version = "0.8.0"
 dependencies = [
  "html-escape",
  "memchr",
+ "smallvec",
  "swc_next_simd",
  "unicase",
  "unicode-properties",

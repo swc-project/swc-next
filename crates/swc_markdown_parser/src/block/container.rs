@@ -1,16 +1,17 @@
 //! Project physical lines into quotes, list items and footnotes, sharing the
 //! open-container and leaf state needed to recognize unmarked paragraph continuations.
 
+use crate::ItemBlocks;
 use std::ops::Range;
 
 use super::{
     FenceMark, HtmlEnd, Marker, ParagraphContinuation, Parser, can_continue, complete_html_tag,
     extent, fence_close, fence_open, html_mode, lazy_candidate, list_marker,
-    paragraph_continuation, paragraph_inline, quote, table_row, thematic, visible,
+    paragraph_continuation, quote, table_row, thematic, visible,
 };
 use crate::{
-    Block, BlockExtension, BlockKind, Dialect, List, ListItem, MAX_DEPTH, SourceLine, Span, Task,
-    inline,
+    Block, BlockExtension, BlockKind, Dialect, List, ListItem, MAX_DEPTH, SourceLine, SourceLines,
+    Span, Task,
 };
 
 impl Parser<'_> {
@@ -35,9 +36,9 @@ impl Parser<'_> {
         let kind = match label {
             Some(label) => BlockKind::Extension(BlockExtension::Alert {
                 label,
-                blocks: body.blocks,
+                blocks: body.blocks.into_vec(),
             }),
-            None => BlockKind::BlockQuote(body.blocks),
+            None => BlockKind::BlockQuote(body.blocks.into_vec()),
         };
         (body.consumed, kind)
     }
@@ -55,7 +56,7 @@ impl Parser<'_> {
         let mut mark = first;
         let mut consumed;
         loop {
-            let mut body = self.container_body(
+            let body = self.container_body(
                 &lines[p..],
                 depth,
                 ContainerPrefix::ListItem(mark.width),
@@ -63,14 +64,10 @@ impl Parser<'_> {
                 parent.as_mut().map(|scan| scan.at(p)),
             );
             consumed = p + body.consumed;
-            let task = body
-                .blocks
-                .first_mut()
-                .and_then(|block| task(source, block, self.inline_options()));
             items.push(ListItem {
                 span: extent(&lines[p..consumed]),
                 marker: mark.token,
-                task,
+                task: body.task,
                 blocks: body.blocks,
             });
             p += body.scanned;
@@ -154,23 +151,26 @@ impl Parser<'_> {
         let cursor = parent.unwrap_or(local);
         let shared =
             (!cursor.scan.records.is_empty() && !cursor.scan.reached_limit).then_some(cursor);
-        let body = body.to_vec();
+        let body = SourceLines::from(body.as_slice());
         let consumed = body.len();
+        let mut task = None;
         let blocks = if matches!(prefix, ContainerPrefix::Quote) && shared.is_none() {
             self.quoted_body(body, depth + 1)
         } else {
-            self.blocks_in(body.into(), depth + 1, false, shared)
+            let first_task = matches!(prefix, ContainerPrefix::ListItem(_)).then_some(&mut task);
+            self.blocks_in(body, depth + 1, false, shared, first_task)
         };
         ContainerBody {
             scanned,
             consumed,
             blocks,
+            task,
         }
     }
 
     /// Explicit quote markers shared by every row form a chain of single-child
     /// blocks. Materialize each level's source lines without rescanning its body.
-    fn quoted_body(&mut self, mut lines: Vec<SourceLine>, depth: usize) -> Vec<Block> {
+    fn quoted_body(&mut self, mut lines: SourceLines, depth: usize) -> ItemBlocks {
         let ends = self.shared_quote_markers(&lines, depth);
         let mut layers = Vec::with_capacity(ends.len());
         let mut previous = 0;
@@ -183,12 +183,12 @@ impl Parser<'_> {
             lines = inside;
             previous = end;
         }
-        let mut blocks = self.blocks(lines.into(), depth + ends.len(), false);
+        let mut blocks = self.blocks_in(lines, depth + ends.len(), false, None, None);
         for lines in layers.into_iter().rev() {
-            blocks = vec![Block {
+            blocks = smallvec::smallvec![Block {
                 span: extent(&lines),
                 lines,
-                kind: BlockKind::BlockQuote(blocks),
+                kind: BlockKind::BlockQuote(blocks.into_vec()),
             }];
         }
         blocks
@@ -264,7 +264,7 @@ impl Parser<'_> {
             body.consumed,
             BlockKind::Extension(BlockExtension::Footnote {
                 label,
-                blocks: body.blocks,
+                blocks: body.blocks.into_vec(),
             }),
         )
     }
@@ -293,11 +293,11 @@ impl Marker {
     }
 }
 
-fn task(source: &str, block: &mut Block, options: inline::Options<'_>) -> Option<Task> {
-    if !matches!(block.kind, BlockKind::Paragraph(_)) {
+pub(super) fn strip_task(source: &str, lines: &mut SourceLines) -> Option<Task> {
+    let mut line = *lines.first()?;
+    if line.first_content_byte(source) != Some(b'[') {
         return None;
     }
-    let mut line = *block.lines.first()?;
     line = line.strip(source, line.indent(source));
     let bytes = line.content.text(source).as_bytes();
     let checked = match bytes.get(..3)? {
@@ -312,15 +312,13 @@ fn task(source: &str, block: &mut Block, options: inline::Options<'_>) -> Option
     let remainder = line.marker(3);
     let remainder = remainder.strip(source, remainder.indent(source));
     if remainder.blank(source) {
-        if block.lines.len() == 1 {
+        if lines.len() == 1 {
             return None;
         }
-        block.lines.remove(0);
+        lines.skip_first();
     } else {
-        block.lines[0] = remainder;
+        lines[0] = remainder;
     }
-    block.span = extent(&block.lines);
-    block.kind = BlockKind::Paragraph(paragraph_inline(source, &block.lines, options));
     Some(Task { marker, checked })
 }
 
@@ -357,7 +355,8 @@ struct ContainerBody {
     /// Trailing blanks can separate sibling list items without belonging to the last item.
     scanned: usize,
     consumed: usize,
-    blocks: Vec<Block>,
+    blocks: ItemBlocks,
+    task: Option<Task>,
 }
 
 pub(super) struct ContainerCursor<'a> {

@@ -123,6 +123,7 @@ fn format_document<'a, 'doc>(
         prefix_columns: 0,
         lists_aligned: true,
         original_item_widths: true,
+        prose_buffers: inline::ProseBuffers::default(),
     };
     formatter.document()
 }
@@ -135,6 +136,7 @@ struct Formatter<'a, 'services, 'slots> {
     prefix_columns: usize,
     lists_aligned: bool,
     original_item_widths: bool,
+    prose_buffers: inline::ProseBuffers,
 }
 
 impl<'a> Formatter<'a, '_, '_> {
@@ -152,7 +154,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 .source
                 .strip_prefix('\u{feff}')
                 .unwrap_or(self.document.source);
-            blocks::write_source_lines(&mut writer, source);
+            blocks::write_borrowed_lines(&mut writer, source);
             return Ok(writer.finish());
         }
         if self.blocks(

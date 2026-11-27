@@ -4,12 +4,13 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
+use smallvec::{SmallVec, smallvec};
 use swc_next_simd::memchr::AsciiByteSet;
 use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
 
 use crate::{
-    Dialect, Inline, InlineExtension, InlineKind, Link, LinkTarget, ParseOptions, RecoveryReason,
-    ReferenceKind, SourceLine, Span, identifier,
+    Dialect, Inline, InlineExtension, InlineKind, InlineNodes, Link, LinkTarget, ParseOptions,
+    RecoveryReason, ReferenceKind, SourceLine, Span, identifier,
 };
 
 // A page contains at most this many line starts, even in a paragraph of empty lines.
@@ -81,26 +82,14 @@ impl<'a> Input<'a> {
         }
     }
 
-    fn for_inlines(source: &'a str, lines: &[SourceLine]) -> Self {
-        let Some((first, rest)) = lines.split_first() else {
-            return Self::direct("", 0);
-        };
-        let mut end = first.content.end;
-        if first.virtual_spaces == 0
-            && rest.iter().all(|line| {
-                let contiguous = line.virtual_spaces == 0
-                    && end + 1 == line.content.start
-                    && source.as_bytes().get(end) == Some(&b'\n');
-                end = line.content.end;
-                contiguous
-            })
-        {
-            return Self::direct(&source[first.content.start..end], first.content.start);
+    pub(crate) fn for_inlines(source: &'a str, lines: &[SourceLine]) -> Self {
+        if let Some(span) = crate::source::contiguous_content(source, lines) {
+            return Self::direct(span.text(source), span.start);
         }
         Self::new(source, lines)
     }
 
-    pub(crate) fn new(source: &'a str, lines: &[SourceLine]) -> Self {
+    fn new(source: &'a str, lines: &[SourceLine]) -> Self {
         let mut input = Self::direct("", lines.first().map_or(0, |line| line.content.start));
         input.lines.reserve_exact(lines.len());
         for &line in lines {
@@ -109,7 +98,12 @@ impl<'a> Input<'a> {
         input
     }
 
-    pub(crate) fn push_line(&mut self, source: &'a str, line: SourceLine) {
+    pub(crate) fn push_line(&mut self, source: &'a str, first: SourceLine, line: SourceLine) {
+        // A one-line definition borrows the source directly. Start its offset map
+        // only when a label, destination or title actually continues on a new line.
+        if self.lines.is_empty() {
+            self.lines.push((0, first));
+        }
         self.append_line(source, line);
         // New page boundaries fall in the appended line, including an empty line at EOF.
         if let Some(earlier) = self.earlier.get_mut() {
@@ -240,7 +234,7 @@ pub(crate) struct Options<'a> {
     pub references: References<'a>,
 }
 
-pub(crate) fn parse(source: &str, lines: &[SourceLine], options: Options<'_>) -> Vec<Inline> {
+pub(crate) fn parse(source: &str, lines: &[SourceLine], options: Options<'_>) -> InlineNodes {
     parse_with_original_lines(source, lines, lines, options)
 }
 
@@ -249,7 +243,7 @@ pub(crate) fn parse_with_original_lines(
     lines: &[SourceLine],
     original_lines: &[SourceLine],
     options: Options<'_>,
-) -> Vec<Inline> {
+) -> InlineNodes {
     if let [line] = lines
         && line.virtual_spaces == 0
         && options.parse.max_nesting > 0
@@ -260,12 +254,12 @@ pub(crate) fn parse_with_original_lines(
     {
         let text = line.content.text(source);
         if text.is_empty() {
-            return Vec::new();
+            return InlineNodes::new();
         }
         // All literal autolinks need a dot in their domain. A line with no
         // inline markers or dot has just one source-backed text node.
         if INLINE_MARKERS_AND_DOT.find(text.as_bytes()).is_none() {
-            return vec![Inline {
+            return smallvec![Inline {
                 span: line.content,
                 kind: InlineKind::Text,
             }];
@@ -283,7 +277,7 @@ pub(crate) fn parse_with_original_lines(
     {
         // These physical spans already contain every token. A synthetic paragraph
         // and its index would only be used to translate them back to source offsets.
-        let mut nodes = Vec::with_capacity(lines.len() * 2 - 1);
+        let mut nodes = InlineNodes::with_capacity(lines.len() * 2 - 1);
         for (index, line) in lines.iter().enumerate() {
             let text = line.content.text(source);
             let last = index + 1 == lines.len();
@@ -312,18 +306,27 @@ pub(crate) fn parse_with_original_lines(
     }
     let input = Input::for_inlines(source, lines);
     if input.text.is_empty() {
-        return Vec::new();
+        return InlineNodes::new();
     }
     let bytes = input.text.as_bytes();
+    let has_email = memchr::memchr(b'@', bytes).is_some();
+    let starts = if has_email {
+        &INLINE_STARTS_WITH_EMAIL
+    } else if memchr::memchr2(b':', b'.', bytes).is_some() {
+        &INLINE_STARTS
+    } else {
+        &INLINE_MARKERS
+    };
     let mut parser = Parser {
         input: &input,
         source,
         original_lines,
         ticks: TickClosers::default(),
-        has_email: input.text.contains('@'),
+        has_email,
+        starts,
         ascii: input.text.is_ascii(),
         label_angles: HashMap::new(),
-        link_openers: Vec::new(),
+        link_openers: SmallVec::new(),
         inactive_links: HashSet::new(),
         options: options.parse,
         references: options.references,
@@ -389,11 +392,12 @@ struct Parser<'a> {
     original_lines: &'a [SourceLine],
     ticks: TickClosers,
     has_email: bool,
+    starts: &'static AsciiByteSet,
     ascii: bool,
     /// Complete tokens found during label lookahead are reused when parsing its children.
     label_angles: HashMap<usize, (usize, AngleKind)>,
     /// Open non-image link labels while parsing their contents.
-    link_openers: Vec<usize>,
+    link_openers: SmallVec<[usize; 2]>,
     /// Openers deactivated by an inner link stay literal when scanning resumes.
     inactive_links: HashSet<usize>,
     work: usize,
@@ -418,12 +422,12 @@ impl Parser<'_> {
         end: usize,
         depth: usize,
         link_opener: Option<usize>,
-    ) -> Vec<Inline> {
+    ) -> InlineNodes {
         if start == end {
-            return Vec::new();
+            return InlineNodes::new();
         }
         if depth >= self.options.max_nesting || self.work == 0 {
-            return vec![Inline {
+            return smallvec![Inline {
                 span: self.input.span(start, end),
                 kind: InlineKind::Recovery(if self.work == 0 {
                     RecoveryReason::InlineWork
@@ -433,18 +437,14 @@ impl Parser<'_> {
             }];
         }
         let bytes = self.input.text.as_bytes();
-        let starts = if self.has_email {
-            &INLINE_STARTS_WITH_EMAIL
-        } else {
-            &INLINE_STARTS
-        };
-        let mut nodes = Vec::new();
-        let mut openings = Vec::new();
+        let starts = self.starts;
+        let mut nodes = InlineNodes::new();
+        let mut openings = SmallVec::new();
         let mut text_start = start;
         let mut p = start;
         while p < end {
             if link_opener.is_some() && self.link_openers.last().copied() != link_opener {
-                return Vec::new();
+                return InlineNodes::new();
             }
             if self.work == 0 {
                 if text_start < p {
@@ -457,7 +457,7 @@ impl Parser<'_> {
                     span: self.input.span(p, end),
                     kind: InlineKind::Recovery(RecoveryReason::InlineWork),
                 });
-                merge_text(&mut nodes);
+                nodes.dedup_by(merge_text);
                 return nodes;
             }
             if !starts.contains(bytes[p]) {
@@ -627,7 +627,7 @@ impl Parser<'_> {
                 kind: InlineKind::Text,
             });
         }
-        merge_text(&mut nodes);
+        nodes.dedup_by(merge_text);
         nodes
     }
 
@@ -821,8 +821,8 @@ impl Parser<'_> {
         start: usize,
         width: usize,
         depth: usize,
-        openings: &mut Vec<Opening>,
-        nodes: &mut Vec<Inline>,
+        openings: &mut SmallVec<[Opening; 2]>,
+        nodes: &mut InlineNodes,
     ) {
         let mark = self.input.text.as_bytes()[start];
         let (can_open, can_close) = self.delimiter_flanks(start, width, mark);
@@ -840,7 +840,7 @@ impl Parser<'_> {
             opening.remaining -= count;
             right += count;
             let span = self.input.span(opening.start + opening.remaining, right);
-            let mut children = nodes.split_off(opening.node + 1);
+            let mut children: Vec<_> = nodes.drain(opening.node + 1..).collect();
             if opening.remaining == 0 {
                 nodes.pop();
                 openings.truncate(index);
@@ -850,7 +850,7 @@ impl Parser<'_> {
                     .span(opening.start, opening.start + opening.remaining);
                 openings.truncate(index + 1);
             }
-            merge_text(&mut children);
+            children.dedup_by(merge_text);
             let kind = if children
                 .iter()
                 .any(|n| inline_depth(n) + depth >= self.options.max_nesting)
@@ -894,6 +894,13 @@ impl Parser<'_> {
             mark
         };
         let text = &self.input.text;
+        if self.ascii {
+            let bytes = text.as_bytes();
+            let before = start.checked_sub(1).map_or(b' ', |pos| bytes[pos]);
+            let after = bytes.get(start + width).copied().unwrap_or(b' ');
+            let classify = |b: u8| (matches!(b, b'\t'..=b'\r' | b' '), b.is_ascii_punctuation());
+            return flanking(char::from(flank_mark), classify(before), classify(after));
+        }
         delimiter_flanking(
             char::from(flank_mark),
             text[..start].chars().next_back(),
@@ -940,10 +947,25 @@ impl Parser<'_> {
         let open = p + usize::from(image);
         let mut pos = open + 1;
         let mut nested = 0usize;
-        let mut closing_delimiters = Vec::new();
+        let mut closing_delimiters = SmallVec::<[Span; 2]>::new();
+        const LABEL_MARKERS: AsciiByteSet = AsciiByteSet::new(b"\\\x60<[]");
+        const LABEL_AND_EMPHASIS: AsciiByteSet = LABEL_MARKERS.with_bytes(b"*_~");
+        let markers = if openings.is_empty() {
+            &LABEL_MARKERS
+        } else {
+            &LABEL_AND_EMPHASIS
+        };
         while pos < end {
             if self.work == 0 {
                 return None;
+            }
+            if !markers.contains(bytes[pos]) {
+                let limit = end.min(pos.saturating_add(self.work));
+                let plain = &bytes[pos..limit];
+                let n = markers.find(plain).unwrap_or(plain.len());
+                pos += n;
+                self.work -= n;
+                continue;
             }
             self.work -= 1;
             match bytes[pos] {
@@ -1090,7 +1112,7 @@ impl Parser<'_> {
                 self.inactive_links.extend(self.link_openers.drain(..));
             }
         }
-        let link = Link {
+        let link = Box::new(Link {
             brackets: [
                 self.input.span(open, open + 1),
                 self.input.span(pos, pos + 1),
@@ -1104,7 +1126,7 @@ impl Parser<'_> {
             label,
             children,
             target,
-        };
+        });
         Some((
             p,
             next,
@@ -1153,7 +1175,7 @@ struct Opening {
 }
 
 fn inline_depth(node: &Inline) -> usize {
-    let children = match &node.kind {
+    let children: &[Inline] = match &node.kind {
         InlineKind::Emphasis(nodes) | InlineKind::Strong(nodes) | InlineKind::Delete(nodes) => {
             nodes
         }
@@ -1163,18 +1185,16 @@ fn inline_depth(node: &Inline) -> usize {
     1 + children.iter().map(inline_depth).max().unwrap_or_default()
 }
 
-fn merge_text(nodes: &mut Vec<Inline>) {
-    nodes.dedup_by(|next, prev| {
-        if matches!(prev.kind, InlineKind::Text)
-            && matches!(next.kind, InlineKind::Text)
-            && prev.span.end == next.span.start
-        {
-            prev.span.end = next.span.end;
-            true
-        } else {
-            false
-        }
-    });
+fn merge_text(next: &mut Inline, prev: &mut Inline) -> bool {
+    if matches!(prev.kind, InlineKind::Text)
+        && matches!(next.kind, InlineKind::Text)
+        && prev.span.end == next.span.start
+    {
+        prev.span.end = next.span.end;
+        true
+    } else {
+        false
+    }
 }
 
 pub(crate) fn link_label_has_text(label: &str) -> bool {
@@ -1281,6 +1301,10 @@ pub fn delimiter_flanking(mark: char, prev: Option<char>, next: Option<char>) ->
     };
     let pp = prev.is_some_and(punct);
     let np = next.is_some_and(punct);
+    flanking(mark, (pw, pp), (nw, np))
+}
+
+fn flanking(mark: char, (pw, pp): (bool, bool), (nw, np): (bool, bool)) -> (bool, bool) {
     let left = !nw && (!np || pw || pp);
     let right = !pw && (!pp || nw || np);
     if mark == '_' {
