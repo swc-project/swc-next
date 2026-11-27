@@ -753,6 +753,7 @@ impl EmbeddedDispatcher for TestDispatcher {
             "empty" | "toml" => {}
             "yaml" => writer.text(request.source),
             "short" => writer.text("short"),
+            "~foo" => writer.text("formatted"),
             "long" => writer.text("line\n````\nline\n"),
             "md" => {
                 let doc = context.produce(
@@ -802,6 +803,23 @@ fn fence_dispatch() {
         .unwrap()
         .print(context.print_options());
     assert_eq!(result, source);
+
+    let source = "~~~ ~foo `flag`\nbody\n~~~\n\nafter\n";
+    let result = ast_to_doc(&parse(source), context, options)
+        .unwrap()
+        .print(context.print_options());
+    assert_eq!(result, "~~~ ~foo `flag`\nformatted\n~~~\n\nafter\n");
+    assert_eq!(
+        ast_to_doc(&parse(&result), context, options)
+            .unwrap()
+            .print(context.print_options()),
+        result
+    );
+    assert_eq!(format(source, session.print_options(), options), source);
+
+    let source = "~~~ ~foo flag\nbody\n~~~\n";
+    let result = format(source, session.print_options(), options);
+    assert_eq!(result, "```~foo flag\nbody\n```\n");
 
     let source = "```plain&#10;note\nbody\n```\n";
     assert_eq!(format(source, session.print_options(), options), source);

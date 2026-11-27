@@ -141,6 +141,9 @@ fn write_fence<'a>(
 ) {
     let delimiter = char::from(info.marker).to_string().repeat(minimum.max(3));
     writer.text_copied(&delimiter);
+    if info.head.starts_with(char::from(info.marker)) {
+        writer.space();
+    }
     writer.text(info.head);
     if let Some(meta) = info.meta {
         writer.space();
