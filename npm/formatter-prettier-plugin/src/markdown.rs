@@ -19,7 +19,7 @@ use swc_next_formatter_markdown::{
     clippy::too_many_arguments,
     reason = "The binding passes scalar options across the native and Wasm ABIs."
 )]
-pub fn format_doc_buffer_sync(
+pub fn format_markdown_doc_buffer_sync(
     source: String,
     prose_wrap: u32,
     single_quote: bool,

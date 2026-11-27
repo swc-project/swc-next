@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as prettier from "prettier";
 import { builders } from "prettier/doc";
-import * as javascript from "@swc-next/formatter-prettier-plugin";
+import * as javascript from "@swc-next/formatter-prettier-plugin/javascript";
 import * as markdown from "@swc-next/formatter-prettier-plugin/markdown";
 import { encodeDoc, readDocument } from "@swc-next/protocol/document";
 import { decodeDoc } from "../src-js/decode.js";

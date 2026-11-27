@@ -9,7 +9,8 @@ cargo run --locked -p bridge_cli -- build core --output-dir target/wasm-package/
 ```
 
 The `wasm32-unknown-unknown` Rust target is required. Replace `core` with
-`parser`, `generator`, `formatter`, `formatter-js`, or `playground` for another component. Trailing Cargo build
+`parser`, `generator`, `formatter`,
+`formatter-prettier-plugin`, or `playground` for another component. Trailing Cargo build
 options, including `--profile` and `--target-dir`, are forwarded to the Wasm build.
 
 This generates bindings and Wasm files; [assembling the browser package](../../npm/core-browser/README.md#building)

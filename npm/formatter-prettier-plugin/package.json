@@ -2,31 +2,29 @@
   "name": "@swc-next/formatter-prettier-plugin",
   "version": "0.8.1",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    "./javascript": {
+      "types": "./dist/javascript/index.d.ts",
+      "import": "./dist/javascript/index.js"
     },
     "./markdown": {
-      "types": "./dist/markdown.d.ts",
-      "import": "./dist/markdown.js"
+      "types": "./dist/markdown/index.d.ts",
+      "import": "./dist/markdown/index.js"
     }
   },
   "files": [
-    "dist",
-    "README.md"
+    "dist/**/*.js",
+    "dist/binding.js",
+    "dist/javascript/index.d.ts",
+    "dist/javascript/index.js",
+    "dist/markdown/index.d.ts",
+    "dist/markdown/index.js"
   ],
   "license": "Apache-2.0",
-  "dependencies": {
-    "@swc-next/formatter-js": "workspace:*",
-    "@swc-next/formatter-markdown": "workspace:*"
-  },
   "peerDependencies": {
     "prettier": "catalog:"
   },
-  "description": "Experimental and unstable JavaScript and TypeScript formatting through SWC and Prettier",
+  "description": "Experimental and unstable JavaScript, TypeScript, and Markdown formatting through SWC and Prettier",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/swc-project/swc-next.git",
@@ -37,15 +35,42 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
+    "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
     "build:js": "pnpm -w exec rslib build --lib formatter-prettier-plugin",
-    "test": "pnpm -w build:js && node --test test/markdown.test.js && node test/prettier-plugin-conformance.js",
+    "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build formatter-prettier-plugin --output-dir dist",
+    "test": "pnpm --filter @swc-next/formatter build:js && pnpm build:js && node --test test/*.test.js && node test/prettier-plugin-conformance.js",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "prepack": "pnpm build:js"
   },
   "devDependencies": {
+    "@napi-rs/cli": "catalog:",
     "@swc-next/formatter": "workspace:*",
     "@swc-next/protocol": "workspace:*",
     "cross-env": "catalog:",
     "prettier": "catalog:"
+  },
+  "napi": {
+    "binaryName": "swc-next-formatter-prettier-plugin",
+    "packageName": "@swc-next/formatter-prettier-plugin-binding",
+    "targets": [
+      "aarch64-apple-darwin",
+      "aarch64-pc-windows-msvc",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "armv7-unknown-linux-gnueabihf",
+      "i686-pc-windows-msvc",
+      "powerpc64le-unknown-linux-gnu",
+      "riscv64gc-unknown-linux-gnu",
+      "riscv64gc-unknown-linux-musl",
+      "s390x-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl"
+    ]
+  },
+  "wasm": {
+    "binaryName": "swc-next-formatter-prettier-plugin",
+    "packageName": "@swc-next/formatter-prettier-plugin-binding-wasm"
   }
 }

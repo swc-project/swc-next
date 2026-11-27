@@ -18,7 +18,7 @@ function readManifest(directory) {
 
 function checkFiles(directory, manifest) {
   for (const file of manifest.files ?? []) {
-    if (!fs.existsSync(path.join(directory, file))) {
+    if (!fs.globSync(file, { cwd: directory }).length) {
       throw new Error(`${manifest.name} is missing ${file}`);
     }
   }

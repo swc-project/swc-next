@@ -2,10 +2,11 @@ import { readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
-import { formatDocBufferSync } from "@swc-next/formatter-js";
 import { printDocBufferSync } from "@swc-next/formatter";
-import { toFormatterConfig } from "../src-js/options.js";
-import * as plugin from "../dist/index.js";
+import * as plugin from "@swc-next/formatter-prettier-plugin/javascript";
+import { formatJsDocBufferSync } from "../dist/binding.js";
+import { formatJsDoc } from "../src-js/javascript/format.js";
+import { toFormatterConfig } from "../src-js/javascript/options.js";
 
 const workspace = fileURLToPath(new URL("../../../", import.meta.url));
 const fixtureRoot = join(workspace, "crates/swc_formatter/tests/fixtures");
@@ -136,7 +137,8 @@ function prettierOptions(options) {
 function formatSwcWithSwcFormatter(source, filepath, options) {
   const normalized = normalizeInput(source, options);
   const config = toFormatterConfig(normalized.options);
-  const buffer = formatDocBufferSync(
+  const buffer = formatJsDoc(
+    formatJsDocBufferSync,
     normalized.source,
     parserOptions(filepath),
     config,

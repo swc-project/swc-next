@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatDocBufferSync } from "@swc-next/formatter-js";
 import { printDocBufferSync } from "@swc-next/formatter";
+import { formatJsDocBufferSync } from "../dist/binding.js";
+import { formatJsDoc } from "../src-js/javascript/format.js";
+
+const formatDocBufferSync = (source, parser, options) =>
+  formatJsDoc(formatJsDocBufferSync, source, parser, options);
 
 const script = { sourceType: "script" };
 const syntax = { semicolons: "as-needed", quoteStyle: "single" };

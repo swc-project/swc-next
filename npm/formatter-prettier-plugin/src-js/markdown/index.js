@@ -1,10 +1,10 @@
 import { utils } from "prettier/doc";
-import { decodeDoc } from "./decode.js";
-import { embedBlock } from "./markdown-fences.js";
+import { decodeDoc } from "../decode.js";
+import { formatMarkdownDoc } from "./format.js";
+import { embedBlock } from "./fences.js";
 
 const astFormat = "SWCFMT_MARKDOWN";
 const maxEmbedDepth = 8;
-let binding;
 
 export const languages = [
   {
@@ -43,19 +43,22 @@ export const parsers = {
       ) {
         throw new Error("SWC Markdown does not yet support pragma options");
       }
-      const { formatDocSync } = await (binding ??=
-        import("@swc-next/formatter-markdown"));
-      const { doc, embeds } = formatDocSync(source, {
-        proseWrap: options.proseWrap,
-        singleQuote: options.singleQuote,
-        lineWidth: options.printWidth,
-        indentWidth: options.tabWidth,
-        indentStyle: options.useTabs ? "tab" : "space",
-        lineEnding: options.endOfLine,
-        includeEmbeds:
-          options.embeddedLanguageFormatting !== "off" &&
-          (options.__swcMarkdownEmbedDepth ?? 0) < maxEmbedDepth,
-      });
+      const { formatMarkdownDocBufferSync } = await import("../binding.js");
+      const { doc, embeds } = formatMarkdownDoc(
+        formatMarkdownDocBufferSync,
+        source,
+        {
+          proseWrap: options.proseWrap,
+          singleQuote: options.singleQuote,
+          lineWidth: options.printWidth,
+          indentWidth: options.tabWidth,
+          indentStyle: options.useTabs ? "tab" : "space",
+          lineEnding: options.endOfLine,
+          includeEmbeds:
+            options.embeddedLanguageFormatting !== "off" &&
+            (options.__swcMarkdownEmbedDepth ?? 0) < maxEmbedDepth,
+        },
+      );
       return {
         type: astFormat,
         start: 0,

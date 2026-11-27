@@ -76,13 +76,13 @@ function requireNative() {
   } else if (process.platform === 'android') {
     if (process.arch === 'arm64') {
       try {
-        return require('./swc-next-formatter-markdown.android-arm64.node')
+        return require('./swc-next-formatter-prettier-plugin.android-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-android-arm64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-android-arm64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-android-arm64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-android-arm64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -92,13 +92,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./swc-next-formatter-markdown.android-arm-eabi.node')
+        return require('./swc-next-formatter-prettier-plugin.android-arm-eabi.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-android-arm-eabi')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-android-arm-eabi/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-android-arm-eabi')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-android-arm-eabi/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -112,13 +112,13 @@ function requireNative() {
   } else if (process.platform === 'win32') {
     if (process.arch === 'x64') {
       try {
-        return require('./swc-next-formatter-markdown.win32-x64-msvc.node')
+        return require('./swc-next-formatter-prettier-plugin.win32-x64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-win32-x64-msvc')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-win32-x64-msvc/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-win32-x64-msvc')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-win32-x64-msvc/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -128,13 +128,13 @@ function requireNative() {
       }
     } else if (process.arch === 'ia32') {
       try {
-        return require('./swc-next-formatter-markdown.win32-ia32-msvc.node')
+        return require('./swc-next-formatter-prettier-plugin.win32-ia32-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-win32-ia32-msvc')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-win32-ia32-msvc/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-win32-ia32-msvc')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-win32-ia32-msvc/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -144,13 +144,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./swc-next-formatter-markdown.win32-arm64-msvc.node')
+        return require('./swc-next-formatter-prettier-plugin.win32-arm64-msvc.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-win32-arm64-msvc')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-win32-arm64-msvc/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-win32-arm64-msvc')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-win32-arm64-msvc/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -163,13 +163,13 @@ function requireNative() {
     }
   } else if (process.platform === 'darwin') {
     try {
-      return require('./swc-next-formatter-markdown.darwin-universal.node')
+      return require('./swc-next-formatter-prettier-plugin.darwin-universal.node')
     } catch (e) {
       loadErrors.push(e)
     }
     try {
-      const binding = require('@swc-next/formatter-markdown-binding-darwin-universal')
-      const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-darwin-universal/package.json').version
+      const binding = require('@swc-next/formatter-prettier-plugin-binding-darwin-universal')
+      const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-darwin-universal/package.json').version
       if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
         throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
       }
@@ -179,13 +179,13 @@ function requireNative() {
     }
     if (process.arch === 'x64') {
       try {
-        return require('./swc-next-formatter-markdown.darwin-x64.node')
+        return require('./swc-next-formatter-prettier-plugin.darwin-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-darwin-x64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-darwin-x64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-darwin-x64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-darwin-x64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -195,13 +195,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./swc-next-formatter-markdown.darwin-arm64.node')
+        return require('./swc-next-formatter-prettier-plugin.darwin-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-darwin-arm64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-darwin-arm64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-darwin-arm64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-darwin-arm64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -215,13 +215,13 @@ function requireNative() {
   } else if (process.platform === 'freebsd') {
     if (process.arch === 'x64') {
       try {
-        return require('./swc-next-formatter-markdown.freebsd-x64.node')
+        return require('./swc-next-formatter-prettier-plugin.freebsd-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-freebsd-x64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-freebsd-x64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-freebsd-x64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-freebsd-x64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -231,13 +231,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm64') {
       try {
-        return require('./swc-next-formatter-markdown.freebsd-arm64.node')
+        return require('./swc-next-formatter-prettier-plugin.freebsd-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-freebsd-arm64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-freebsd-arm64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-freebsd-arm64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-freebsd-arm64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -252,13 +252,13 @@ function requireNative() {
     if (process.arch === 'x64') {
       if (isMusl()) {
         try {
-          return require('./swc-next-formatter-markdown.linux-x64-musl.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-x64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-x64-musl')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-x64-musl/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-x64-musl')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-x64-musl/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -268,13 +268,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./swc-next-formatter-markdown.linux-x64-gnu.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-x64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-x64-gnu')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-x64-gnu/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-x64-gnu')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-x64-gnu/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -286,13 +286,13 @@ function requireNative() {
     } else if (process.arch === 'arm64') {
       if (isMusl()) {
         try {
-          return require('./swc-next-formatter-markdown.linux-arm64-musl.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-arm64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-arm64-musl')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-arm64-musl/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-arm64-musl')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-arm64-musl/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -302,13 +302,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./swc-next-formatter-markdown.linux-arm64-gnu.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-arm64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-arm64-gnu')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-arm64-gnu/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-arm64-gnu')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-arm64-gnu/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -320,13 +320,13 @@ function requireNative() {
     } else if (process.arch === 'arm') {
       if (isMusl()) {
         try {
-          return require('./swc-next-formatter-markdown.linux-arm-musleabihf.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-arm-musleabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-arm-musleabihf')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-arm-musleabihf/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-arm-musleabihf')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-arm-musleabihf/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -336,13 +336,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./swc-next-formatter-markdown.linux-arm-gnueabihf.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-arm-gnueabihf.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-arm-gnueabihf')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-arm-gnueabihf/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-arm-gnueabihf')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-arm-gnueabihf/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -354,13 +354,13 @@ function requireNative() {
     } else if (process.arch === 'loong64') {
       if (isMusl()) {
         try {
-          return require('./swc-next-formatter-markdown.linux-loong64-musl.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-loong64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-loong64-musl')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-loong64-musl/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-loong64-musl')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-loong64-musl/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -370,13 +370,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./swc-next-formatter-markdown.linux-loong64-gnu.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-loong64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-loong64-gnu')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-loong64-gnu/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-loong64-gnu')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-loong64-gnu/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -388,13 +388,13 @@ function requireNative() {
     } else if (process.arch === 'riscv64') {
       if (isMusl()) {
         try {
-          return require('./swc-next-formatter-markdown.linux-riscv64-musl.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-riscv64-musl.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-riscv64-musl')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-riscv64-musl/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-riscv64-musl')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-riscv64-musl/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -404,13 +404,13 @@ function requireNative() {
         }
       } else {
         try {
-          return require('./swc-next-formatter-markdown.linux-riscv64-gnu.node')
+          return require('./swc-next-formatter-prettier-plugin.linux-riscv64-gnu.node')
         } catch (e) {
           loadErrors.push(e)
         }
         try {
-          const binding = require('@swc-next/formatter-markdown-binding-linux-riscv64-gnu')
-          const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-riscv64-gnu/package.json').version
+          const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-riscv64-gnu')
+          const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-riscv64-gnu/package.json').version
           if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
             throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
           }
@@ -421,13 +421,13 @@ function requireNative() {
       }
     } else if (process.arch === 'ppc64') {
       try {
-        return require('./swc-next-formatter-markdown.linux-ppc64-gnu.node')
+        return require('./swc-next-formatter-prettier-plugin.linux-ppc64-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-linux-ppc64-gnu')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-ppc64-gnu/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-ppc64-gnu')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-ppc64-gnu/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -437,13 +437,13 @@ function requireNative() {
       }
     } else if (process.arch === 's390x') {
       try {
-        return require('./swc-next-formatter-markdown.linux-s390x-gnu.node')
+        return require('./swc-next-formatter-prettier-plugin.linux-s390x-gnu.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-linux-s390x-gnu')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-linux-s390x-gnu/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-linux-s390x-gnu')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-linux-s390x-gnu/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -457,13 +457,13 @@ function requireNative() {
   } else if (process.platform === 'openharmony') {
     if (process.arch === 'arm64') {
       try {
-        return require('./swc-next-formatter-markdown.openharmony-arm64.node')
+        return require('./swc-next-formatter-prettier-plugin.openharmony-arm64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-openharmony-arm64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-openharmony-arm64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-openharmony-arm64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-openharmony-arm64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -473,13 +473,13 @@ function requireNative() {
       }
     } else if (process.arch === 'x64') {
       try {
-        return require('./swc-next-formatter-markdown.openharmony-x64.node')
+        return require('./swc-next-formatter-prettier-plugin.openharmony-x64.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-openharmony-x64')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-openharmony-x64/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-openharmony-x64')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-openharmony-x64/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -489,13 +489,13 @@ function requireNative() {
       }
     } else if (process.arch === 'arm') {
       try {
-        return require('./swc-next-formatter-markdown.openharmony-arm.node')
+        return require('./swc-next-formatter-prettier-plugin.openharmony-arm.node')
       } catch (e) {
         loadErrors.push(e)
       }
       try {
-        const binding = require('@swc-next/formatter-markdown-binding-openharmony-arm')
-        const bindingPackageVersion = require('@swc-next/formatter-markdown-binding-openharmony-arm/package.json').version
+        const binding = require('@swc-next/formatter-prettier-plugin-binding-openharmony-arm')
+        const bindingPackageVersion = require('@swc-next/formatter-prettier-plugin-binding-openharmony-arm/package.json').version
         if (bindingPackageVersion !== '0.8.1' && process.env.NAPI_RS_ENFORCE_VERSION_CHECK && process.env.NAPI_RS_ENFORCE_VERSION_CHECK !== '0') {
           throw new Error(`Native binding package version mismatch, expected 0.8.1 but got ${bindingPackageVersion}. You can reinstall dependencies to fix this issue.`)
         }
@@ -527,7 +527,7 @@ if (!nativeBinding || forceWasi) {
   let wasiBinding = null
   let wasiBindingError = null
   try {
-    wasiBinding = require('./swc-next-formatter-markdown.node.mjs')
+    wasiBinding = require('./swc-next-formatter-prettier-plugin.node.mjs')
     nativeBinding = wasiBinding
   } catch (err) {
     if (forceWasi) {
@@ -536,7 +536,7 @@ if (!nativeBinding || forceWasi) {
   }
   if (!nativeBinding || forceWasi) {
     try {
-      wasiBinding = require('@swc-next/formatter-markdown-binding-wasm')
+      wasiBinding = require('@swc-next/formatter-prettier-plugin-binding-wasm')
       nativeBinding = wasiBinding
     } catch (err) {
       if (forceWasi) {
@@ -574,5 +574,5 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { formatDocBufferSync } = nativeBinding
-export { formatDocBufferSync }
+const { formatJsDocBufferSync, formatMarkdownDocBufferSync } = nativeBinding
+export { formatJsDocBufferSync, formatMarkdownDocBufferSync }

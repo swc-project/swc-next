@@ -17,12 +17,13 @@ plugin. The document model and native printer live in the language-independent f
 
 #### Plugin API
 
-`@swc-next/formatter-prettier-plugin` formats source into a Doc. It exports
-`languages`, `parsers`, `printers`, and `options` through an ESM entry point.
+`@swc-next/formatter-prettier-plugin` exposes a Prettier plugin through each
+language subpath. The `/javascript` entry provides JavaScript, JSX, TypeScript,
+and TSX parsers. The `/markdown` entry provides the Markdown parser.
 
 ```js
 import * as prettier from "prettier";
-import * as swc from "@swc-next/formatter-prettier-plugin";
+import * as swc from "@swc-next/formatter-prettier-plugin/javascript";
 
 const code = await prettier.format(source, {
   plugins: [swc],
@@ -47,9 +48,8 @@ that supplies an AST to Prettier's AST printer. It is not implemented.
 
 #### Formatting Pipeline
 
-The parser calls Rust through `@swc-next/formatter-js`, an independent source-to-Doc
-binding with native and Wasm support. The plugin and producer do not depend on
-`@swc-next/core`.
+The JavaScript and Markdown entries share the plugin's native and Wasm
+bindings. Each parser calls its language's Rust document producer.
 
 ```text
 Source → Rust parser → SWC formatter → binary Doc
@@ -67,10 +67,9 @@ The printer simply returns `path.node.doc`. Rust handles comments, ignore
 directives, and parentheses, so the root has no comments or visitor keys.
 Positions on the root use UTF-16 offsets.
 
-The separate `@swc-next/formatter` package provides the generic Rust Doc host.
-It encodes JavaScript Docs and prints SWCD buffers, including cursor ranges,
-without an ECMAScript parser or producer. Both packages exchange owned buffers;
-Rust allocations and AST handles stay within their originating binding.
+The separate `@swc-next/formatter` package encodes JavaScript Docs and prints
+SWCD buffers with the Rust Doc printer, including cursor ranges. The plugin's
+tests use it to compare the Rust and Prettier printers.
 
 Prettier handles the final layout, line endings, and BOM. Rust also receives
 `printWidth`, `tabWidth`, and the resolved `endOfLine` because these options
@@ -113,7 +112,7 @@ normal exception mechanism.
 
 Formatter options use a separate 15-byte record (version 0), including a resolved
 line-ending tag: 0 for LF, 1 for CRLF, and 2 for CR. Parser options reuse the
-existing packed representation. `formatDocBufferSync` and the document protocol
+existing packed representation. `formatJsDocBufferSync` and the document protocol
 are internal interfaces whose versions must match the plugin.
 
 #### Document Conversion
@@ -190,22 +189,15 @@ decoding, allocation, and layout costs.
 
 ```sh
 pnpm install
-pnpm --filter @swc-next/formatter-js build
+pnpm --filter @swc-next/formatter --filter @swc-next/formatter-prettier-plugin build
 pnpm --filter @swc-next/formatter-prettier-plugin test
-pnpm --filter @swc-next/formatter-js build:wasm
+pnpm --filter @swc-next/formatter --filter @swc-next/formatter-prettier-plugin build:wasm
 pnpm --filter @swc-next/formatter-prettier-plugin test:wasm
 ```
 
 Tests live in `npm/formatter-prettier-plugin/test`. They cover formatting, options,
 source locations, malformed buffers, and whitespace across shared fragments.
 The same tests run against native and Wasm bindings.
-They discover every local Rust formatter fixture and its nearest `options.json`,
-normalize the input as the pinned Prettier host does, and compare exact strings
-with a test-only N-API call to native `format()`. The oracle uses the same fixture
-option decoder as the Rust tests, independent of the plugin's option and Doc
-transport and returns formatted strings directly. No output EOL or EOF
-normalization is applied, and presentation snapshots are not used as an oracle.
-Tests also check the input-normalization boundary against Prettier itself.
-The native oracle addon is built automatically with the `test-native` feature
-into `npm/formatter-js/test/binding`. Tests load that `.node` file directly,
-including when the plugin binding is forced to Wasm.
+The conformance report discovers each local Rust formatter fixture and its
+nearest `options.json`. It compares SWC documents rendered by both printers
+and compares the plugin's output with Prettier's built-in formatters.

@@ -6,9 +6,13 @@ JavaScript, TypeScript, and Markdown formatting for Prettier, powered by SWC Nex
 
 ## Usage
 
+Install `@swc-next/formatter-prettier-plugin` alongside Prettier. Import the plugin for the language you want to format.
+
+### JavaScript and TypeScript
+
 ```js
 import * as prettier from "prettier";
-import * as swc from "@swc-next/formatter-prettier-plugin";
+import * as swc from "@swc-next/formatter-prettier-plugin/javascript";
 
 const code = await prettier.format("const answer:number=42", {
   plugins: [swc],
@@ -42,6 +46,6 @@ Range formatting and pragma options are unsupported. The JavaScript and TypeScri
 
 ## Testing
 
-From the workspace root, run `pnpm --filter @swc-next/formatter-prettier-plugin test`, or `pnpm --filter @swc-next/formatter-prettier-plugin test:wasm` with WebAssembly bindings built.
+Build the native or Wasm bindings for both `@swc-next/formatter` and `@swc-next/formatter-prettier-plugin`. Then run `test` or `test:wasm` with the `@swc-next/formatter-prettier-plugin` filter.
 
 Both commands generate the [conformance report](test/prettier-plugin-conformance.json), comparing SWC and Prettier printers and the SWC plugin with Prettier's built-in formatters.

@@ -1,10 +1,10 @@
 [package]
-description           = "Experimental and unstable native and Wasm Markdown formatter bindings"
+description           = "Experimental and unstable native and Wasm bindings for the SWC Next Prettier plugin"
 edition               = "2024"
 homepage.workspace    = true
-keywords              = ["markdown", "formatting"]
+keywords              = ["formatting", "pretty-printing"]
 license.workspace     = true
-name                  = "swc_next_formatter_markdown_bridge"
+name                  = "swc_next_formatter_prettier_plugin_bridge"
 repository.workspace  = true
 version               = "0.8.1"
 
@@ -12,7 +12,9 @@ version               = "0.8.1"
 crate-type = ["cdylib"]
 
 [dependencies]
+swc_next                    = { workspace = true, features = ["bridge", "js_parser"] }
 swc_next_bridge             = { workspace = true }
+swc_next_formatter          = { workspace = true, features = ["bridge"] }
 swc_next_formatter_core     = { workspace = true }
 swc_next_formatter_host     = { workspace = true }
 swc_next_formatter_markdown = { workspace = true }
