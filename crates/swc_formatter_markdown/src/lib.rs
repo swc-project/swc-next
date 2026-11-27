@@ -175,6 +175,9 @@ impl<'a> Formatter<'a, '_, '_> {
         writer: &mut Writer<'a>,
         render: impl FnOnce(&mut Self, &mut Writer<'a>) -> T,
     ) -> T {
+        if prefix.is_empty() {
+            return render(self, writer);
+        }
         self.prefix_columns += prefix.len();
         let result = writer.align_text(prefix, |writer| render(self, writer));
         self.prefix_columns -= prefix.len();

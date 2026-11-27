@@ -736,6 +736,164 @@ fn extended_dialect_and_recovery() {
     assert_eq!(print(&parsed), "#  keep   \n\n");
 }
 
+#[test]
+fn display_math() {
+    use swc_next_markdown_parser::{Block, BlockExtension, Document, SourceLine};
+
+    fn body(document: &Document<'_>) -> String {
+        fn math_lines(blocks: &[Block]) -> Option<&[SourceLine]> {
+            blocks.iter().find_map(|block| match &block.kind {
+                BlockKind::BlockQuote(children) => math_lines(children),
+                BlockKind::List(list) => {
+                    list.items.iter().find_map(|item| math_lines(&item.blocks))
+                }
+                BlockKind::Extension(BlockExtension::Math {
+                    closing: Some(_),
+                    body,
+                    ..
+                }) => Some(body),
+                _ => None,
+            })
+        }
+
+        let mut text = String::new();
+        for line in math_lines(&document.blocks).expect("expected display math") {
+            line.append(document.source(), &mut text);
+            text.push('\n');
+        }
+        text
+    }
+
+    fn round_trip(source: &str, options: ParseOptions, layout: PrintOptions) -> String {
+        let session = FormatSession::new(layout);
+        let format = |parsed: &Document<'_>| {
+            ast_to_doc(parsed, session.context(), SyntaxOptions::default())
+                .unwrap()
+                .print(layout)
+        };
+        let parsed = parse_with_options(source, options);
+        let formatted = format(&parsed);
+        let reparsed = parse_with_options(&formatted, options);
+        assert_eq!(body(&reparsed), body(&parsed));
+        assert_eq!(format(&reparsed), formatted);
+        formatted
+    }
+
+    fn list_and_code(
+        source: &str,
+        options: ParseOptions,
+        layout: PrintOptions,
+        values: &[&str],
+    ) -> String {
+        let formatted = round_trip(source, options, layout);
+        for text in [source, &formatted] {
+            let document = parse_with_options(text, options);
+            let blocks = match document.blocks.as_slice() {
+                [
+                    Block {
+                        kind: BlockKind::BlockQuote(blocks),
+                        ..
+                    },
+                ] => blocks,
+                blocks => blocks,
+            };
+            let mut siblings = blocks
+                .iter()
+                .filter(|block| !matches!(block.kind, BlockKind::Blank));
+            for value in values {
+                let Some(Block {
+                    kind: BlockKind::List(list),
+                    ..
+                }) = siblings.next()
+                else {
+                    panic!("expected a list");
+                };
+                let [math] = list.items.last().unwrap().blocks.as_slice() else {
+                    panic!("expected one math block");
+                };
+                assert!(matches!(
+                    math.kind,
+                    BlockKind::Extension(BlockExtension::Math {
+                        closing: Some(_),
+                        ..
+                    })
+                ));
+                assert!(
+                    matches!(siblings.next().map(|b| &b.kind), Some(BlockKind::IndentedCode(code)) if code.value == *value)
+                );
+            }
+            assert!(siblings.next().is_none());
+        }
+        formatted
+    }
+
+    let layout = PrintOptions::default();
+    let extended = ParseOptions {
+        dialect: Dialect::Extended,
+        ..ParseOptions::default()
+    };
+
+    let source = "$$\n$$$\n$$\n";
+    assert_eq!(round_trip(source, extended, layout), source);
+
+    let source = "  $$\n    $$ \t\n  $$\n";
+    assert_eq!(round_trip(source, extended, layout), source);
+
+    let source = "-\n    $$\n      $$\n    $$\n";
+    assert_eq!(round_trip(source, extended, layout), source);
+
+    let source = "  > $$\n  > \t$$\n  > $$\n";
+    let formatted = round_trip(source, extended, layout);
+    assert_eq!(formatted, ">    $$\n>    \t$$\n>    $$\n");
+
+    let source = " $$\n    $$$\n $$\n";
+    let formatted = round_trip(source, ParseOptions::default(), layout);
+    assert_eq!(formatted, "$$$$\n   $$$\n$$$$\n");
+
+    let source = "   09.\n         $$\n           $$\n         $$\n\n      outside\n";
+    assert_eq!(round_trip(source, extended, layout), source);
+
+    let source = " -    $$\n      \t\t$$\n      $$\n\n     code\n";
+    assert_eq!(list_and_code(source, extended, layout, &[" code"]), source);
+
+    let source = "   -\t$$\n\t\t\t$$\n\t\t$$\n\n     code\n";
+    let formatted = list_and_code(source, extended, layout, &[" code"]);
+    assert_eq!(
+        formatted,
+        "   -    $$\n        \t$$\n        $$\n\n     code\n"
+    );
+
+    let source = "8) first\n 009)    $$\n         \t\t$$\n         $$\n\n\t    code\n";
+    let formatted = list_and_code(source, extended, layout, &["    code"]);
+    assert_eq!(
+        formatted,
+        "   8.    first\n   9.    $$\n         \t\t$$\n         $$\n\n        code\n"
+    );
+
+    let source = "* first\n\n +    $$\n      \t\t$$\n      $$\n\n     code\n";
+    let formatted = round_trip(source, extended, layout);
+    assert_eq!(
+        formatted,
+        "- first\n\n *    $$\n      \t\t$$\n      $$\n\n     code\n"
+    );
+
+    let source = "  >    -    $$\n  >         \t$$\n  >         $$\n  >\n  >       code\n";
+    assert_eq!(list_and_code(source, extended, layout, &["  code"]), source);
+
+    let source = "  >    -    $$\n  >         \t$$\n  >         $$\n  >\n  >        code\n >\n >    1.    $$\n >          \t$$\n >          $$\n >\n >         code\n";
+    assert_eq!(
+        list_and_code(source, extended, layout, &["   code", "    code"]),
+        source
+    );
+
+    let layout = PrintOptions {
+        indent_width: 4.try_into().unwrap(),
+        ..layout
+    };
+    let source = "- item\n\n    $$\n      $$\n    $$\n";
+    assert_eq!(round_trip(source, extended, layout), source);
+}
+
 struct TestDispatcher {
     calls: Cell<usize>,
 }

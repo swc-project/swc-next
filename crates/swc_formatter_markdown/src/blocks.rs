@@ -1,7 +1,8 @@
 use swc_next_formatter_core::Writer;
 use swc_next_formatter_host::EmbeddedError;
 use swc_next_markdown_parser::{
-    Block, BlockExtension, BlockKind, Heading, Ignore, List, ListItem, SourceLine, Span, Task,
+    Block, BlockExtension, BlockKind, Dialect, Heading, Ignore, List, ListItem, SourceLine, Span,
+    Task,
 };
 
 use crate::{Formatter, ProseWrap};
@@ -9,7 +10,9 @@ use crate::{Formatter, ProseWrap};
 #[derive(Clone, Copy)]
 pub(super) enum Container {
     Document,
-    Quote,
+    Quote {
+        per_block_indent: bool,
+    },
     Footnote,
     Item {
         loose: bool,
@@ -35,6 +38,7 @@ impl<'a> Formatter<'a, '_, '_> {
         let mut index = 0;
         let mut previous: Option<&Block> = None;
         let mut alternate_list = false;
+        let mut quote_prefix = "";
         let mut ignore_next = false;
         // Range directives apply to document siblings. Single-block directives
         // also work inside lists and block quotes.
@@ -52,6 +56,27 @@ impl<'a> Formatter<'a, '_, '_> {
                 continue;
             }
 
+            let minimum_indent = if let BlockKind::List(list) = &block.kind {
+                blocks[index + 1..]
+                    .iter()
+                    .find(|block| !matches!(block.kind, BlockKind::Blank))
+                    .map_or(0, |next| {
+                        minimum_list_indent_before(list, next, self.document.source)
+                    })
+            } else {
+                0
+            };
+            if matches!(
+                container,
+                Container::Quote {
+                    per_block_indent: true
+                }
+            ) {
+                // Keep the sibling code on the same quote margin as its list.
+                if !matches!(block.kind, BlockKind::IndentedCode(_)) || quote_prefix.is_empty() {
+                    quote_prefix = self.quote_prefix(block, minimum_indent);
+                }
+            }
             alternate_list = match &block.kind {
                 BlockKind::List(list) if ignore_next => list
                     .items
@@ -68,7 +93,7 @@ impl<'a> Formatter<'a, '_, '_> {
                         && let Some(opening) = lazy_html_opening(before, block) =>
                 {
                     let blank = self.needs_blank_line(&blocks[..index], before, block, container);
-                    self.lazy_html_block(block, opening, blank, container, writer);
+                    self.lazy_html_block(block, opening, blank, container, quote_prefix, writer);
                     alternate_list = false;
                     previous = Some(block);
                     index += 1;
@@ -80,21 +105,15 @@ impl<'a> Formatter<'a, '_, '_> {
                 writer.literal_line_with_indent();
                 if !ignore_next && self.needs_blank_line(&blocks[..index], before, block, container)
                 {
+                    if !quote_prefix.is_empty() {
+                        writer.text(&quote_prefix[..quote_prefix.len() - 1]);
+                    }
                     writer.hard_line();
                 }
             }
-            if ignore_next {
-                self.raw_block(block, container, writer);
-                if matches!(container, Container::Quote)
-                    && self.options.prose_wrap == ProseWrap::Always
-                    && matches!(block.kind, BlockKind::List(_))
-                    && matches!(&blocks[index + 1..], [last] if matches!(last.kind, BlockKind::Blank))
-                {
-                    writer.hard_line();
-                    writer.trim();
-                }
-                ignore_next = false;
-            } else if matches!(block.kind, BlockKind::Ignore(Ignore::Start))
+
+            if !ignore_next
+                && matches!(block.kind, BlockKind::Ignore(Ignore::Start))
                 && last_ignore_end.is_some_and(|end| end > index)
                 && let Some(end) = blocks[index + 1..]
                     .iter()
@@ -108,24 +127,34 @@ impl<'a> Formatter<'a, '_, '_> {
                 previous = Some(&blocks[last]);
                 index = last + 1;
                 continue;
-            } else {
-                let minimum_indent = if let BlockKind::List(list) = &block.kind {
-                    blocks[index + 1..]
-                        .iter()
-                        .find(|block| !matches!(block.kind, BlockKind::Blank))
-                        .map_or(0, |next| {
-                            minimum_list_indent_before(list, next, self.document.source)
-                        })
-                } else {
-                    0
-                };
-                let list = ListLayout {
-                    alternate_marker: alternate_list,
-                    minimum_indent,
-                };
-                self.present_block(block, container, previous.is_none(), list, writer)?;
-                ignore_next = matches!(block.kind, BlockKind::Ignore(Ignore::Next));
             }
+            let list = ListLayout {
+                alternate_marker: alternate_list,
+                minimum_indent,
+            };
+            let render = |formatter: &mut Self, writer: &mut Writer<'a>| {
+                if ignore_next {
+                    formatter.raw_block(block, container, writer);
+                    if matches!(container, Container::Quote { .. })
+                        && formatter.options.prose_wrap == ProseWrap::Always
+                        && matches!(block.kind, BlockKind::List(_))
+                        && matches!(&blocks[index + 1..], [last] if matches!(last.kind, BlockKind::Blank))
+                    {
+                        writer.hard_line();
+                        writer.trim();
+                    }
+                    Ok(())
+                } else {
+                    formatter.present_block(block, container, previous.is_none(), list, writer)
+                }
+            };
+            if quote_prefix.is_empty() {
+                render(self, writer)?;
+            } else {
+                writer.text(quote_prefix);
+                self.aligned(quote_prefix, writer, render)?;
+            }
+            ignore_next = !ignore_next && matches!(block.kind, BlockKind::Ignore(Ignore::Next));
             previous = Some(block);
             index += 1;
         }
@@ -151,7 +180,13 @@ impl<'a> Formatter<'a, '_, '_> {
                 continuation_indent,
                 ..
             } if !first => {
-                if matches!(block.kind, BlockKind::IndentedCode(_) | BlockKind::Html) {
+                // Math handles this prefix together with its fence indentation.
+                if matches!(
+                    block.kind,
+                    BlockKind::IndentedCode(_)
+                        | BlockKind::Html
+                        | BlockKind::Extension(BlockExtension::Math { .. })
+                ) {
                     ""
                 } else {
                     writer.text(continuation_indent);
@@ -200,9 +235,15 @@ impl<'a> Formatter<'a, '_, '_> {
                     .iter()
                     .any(|block| !matches!(block.kind, BlockKind::Blank))
                 {
-                    writer.text("> ");
-                    self.aligned("> ", writer, |formatter, writer| {
-                        formatter.blocks(children, Container::Quote, writer)
+                    let per_block_indent = self.document.dialect() == Dialect::Extended
+                        && self.text(block.span).contains('\t')
+                        && self.text(block.span).contains("$$")
+                        && self.needs_variable_quote_indent(children);
+                    let prefix = if per_block_indent { "" } else { "> " };
+                    let quote = Container::Quote { per_block_indent };
+                    writer.text(prefix);
+                    self.aligned(prefix, writer, |formatter, writer| {
+                        formatter.blocks(children, quote, writer)
                     })?;
                 } else {
                     writer.text(">");
@@ -241,7 +282,14 @@ impl<'a> Formatter<'a, '_, '_> {
                 self.footnote(*label, blocks, writer)?;
             }
             BlockKind::Extension(BlockExtension::Math { meta, body, .. }) => {
-                self.display_math(*meta, body, writer);
+                let continuation = match container {
+                    Container::Item {
+                        continuation_indent,
+                        ..
+                    } if !first => continuation_indent,
+                    _ => "",
+                };
+                self.display_math(block, *meta, body, continuation, writer);
             }
             BlockKind::FrontMatter(matter) => self.front_matter(block, matter, writer)?,
             BlockKind::Html
@@ -368,11 +416,12 @@ impl<'a> Formatter<'a, '_, '_> {
 
     #[cold]
     fn lazy_html_block(
-        &self,
+        &mut self,
         block: &Block,
         opening: &SourceLine,
         blank: bool,
         container: Container,
+        quote_prefix: &'static str,
         writer: &mut Writer<'a>,
     ) {
         let omit_prefix = opening.starts_lazy_html(self.document.source);
@@ -386,15 +435,23 @@ impl<'a> Formatter<'a, '_, '_> {
             writer.literal_line_with_indent();
         }
         if blank {
+            if let Some(marker) = quote_prefix.strip_suffix(' ') {
+                writer.text(marker);
+            }
             writer.hard_line();
         }
-        if replay_prefix {
-            writer.text(self.text(opening.raw));
-            let body = Span::new(opening.content.end, block.span.end);
-            write_source_lines(writer, &block.logical_text(self.document.source, body));
-        } else {
-            self.raw_block(block, container, writer);
+        if !replay_prefix && !omit_prefix {
+            writer.text(quote_prefix);
         }
+        self.aligned(quote_prefix, writer, |formatter, writer| {
+            if replay_prefix {
+                writer.text(formatter.text(opening.raw));
+                let body = Span::new(opening.content.end, block.span.end);
+                write_source_lines(writer, &block.logical_text(formatter.document.source, body));
+            } else {
+                formatter.raw_block(block, container, writer);
+            }
+        });
     }
 
     fn list(
@@ -451,25 +508,55 @@ impl<'a> Formatter<'a, '_, '_> {
                     before = child;
                 }
             }
-            // Empty markers and code bodies on the marker line both use a
-            // one-column separator when CommonMark computes the item indent.
-            let max_padding = match first {
-                Some(block) if !matches!(block.kind, BlockKind::IndentedCode(_)) => 4,
-                _ => 1,
-            };
-            let marker = if list.ordered {
-                let number = if use_ones && index != 0 {
+            let number = || {
+                if use_ones && index != 0 {
                     1
                 } else {
                     start.saturating_add(index as u64).min(999_999_999)
-                };
+                }
+            };
+            let (max_padding, math_starts_on_next_line) = match first.map(|block| &block.kind) {
+                None | Some(BlockKind::IndentedCode(_)) => (1, false),
+                Some(BlockKind::Extension(BlockExtension::Math { body, .. }))
+                    if self.document.dialect() == Dialect::Extended =>
+                {
+                    let padding = self.math_padding(body);
+                    let widest_marker = if list.ordered {
+                        item.marker
+                            .len()
+                            .max(number().checked_ilog10().unwrap_or(0) as usize + 2)
+                    } else {
+                        1
+                    };
+                    if padding == [0; 4] {
+                        (4, false)
+                    } else if index + 1 == list.items.len()
+                        && minimum_indent > 3 + widest_marker + 1
+                        && let Some(indent) = inline_math_width(
+                            padding,
+                            self.prefix_columns,
+                            minimum_indent,
+                            widest_marker,
+                        )
+                    {
+                        // An empty marker gets one separator column. Keep the opener
+                        // on its marker line at a width that protects literal "$$" lines.
+                        minimum_indent = indent;
+                        (4, false)
+                    } else {
+                        (1, true)
+                    }
+                }
+                _ => (4, false),
+            };
+            let marker = if list.ordered {
+                let number = number();
                 let delimiter = if layout.alternate_marker { ')' } else { '.' };
                 // Only the final nonempty item can absorb a following code block.
                 // Keep enough digits when three leading spaces, the delimiter,
                 // and the permitted separator still fall short.
                 let digits = if index + 1 == list.items.len() && first.is_some() {
-                    layout
-                        .minimum_indent
+                    minimum_indent
                         .saturating_sub(3 + 1 + max_padding)
                         .min(item.marker.len().saturating_sub(1))
                 } else {
@@ -506,7 +593,9 @@ impl<'a> Formatter<'a, '_, '_> {
             writer.text(&"   "[..leading]);
             writer.text(marker);
             if let Some(first) = first {
-                writer.text(&"    "[..padding]);
+                if !math_starts_on_next_line {
+                    writer.text(&"    "[..padding]);
+                }
                 let prefix = self.context.allocator().alloc_str(&" ".repeat(indent));
                 let continuation = tab_width.saturating_sub(indent).min(3);
                 let container = Container::Item {
@@ -522,6 +611,9 @@ impl<'a> Formatter<'a, '_, '_> {
                     self.original_item_widths = false;
                 }
                 let result = self.aligned(prefix, writer, |formatter, writer| {
+                    if math_starts_on_next_line {
+                        writer.hard_line();
+                    }
                     formatter.blocks(&item.blocks, container, writer)
                 });
                 if changed_width {
@@ -532,6 +624,43 @@ impl<'a> Formatter<'a, '_, '_> {
             previous = Some((item.span.end, loose));
         }
         Ok(())
+    }
+
+    fn needs_variable_quote_indent(&self, children: &[Block]) -> bool {
+        let mut next_indent = 0;
+        for child in children
+            .iter()
+            .rev()
+            .filter(|b| !matches!(b.kind, BlockKind::Blank))
+        {
+            if self.quote_prefix(child, next_indent) != "> " {
+                return true;
+            }
+            next_indent = indentation_before_code(child);
+        }
+        false
+    }
+
+    fn quote_prefix(&self, block: &Block, minimum_indent: usize) -> &'static str {
+        if let BlockKind::List(list) = &block.kind
+            && let Some(item) = list.items.last()
+            && minimum_indent > 3 + item.marker.len() + 1
+            && let Some(first) = item
+                .blocks
+                .iter()
+                .find(|b| !matches!(b.kind, BlockKind::Blank))
+            && let BlockKind::Extension(BlockExtension::Math { body, .. }) = &first.kind
+        {
+            // The quote margin changes the tab stops of the enclosed math body.
+            let padding = self.math_padding(body);
+            if let Some(leading) = (0..4).find(|leading| {
+                let column = self.prefix_columns + leading + 2;
+                inline_math_width(padding, column, minimum_indent, item.marker.len()).is_some()
+            }) {
+                return &"   > "[3 - leading..];
+            }
+        }
+        "> "
     }
 
     fn item_width_matches(&self, item: &ListItem, first: &Block, width: usize) -> bool {
@@ -595,6 +724,15 @@ impl<'a> Formatter<'a, '_, '_> {
     }
 }
 
+fn inline_math_width(
+    padding: [usize; 4],
+    column: usize,
+    minimum: usize,
+    marker_width: usize,
+) -> Option<usize> {
+    (minimum..=3 + marker_width + 4).find(|&width| padding[(column + width) % 4] == 0)
+}
+
 fn lazy_html_opening<'b>(previous: &Block, html: &'b Block) -> Option<&'b SourceLine> {
     match &previous.kind {
         BlockKind::Paragraph(_) => html.lines.first().filter(|line| line.lazy),
@@ -622,6 +760,10 @@ fn minimum_list_indent_before(list: &List, block: &Block, source: &str) -> usize
             indent + 1
         };
     }
+    indentation_before_code(block)
+}
+
+fn indentation_before_code(block: &Block) -> usize {
     let BlockKind::IndentedCode(code) = &block.kind else {
         return 0;
     };
