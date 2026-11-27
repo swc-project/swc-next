@@ -3,5 +3,4 @@ typescript microsoft/TypeScript 6327ae16673fe527482c24c37814a5b55162395d
 babel babel/babel 8deb632be9d5aca635eee8dc44338eb02782780e
 estree-conformance oxc-project/estree-conformance 675e3259298af0b3e2cf19fd72c4217a350ec822
 swc swc-project/swc 2c6c0ed19cccc8163ed82129ed91d14fdabc0171
-swc-conformance CPunisher/swc-conformance 33fa9c69d4ec84ff5a728835a616add6e3b2e82f
 prettier prettier/prettier deda65fd47c285b974e2a4397f26a33cfc1746b8 fixed

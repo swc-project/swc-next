@@ -7,7 +7,6 @@ use crate::{cases::Case, suite::TestResult};
 pub mod codegen;
 pub mod minifier;
 pub mod parser;
-pub mod semantic;
 pub mod transform;
 
 pub trait Runner<C: Case> {
