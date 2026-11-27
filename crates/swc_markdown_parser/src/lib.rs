@@ -127,7 +127,8 @@ fn identifier(label: &str) -> String {
         normalized.make_ascii_lowercase();
         normalized
     } else {
-        normalized.to_uppercase().to_lowercase()
+        // TODO: Use `str::to_casefold_unnormalized` once stable (rust-lang/rust#157000).
+        unicase::UniCase::unicode(normalized).to_folded_case()
     }
 }
 
@@ -657,6 +658,17 @@ mod tests {
         assert_eq!(doc.text(image.label), "");
         assert!(matches!(nodes[4].kind, InlineKind::Link(_)));
         assert!(doc.definition("missing").is_none());
+
+        let doc = parse("[ẞ]\n\n[SS]: /first\n[ß]: /second");
+        let first = doc.definition("ẞ").unwrap();
+        assert_eq!(doc.text(first.definition.destination), "/first");
+
+        let doc = parse("[I]: /url");
+        assert!(doc.definition("ı").is_none());
+
+        // Beria Erfe case pairs require Unicode 17 or later.
+        let doc = parse("[\u{16ea0}]: /url");
+        assert!(doc.definition("\u{16ebb}").is_some());
 
         let doc = parse("*text [label* tail]");
         let nodes = paragraph(&doc.blocks[0]);
