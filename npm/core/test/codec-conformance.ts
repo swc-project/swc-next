@@ -13,6 +13,7 @@ const SOURCE_TEST262 = path.join(FIXTURE_DIR, "test262/test");
 const SOURCE_TS = path.join(FIXTURE_DIR, "typescript/tsc/testdata/tests/cases");
 const SNAPSHOT_TEST262 = path.join(SNAPSHOT_DIR, "codec_test262.snap");
 const SNAPSHOT_TS = path.join(SNAPSHOT_DIR, "codec_typescript.snap");
+const updateSnapshots = process.argv.includes("--update");
 
 interface TestResult {
   file: string;
@@ -74,6 +75,6 @@ async function writeResults(suite: string, snapshot: string, results: TestResult
   console.log(`${suite}: ${passed}/${results.length} passed, ${failed.length} failed cases`);
   if (output !== expected) {
     console.error(`Snapshot changed: ${snapshot}`);
-    process.exitCode = 1;
+    if (!updateSnapshots) process.exitCode = 1;
   }
 }
