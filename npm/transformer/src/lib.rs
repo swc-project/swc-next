@@ -8,7 +8,7 @@
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[cfg(target_family = "wasm")]
-use swc_next::js::transformer::bridge::{TransformApiOptions, transform_to_buffer};
+use swc_next::js::transformer::bridge::transform_to_buffer;
 #[cfg(target_family = "wasm")]
 use swc_next_bridge::bridge;
 #[cfg(not(target_family = "wasm"))]
@@ -23,8 +23,8 @@ use swc_next_bridge::{napi, napi_derive::napi};
 pub unsafe fn transform_sync(
     source: &[u8],
     source_utf16_len: u32,
-    options: Option<TransformApiOptions>,
-) -> Vec<u8> {
+    options: &[u8],
+) -> Result<Vec<u8>, String> {
     unsafe { transform_to_buffer(source, source_utf16_len, options) }
 }
 

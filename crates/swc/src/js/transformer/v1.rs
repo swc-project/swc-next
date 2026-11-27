@@ -4,7 +4,7 @@ use swc_next_allocator::Allocator;
 use swc_next_ecma_ast::{DUMMY_SP, Diagnostic, Lang, SourceType};
 use swc_next_ecma_codegen::{Options as GeneratorOptions, generate};
 use swc_next_ecma_parser::{NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_ecma_semantic::{AnalyzeOptions, SyntaxChecks, analyze};
+use swc_next_ecma_semantic::{SyntaxChecks, check_syntax};
 use swc_next_ecma_transformer_v1::{
     Transformer, TransformerOptions,
     decorators::{DecoratorOptions, DecoratorVersion},
@@ -298,13 +298,9 @@ pub fn transform_js<const TRANSFORM: bool>(
     // ======================= Analyze and Transform =======================
     let semantic_errors = parser_options.semantic_errors.unwrap_or(false);
     if semantic_errors {
-        let analyzed = analyze(
-            &mut ast,
-            AnalyzeOptions {
-                check_syntax: SyntaxChecks::all(),
-            },
-        );
-        output.diagnostics.extend(analyzed.diagnostics);
+        output
+            .diagnostics
+            .extend(check_syntax(&ast, SyntaxChecks::all()));
         if has_errors(&output.diagnostics) {
             return output;
         }

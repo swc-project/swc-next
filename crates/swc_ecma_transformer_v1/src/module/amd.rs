@@ -1,5 +1,3 @@
-use std::sync::LazyLock;
-
 use swc_next_ecma_ast::*;
 
 use crate::common::build;
@@ -28,12 +26,6 @@ pub(super) fn amd(cx: &mut ModuleCtx<'_, '_>) {
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_module/src/amd.rs#L587>.
 fn get_amd_module_id_from_comments<'a>(ast: &Ast<'a>) -> Option<&'a str> {
-    static AMD_MODULE: LazyLock<regex::Regex> = LazyLock::new(|| {
-        regex::Regex::new(
-            r#"(?i)^/\s*<amd-module.*?name\s*=\s*(?:(?:'([^']*)')|(?:"([^"]*)")).*?/>"#,
-        )
-        .unwrap()
-    });
     let start = util::source_start(ast);
     ast.comments()
         .iter()
@@ -41,12 +33,42 @@ fn get_amd_module_id_from_comments<'a>(ast: &Ast<'a>) -> Option<&'a str> {
         .filter(|comment| comment.kind == CommentKind::Line && comment.span.end <= start)
         .find_map(|comment| {
             let text = ast.get_utf8(comment.value(ast.source().as_bytes()));
-            let captures = AMD_MODULE.captures(text)?;
-            captures
-                .get(1)
-                .or_else(|| captures.get(2))
-                .map(|name| name.as_str())
+            parse_amd_module_id(text)
         })
+}
+
+fn parse_amd_module_id(text: &str) -> Option<&str> {
+    let rest = text.strip_prefix('/')?.trim_start();
+    if !rest
+        .as_bytes()
+        .get(..11)
+        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"<amd-module"))
+    {
+        return None;
+    }
+    let tail = &rest[11..];
+    let close = tail.rfind("/>")?;
+    let attrs = &tail[..close];
+    let bytes = attrs.as_bytes();
+    let mut i = 0;
+    while i + 4 <= bytes.len() {
+        if bytes[i..i + 4].eq_ignore_ascii_case(b"name") {
+            let after_name = attrs[i + 4..].trim_start();
+            if let Some(after_eq) = after_name.strip_prefix('=') {
+                let after_eq = after_eq.trim_start();
+                if let Some(&quote) = after_eq.as_bytes().first()
+                    && (quote == b'\'' || quote == b'"')
+                {
+                    let value_start = &after_eq[1..];
+                    if let Some(end_quote) = value_start.find(quote as char) {
+                        return Some(&value_start[..end_quote]);
+                    }
+                }
+            }
+        }
+        i += attrs[i..].chars().next()?.len_utf8();
+    }
+    None
 }
 
 /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transforms_module/src/amd.rs#L613>.

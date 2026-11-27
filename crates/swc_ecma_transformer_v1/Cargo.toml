@@ -16,7 +16,6 @@ convert_case       = { workspace = true }
 hashbrown          = { workspace = true }
 indexmap           = { workspace = true }
 memchr             = { workspace = true }
-regex              = { workspace = true }
 rustc-hash         = { workspace = true }
 sha1               = { workspace = true }
 swc_next_allocator = { workspace = true }

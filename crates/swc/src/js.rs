@@ -191,7 +191,7 @@ pub mod bridge {
     #[cfg(not(target_family = "wasm"))]
     use swc_next_bridge::napi;
 
-    #[bridge(object, object_from_js = false, object_to_js = false)]
+    #[bridge(object)]
     pub struct DiagnosticLabel {
         pub message: String,
         /// UTF-16 offset in the original source.
@@ -200,12 +200,9 @@ pub mod bridge {
         pub end: u32,
     }
 
-    #[bridge(object, object_from_js = false, object_to_js = false)]
+    #[bridge(object)]
     pub struct Diagnostic {
-        #[cfg_attr(
-            not(target_family = "wasm"),
-            napi(ts_type = "\"error\" | \"warning\" | \"hint\" | \"info\"")
-        )]
+        #[bridge(ts_type = "\"error\" | \"warning\" | \"hint\" | \"info\"")]
         pub severity: String,
         pub message: String,
         /// UTF-16 offset in the original source.
