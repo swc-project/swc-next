@@ -66,6 +66,28 @@ test("transform forwards transformer v1 options", () => {
     assert.equal(feature.diagnostics.length, 0);
     assert.match(feature.code, /catch \([^)]+\)/);
 
+    const lowAndHighFeature = transform("a ** b; /a/v;", {
+      transformer: {
+        features: {
+          "exponentiation-operator": true,
+          "unicode-sets-regex": true,
+        },
+      },
+    });
+    assert.equal(lowAndHighFeature.diagnostics.length, 0);
+    assert.match(lowAndHighFeature.code, /Math\.pow\(a, b\)/);
+    assert.match(lowAndHighFeature.code, /RegExp\("a", "v"\)/);
+
+    const featureDisable = transform("a ?? b; a?.b;", {
+      transformer: {
+        target: "es2019",
+        features: { "nullish-coalescing-operator": false },
+      },
+    });
+    assert.equal(featureDisable.diagnostics.length, 0);
+    assert.match(featureDisable.code, /\?\?/);
+    assert.doesNotMatch(featureDisable.code, /\?\./);
+
     const engineTarget = transform("a ?? b;", {
       transformer: { target: { node: "12" } },
     });
@@ -118,6 +140,12 @@ test("transform validates configuration values", () => {
     assert.throws(() => transform("", { generator: { minify: 1 } }), TypeError);
 
     assert.throws(() => transform("", { transformer: true }), TypeError);
+
+    assert.throws(() => transform("", { unknownOption: true }), TypeError);
+
+    assert.throws(() => transform("", { parser: { unknownOption: true } }), TypeError);
+
+    assert.throws(() => transform("", { generator: { unknownOption: true } }), TypeError);
 
     assert.throws(() => transform("", { transformer: { unknownOption: true } }), TypeError);
 

@@ -43,6 +43,7 @@ pub(super) fn to_options(
             match feature {
                 JsFeature::ClassStaticBlock => defaults.es2022.static_blocks = enabled,
                 JsFeature::OptionalCatchBinding => defaults.es2019.optional_catch_binding = enabled,
+                feature => unimplemented!("transformer v2 does not support feature `{feature:?}`"),
             }
         }
     }
@@ -69,10 +70,7 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     // ======================= Options =======================
     let parser_options = options.parser.unwrap_or_default();
-    let comments = parser_options
-        .comments
-        .or(options.comments)
-        .unwrap_or(CommentsOption::All);
+    let output_comments = options.comments.unwrap_or(CommentsOption::All);
     let lang = {
         let inferred = options.filename.as_deref().map(Lang::from_path);
         let explicit = parser_options.lang.map(Into::into);
@@ -98,7 +96,7 @@ pub fn transform_js<const TRANSFORM: bool>(
         let parser_comments = if collect_pragmas {
             CommentsOption::All
         } else {
-            comments
+            parser_options.comments.unwrap_or(output_comments)
         };
         let source_type = {
             let inferred = options.filename.as_deref().map(SourceType::from_path);
@@ -157,7 +155,7 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     // ======================= Generate =======================
     {
-        if comments == CommentsOption::None {
+        if output_comments == CommentsOption::None {
             // SAFETY: This AST remains owned by the transform call.
             unsafe { ast.ast_mut() }.clear_attached_comments();
         }
@@ -165,7 +163,7 @@ pub fn transform_js<const TRANSFORM: bool>(
         let source_map = options.source_map.unwrap_or(false);
         let filename = options.filename.as_deref().unwrap_or("input.js");
         generator.source_map_path = source_map.then(|| filename.into());
-        generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
+        generator.comments = output_comments == CommentsOption::All;
         let generated = generate(&ast, generator);
         output.code = generated.code;
         output.map = generated.map.as_ref().map(serialize_source_map);

@@ -11,6 +11,22 @@ const jsxRuntimes = ["classic", "automatic"];
 const decoratorVersions = ["2023-11", "legacy"];
 const moduleTypes = ["preserve", "commonjs", "amd", "umd", "systemjs"];
 
+const transformApiKeys = new Set([
+  "filename",
+  "sourceMap",
+  "comments",
+  "parser",
+  "transformer",
+  "generator",
+]);
+const parserKeys = new Set([
+  "sourceType",
+  "lang",
+  "preserveParens",
+  "comments",
+  "semanticErrors",
+]);
+const generatorKeys = new Set(["asciiOnly", "inlineScript", "minify"]);
 const transformerKeys = new Set([
   "filename",
   "target",
@@ -46,7 +62,25 @@ const refreshKeys = new Set([
 ]);
 const decoratorKeys = new Set(["version", "metadata"]);
 const moduleKeys = new Set(["type"]);
-const featureKeys = new Set(["class-static-block", "optional-catch-binding"]);
+const featureList = [
+  "exponentiation-operator",
+  "async-to-generator",
+  "async-generator-functions",
+  "object-rest-spread",
+  "optional-catch-binding",
+  "export-namespace-from",
+  "nullish-coalescing-operator",
+  "optional-chaining",
+  "logical-assignment-operators",
+  "class-static-block",
+  "class-properties",
+  "private-property-in-object",
+  "dotall-regex",
+  "sticky-regex",
+  "unicode-regex",
+  "unicode-sets-regex",
+];
+const featureKeys = new Set(featureList);
 const assumptionKeys = new Set([
   "constantSuper",
   "ignoreFunctionLength",
@@ -278,14 +312,12 @@ function writeTransformerConfig(transformer) {
 
   if (hasFeatures) {
     const features = transformer.features;
-    writeU8(
-      boolean(features["class-static-block"], 'transformer.features["class-static-block"]') |
-        (boolean(
-          features["optional-catch-binding"],
-          'transformer.features["optional-catch-binding"]',
-        ) <<
-          2),
-    );
+    let word = 0;
+    for (let i = 0; i < featureList.length; i++) {
+      const key = featureList[i];
+      word |= boolean(features[key], `transformer.features["${key}"]`) << (i * 2);
+    }
+    writeU32(word >>> 0);
   }
 
   if (hasAssumptions) {
@@ -311,8 +343,17 @@ function writeTransformerConfig(transformer) {
 export function encodeTransformApiOptions(options) {
   if (options == null) return empty;
   assertObject(options, "options");
+  assertKnownKeys(options, transformApiKeys, "transform");
   const parser = options.parser;
+  if (parser != null) {
+    assertObject(parser, "parser");
+    assertKnownKeys(parser, parserKeys, "parser");
+  }
   const generator = options.generator;
+  if (generator != null) {
+    assertObject(generator, "generator");
+    assertKnownKeys(generator, generatorKeys, "generator");
+  }
   const filename = string(options.filename, "filename");
   const transformer = options.transformer;
   if (transformer != null) assertObject(transformer, "transformer");

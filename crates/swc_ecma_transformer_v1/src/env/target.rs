@@ -61,7 +61,7 @@ named_enum!(EsVersion {
 named_enum!(Engine {
     Chrome => "chrome", Edge => "edge", Firefox => "firefox", Safari => "safari",
     Ios => "ios", Opera => "opera", Samsung => "samsung", Node => "node",
-    Deno => "deno", Bun => "bun", Electron => "electron", Ie => "ie",
+    Deno => "deno", /* Bun => "bun", */ Electron => "electron", Ie => "ie",
     Android => "android", OperaMobile => "opera_mobile", OperaMini => "op_mini",
     Blackberry => "bb", Baidu => "baidu", Kaios => "kaios", Qq => "and_qq", Uc => "and_uc",
 });

@@ -1,0 +1,9 @@
+# SWC Configuration Philosophy
+
+- **Component composition**: Give each component its own config type (`ParserConfig`, `TransformerConfig`, `MinifierConfig`, `GeneratorConfig`) with consistent capabilities whether used standalone or inside a composed pipeline. Standalone parser/generator APIs take their component config directly; composed APIs (`TransformApiOptions`, `MinifyApiOptions`) nest only the stages they execute.
+- **Naming**: Use nouns for packages, component configs, and nested keys (`parser`/`ParserConfig`, `transformer`/`TransformerConfig`, `minifier`/`MinifierConfig`, `generator`/`GeneratorConfig`); use verbs for functions and API option types (`parseSync`/`ParseApiOptions`, `transformSync`/`TransformApiOptions`, `minifySync`/`MinifyApiOptions`, `generateSync`/`GenerateApiOptions`).
+- **Top-level convenience controls**: Expose shared top-level options (`filename`, `comments`, `sourceMap`, and future `target`) on composed APIs to supply coordinated defaults across participating stages.
+- **Precedence**: Resolve shared settings in order: (1) explicit component option, (2) explicit top-level option, (3) default value. Preserve explicit `false` rather than treating it as omitted. Final behavior depends on every participating stage's resolved config and capabilities.
+- **JavaScript-only options**: Keep runtime-only JS options (e.g. `errorRecovery`, future JS plugins) in the JavaScript wrapper types rather than adding unused fields to Rust structs.
+- **Standalone generator exception**: `GeneratorConfig` covers printing options (`minify`, `asciiOnly`, `inlineScript`), while comment preservation and source maps live on source-to-source APIs (`transformSync`, `minifySync`).
+- **Legacy `.swcrc` compatibility**: Map supported `.swcrc` capabilities into this model when designing equivalents; full `.swcrc` schema compatibility is a non-goal.

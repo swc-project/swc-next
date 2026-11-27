@@ -51,8 +51,34 @@ fn resolve_env(
     if let Some(features) = features {
         for (&feature, &enabled) in features {
             match feature {
-                JsFeature::ClassStaticBlock => env.es2022.static_blocks = enabled,
+                JsFeature::ExponentiationOperator => env.es2016.exponentiation = enabled,
+                JsFeature::AsyncToGenerator => {
+                    env.es2017.async_to_generator = enabled.then(Default::default);
+                }
+                JsFeature::AsyncGeneratorFunctions => {
+                    env.es2017.async_generator_functions = enabled.then(Default::default);
+                }
+                JsFeature::ObjectRestSpread => {
+                    env.es2018.object_rest_spread = enabled.then(Default::default);
+                }
                 JsFeature::OptionalCatchBinding => env.es2019.optional_catch_binding = enabled,
+                JsFeature::ExportNamespaceFrom => env.es2020.export_namespace_from = enabled,
+                JsFeature::NullishCoalescingOperator => {
+                    env.es2020.nullish_coalescing = enabled.then(Default::default);
+                }
+                JsFeature::OptionalChaining => {
+                    env.es2020.optional_chaining = enabled.then(Default::default);
+                }
+                JsFeature::LogicalAssignmentOperators => env.es2021.logical_assignments = enabled,
+                JsFeature::ClassStaticBlock => env.es2022.static_blocks = enabled,
+                JsFeature::ClassProperties => {
+                    env.es2022.class_properties = enabled.then(Default::default);
+                }
+                JsFeature::PrivatePropertyInObject => env.es2022.private_in_object = enabled,
+                JsFeature::DotallRegex => env.regexp.dot_all_regex = enabled,
+                JsFeature::StickyRegex => env.regexp.sticky_regex = enabled,
+                JsFeature::UnicodeRegex => env.regexp.unicode_regex = enabled,
+                JsFeature::UnicodeSetsRegex => env.regexp.unicode_sets_regex = enabled,
             }
         }
     }
@@ -63,6 +89,16 @@ fn resolve_env(
 fn to_v1_target(target: &JsTarget) -> Result<Target, Diagnostic> {
     match target {
         JsTarget::Query(query) => {
+            if matches!(query.as_str(), "es3" | "es5") {
+                let mut diagnostic = Diagnostic::error("Unsupported transformer target", DUMMY_SP);
+                diagnostic.help = Some(
+                    format!(
+                        "Unsupported ES edition `{query}`; supported editions are es2015–es2026 and esnext"
+                    )
+                    .into(),
+                );
+                return Err(diagnostic);
+            }
             if let Ok(version) = query.parse::<EsVersion>() {
                 Ok(Target::EsVersion(version))
             } else {
@@ -106,7 +142,16 @@ pub(super) fn to_options(
         };
     }
 
-    let decorators = enabled_options(config.decorators);
+    let decorators: Option<DecoratorOptions> = enabled_options(config.decorators);
+    if let Some(decorators) = decorators
+        && decorators.metadata
+        && decorators.version != DecoratorVersion::Legacy
+    {
+        let mut diagnostic = Diagnostic::error("Invalid decorator configuration", DUMMY_SP);
+        diagnostic.help =
+            Some("`decorators.metadata` requires `decorators.version` to be \"legacy\"".into());
+        return Err(diagnostic);
+    }
 
     Ok(TransformerOptions {
         filename: config.filename.or(filename),
@@ -244,10 +289,7 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     // ======================= Options =======================
     let parser_options = options.parser.unwrap_or_default();
-    let comments = parser_options
-        .comments
-        .or(options.comments)
-        .unwrap_or(CommentsOption::All);
+    let output_comments = options.comments.unwrap_or(CommentsOption::All);
     let lang = {
         let inferred = options.filename.as_deref().map(Lang::from_path);
         let explicit = parser_options.lang.map(Into::into);
@@ -267,13 +309,17 @@ pub fn transform_js<const TRANSFORM: bool>(
     let mut ast = {
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
+        let amd_enabled = matches!(
+            transform.module.and_then(|module| module.r#type),
+            Some(JsModuleType::Amd)
+        );
         let collect_pragmas = TRANSFORM
             && parser_options.comments.is_none()
-            && (jsx_enabled || (typescript_enabled && lang.is_jsx()));
+            && (jsx_enabled || (typescript_enabled && lang.is_jsx()) || amd_enabled);
         let parser_comments = if collect_pragmas {
             CommentsOption::All
         } else {
-            comments
+            parser_options.comments.unwrap_or(output_comments)
         };
         let source_type = {
             let inferred = options.filename.as_deref().map(SourceType::from_path);
@@ -320,7 +366,7 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     // ======================= Generate =======================
     {
-        if comments == CommentsOption::None {
+        if output_comments == CommentsOption::None {
             // SAFETY: This AST remains owned by the transform call.
             unsafe { ast.ast_mut() }.clear_attached_comments();
         }
@@ -328,7 +374,7 @@ pub fn transform_js<const TRANSFORM: bool>(
         let source_map = options.source_map.unwrap_or(false);
         let filename = options.filename.as_deref().unwrap_or("input.js");
         generator.source_map_path = source_map.then(|| filename.into());
-        generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
+        generator.comments = output_comments == CommentsOption::All;
         let generated = generate(&ast, generator);
         output.code = generated.code;
         output.map = generated.map.as_ref().map(serialize_source_map);

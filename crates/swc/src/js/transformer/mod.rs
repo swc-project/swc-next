@@ -35,9 +35,16 @@ pub struct JsTransformerConfig {
     /// Overrides the API's shared filename when set.
     pub filename: Option<String>,
     /// Target environment for ECMAScript lowering.
+    ///
+    /// Accepts an ES edition (`"es2015"`–`"es2026"`, `"esnext"`), a Browserslist
+    /// query or query list, or a map of minimum engine versions. Currently lowers
+    /// ES2016–ES2022 and supported RegExp syntax; ES2015 and older syntax is not
+    /// lowered.
     #[cfg_attr(
         feature = "bridge",
-        bridge(ts_type = "string | Array<string> | Record<string, string>")
+        bridge(
+            ts_type = "\"es2015\" | \"es2016\" | \"es2017\" | \"es2018\" | \"es2019\" | \"es2020\" | \"es2021\" | \"es2022\" | \"es2023\" | \"es2024\" | \"es2025\" | \"es2026\" | \"esnext\" | (string & {}) | Array<string> | Partial<Record<\"chrome\" | \"edge\" | \"firefox\" | \"safari\" | \"ios\" | \"opera\" | \"samsung\" | \"node\" | \"deno\" | \"electron\" | \"ie\" | \"android\" | \"opera_mobile\" | \"op_mini\" | \"bb\" | \"baidu\" | \"kaios\" | \"and_qq\" | \"and_uc\", string>>"
+        )
     )]
     pub target: Option<JsTarget>,
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
@@ -62,7 +69,7 @@ pub struct JsTransformerConfig {
     #[cfg_attr(
         feature = "bridge",
         bridge(
-            ts_type = "Partial<Record<\"class-static-block\" | \"optional-catch-binding\", boolean>>"
+            ts_type = "Partial<Record<\"exponentiation-operator\" | \"async-to-generator\" | \"async-generator-functions\" | \"object-rest-spread\" | \"optional-catch-binding\" | \"export-namespace-from\" | \"nullish-coalescing-operator\" | \"optional-chaining\" | \"logical-assignment-operators\" | \"class-static-block\" | \"class-properties\" | \"private-property-in-object\" | \"dotall-regex\" | \"sticky-regex\" | \"unicode-regex\" | \"unicode-sets-regex\", boolean>>"
         )
     )]
     pub features: Option<BTreeMap<JsFeature, bool>>,
@@ -154,10 +161,41 @@ pub enum JsModuleType {
 #[cfg_attr(feature = "serde", serde(rename_all = "kebab-case"))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum JsFeature {
-    /// Lower class static blocks (`class-static-block`).
-    ClassStaticBlock,
+    /// Lower exponentiation operator (`exponentiation-operator`).
+    ExponentiationOperator,
+    /// Lower async functions to generators (`async-to-generator`).
+    AsyncToGenerator,
+    /// Lower async generator functions (`async-generator-functions`).
+    AsyncGeneratorFunctions,
+    /// Lower object rest/spread (`object-rest-spread`).
+    ObjectRestSpread,
     /// Add a binding to catch clauses (`optional-catch-binding`).
     OptionalCatchBinding,
+    /// Lower `export * as ns from` (`export-namespace-from`).
+    ExportNamespaceFrom,
+    /// Lower nullish coalescing operator (`nullish-coalescing-operator`).
+    NullishCoalescingOperator,
+    /// Lower optional chaining (`optional-chaining`).
+    OptionalChaining,
+    /// Lower logical assignment operators (`logical-assignment-operators`).
+    LogicalAssignmentOperators,
+    /// Lower class static blocks (`class-static-block`).
+    ClassStaticBlock,
+    /// Lower class fields and private methods (`class-properties`).
+    ClassProperties,
+    /// Lower private-brand checks (`private-property-in-object`).
+    PrivatePropertyInObject,
+    /// Rewrite RegExp literals with the `s` flag (`dotall-regex`).
+    DotallRegex,
+    // NamedCapturingGroupsRegex,
+    // DuplicateNamedCapturingGroupsRegex,
+    /// Rewrite RegExp literals with the `y` flag (`sticky-regex`).
+    StickyRegex,
+    // UnicodePropertyRegex,
+    /// Rewrite RegExp literals with the `u` flag (`unicode-regex`).
+    UnicodeRegex,
+    /// Rewrite RegExp literals with the `v` flag (`unicode-sets-regex`).
+    UnicodeSetsRegex,
 }
 
 /// TypeScript transform options.
@@ -241,12 +279,15 @@ pub struct JsxConfig {
     /// @default true
     pub throw_if_namespace: Option<bool>,
     /// Mark factory calls as pure.
+    ///
+    /// @default true
     pub pure: Option<bool>,
     /// Add `displayName` to `createReactClass` calls.
     ///
     /// @default false
     pub display_name: Option<bool>,
-    /// React Refresh. `true` uses default options.
+    /// React Refresh in development mode. Requires `development: true` and ES
+    /// module source. `true` uses default options.
     ///
     /// @default false
     #[cfg_attr(feature = "bridge", bridge(ts_type = "boolean | ReactRefreshConfig"))]
