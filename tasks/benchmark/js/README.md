@@ -4,9 +4,10 @@ Gungraun benchmarks for the public `@swc-next/core` N-API entry point,
 including JavaScript, AST encoding/decoding, and Rust work. They measure
 synchronous executed instructions with JIT disabled; Wasm is not measured.
 
-`parse` reads the complete AST, `generate` uses a materialized AST, and `lang`
-and `source_type` exercise path helpers. Setup, warmup, and explicit GC are
-outside the measured region; GC triggered during measurement remains included.
+`parse` reads the complete AST, `generate` uses a materialized AST, and `walk`
+uses the public `createWalker` API to sum identifier name lengths on a pre-parsed
+AST. `lang` and `source_type` exercise path helpers. Setup, warmup, and explicit
+GC are outside the measured region; GC triggered during measurement remains included.
 
 ## Usage
 
@@ -19,7 +20,7 @@ gh workflow run gungraun-js.yml -f base=<base-sha> -f head=<head-sha> -f filter=
 ```
 
 The workflow must exist on the default branch. Omit `filter` for all cases;
-PRs run four representative cases.
+PRs run one representative case per operation.
 
 ## Local profiling
 

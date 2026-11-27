@@ -12,16 +12,16 @@ binary_benchmark_group!(
         let filter = std::env::var("JS_BENCH_FILTER").unwrap_or_default();
         let exact_case = std::env::var("JS_BENCH_CASE").ok();
         let mut selected = 0;
-        for operation in ["parse", "generate", "lang", "source_type"] {
-            let cases: &[&str] = if matches!(operation, "lang" | "source_type") {
-                &["js", "ts", "tsx", "mjs", "cjs", "unknown"]
-            } else {
-                &[
+        for operation in ["parse", "generate", "walk", "lang", "source_type"] {
+            let cases: &[&str] = match operation {
+                "lang" | "source_type" => &["js", "ts", "tsx", "mjs", "cjs", "unknown"],
+                "walk" => &["underscore-1.5.2.js"],
+                _ => &[
                     "underscore-1.5.2.js",
                     "jquery-1.9.1.js",
                     "astro-config.ts",
                     "cal.com.tsx",
-                ]
+                ],
             };
             let mut benchmark = BinaryBenchmark::new(operation);
             for case in cases {
