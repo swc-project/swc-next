@@ -1,7 +1,7 @@
 use swc_next_formatter_core::Writer;
 use swc_next_formatter_host::EmbeddedError;
 use swc_next_markdown_parser::{
-    Block, BlockExtension, BlockKind, Heading, Ignore, List, ListItem, Task,
+    Block, BlockExtension, BlockKind, Heading, Ignore, List, ListItem, SourceLine, Span, Task,
 };
 
 use crate::{Formatter, ProseWrap};
@@ -33,7 +33,7 @@ impl<'a> Formatter<'a, '_, '_> {
         writer: &mut Writer<'a>,
     ) -> Result<bool, EmbeddedError> {
         let mut index = 0;
-        let mut previous = None;
+        let mut previous: Option<&Block> = None;
         let mut alternate_list = false;
         let mut ignore_next = false;
         // Range directives apply to document siblings. Single-block directives
@@ -52,14 +52,6 @@ impl<'a> Formatter<'a, '_, '_> {
                 continue;
             }
 
-            if let Some(before) = previous {
-                writer.literal_line_with_indent();
-                if !ignore_next && self.needs_blank_line(&blocks[..index], before, block, container)
-                {
-                    writer.hard_line();
-                }
-            }
-
             alternate_list = match &block.kind {
                 BlockKind::List(list) if ignore_next => list
                     .items
@@ -70,8 +62,27 @@ impl<'a> Formatter<'a, '_, '_> {
                         matches!(&before.kind, BlockKind::List(other) if other.ordered == list.ordered)
                     })
                 }
+                BlockKind::Html
+                    if !ignore_next
+                        && let Some(before) = previous
+                        && let Some(opening) = lazy_html_opening(before, block) =>
+                {
+                    let blank = self.needs_blank_line(&blocks[..index], before, block, container);
+                    self.lazy_html_block(block, opening, blank, container, writer);
+                    alternate_list = false;
+                    previous = Some(block);
+                    index += 1;
+                    continue;
+                }
                 _ => false,
             };
+            if let Some(before) = previous {
+                writer.literal_line_with_indent();
+                if !ignore_next && self.needs_blank_line(&blocks[..index], before, block, container)
+                {
+                    writer.hard_line();
+                }
+            }
             if ignore_next {
                 self.raw_block(block, container, writer);
                 if matches!(container, Container::Quote)
@@ -98,11 +109,13 @@ impl<'a> Formatter<'a, '_, '_> {
                 index = last + 1;
                 continue;
             } else {
-                let minimum_indent = if matches!(block.kind, BlockKind::List(_)) {
+                let minimum_indent = if let BlockKind::List(list) = &block.kind {
                     blocks[index + 1..]
                         .iter()
                         .find(|block| !matches!(block.kind, BlockKind::Blank))
-                        .map_or(0, indentation_before_code)
+                        .map_or(0, |next| {
+                            minimum_list_indent_before(list, next, self.document.source)
+                        })
                 } else {
                     0
                 };
@@ -137,7 +150,7 @@ impl<'a> Formatter<'a, '_, '_> {
             Container::Item {
                 continuation_indent,
                 ..
-            } if !first || matches!(block.kind, BlockKind::List(_)) => {
+            } if !first => {
                 if matches!(block.kind, BlockKind::IndentedCode(_) | BlockKind::Html) {
                     ""
                 } else {
@@ -196,10 +209,17 @@ impl<'a> Formatter<'a, '_, '_> {
                 }
             }
             BlockKind::List(list) => {
+                let before_marker = match container {
+                    Container::Item {
+                        continuation_indent,
+                        ..
+                    } if !first => continuation_indent.len(),
+                    _ => 0,
+                };
                 let parent_aligned = self.lists_aligned;
                 self.lists_aligned =
                     parent_aligned && list_layout.minimum_indent == 0 && self.is_aligned_list(list);
-                let result = self.list(list, list_layout, writer);
+                let result = self.list(list, list_layout, before_marker, writer);
                 self.lists_aligned = parent_aligned;
                 result?;
             }
@@ -277,7 +297,7 @@ impl<'a> Formatter<'a, '_, '_> {
             return false;
         }
         let source_blank =
-            has_blank_line(&self.document.source[previous.span.end..next.span.start]);
+            || has_blank_line(&self.document.source[previous.span.end..next.span.start]);
         if matches!(previous.kind, BlockKind::Definition(_))
             && matches!(&next.kind, BlockKind::Heading(heading) if heading.opening.is_none())
         {
@@ -288,7 +308,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 .rev()
                 .nth(1)
                 .is_some_and(|block| matches!(block.kind, BlockKind::Definition(_)));
-            return source_blank || (previous.lines.len() == 1 && !previous_definition);
+            return source_blank() || (previous.lines.len() == 1 && !previous_definition);
         }
         if matches!(
             previous.kind,
@@ -297,7 +317,7 @@ impl<'a> Formatter<'a, '_, '_> {
             next.kind,
             BlockKind::Extension(BlockExtension::Liquid { .. })
         ) {
-            return source_blank;
+            return source_blank();
         }
         if matches!(&next.kind, BlockKind::Html | BlockKind::Ignore(_))
             && matches!(
@@ -305,14 +325,14 @@ impl<'a> Formatter<'a, '_, '_> {
                 BlockKind::Html | BlockKind::Ignore(_) | BlockKind::Paragraph(_)
             )
         {
-            return source_blank;
+            return source_blank();
         }
         if let Container::Item { loose, .. } = container {
             if matches!(next.kind, BlockKind::List(_)) {
-                return source_blank && !matches!(previous.kind, BlockKind::List(_));
+                return source_blank() && !matches!(previous.kind, BlockKind::List(_));
             }
             if !loose {
-                return source_blank;
+                return source_blank();
             }
         }
         true
@@ -322,10 +342,58 @@ impl<'a> Formatter<'a, '_, '_> {
         if matches!(container, Container::Document) {
             write_source_lines(writer, self.text(block.span));
         } else {
-            write_source_lines(
-                writer,
-                &block.logical_text(self.document.source, block.span),
-            );
+            let content = block.logical_text(self.document.source, block.span);
+            if matches!(block.kind, BlockKind::Html)
+                && let Some(&line) = block.lines.first()
+                && content.trim_start_matches(' ').starts_with('\t')
+            {
+                // A tab can move the opening tag to code indentation at its new column.
+                let source = self.document.source;
+                let indent = line.indent(source);
+                let output = SourceLine {
+                    column: self.prefix_columns,
+                    ..line
+                };
+                if (line.lazy || output.indent(source) != indent)
+                    && let Some(spaces) = "   ".get(..indent)
+                {
+                    writer.text(spaces);
+                    write_source_lines(writer, content.trim_start_matches([' ', '\t']));
+                    return;
+                }
+            }
+            write_source_lines(writer, &content);
+        }
+    }
+
+    #[cold]
+    fn lazy_html_block(
+        &self,
+        block: &Block,
+        opening: &SourceLine,
+        blank: bool,
+        container: Container,
+        writer: &mut Writer<'a>,
+    ) {
+        let omit_prefix = opening.starts_lazy_html(self.document.source);
+        let replay_prefix = !omit_prefix && self.original_item_widths;
+        if replay_prefix {
+            // An outer quote may be missing while the inner item is still indented.
+            writer.literal_line();
+        } else if omit_prefix {
+            writer.dedent(Writer::literal_line_with_indent);
+        } else {
+            writer.literal_line_with_indent();
+        }
+        if blank {
+            writer.hard_line();
+        }
+        if replay_prefix {
+            writer.text(self.text(opening.raw));
+            let body = Span::new(opening.content.end, block.span.end);
+            write_source_lines(writer, &block.logical_text(self.document.source, body));
+        } else {
+            self.raw_block(block, container, writer);
         }
     }
 
@@ -333,9 +401,10 @@ impl<'a> Formatter<'a, '_, '_> {
         &mut self,
         list: &List,
         layout: ListLayout,
+        before_marker: usize,
         writer: &mut Writer<'a>,
     ) -> Result<(), EmbeddedError> {
-        let mut previous: Option<&ListItem> = None;
+        let mut previous = None;
         let start = list.start.unwrap_or(1);
         let item_number = |item: &ListItem| {
             self.text(item.marker)
@@ -348,18 +417,40 @@ impl<'a> Formatter<'a, '_, '_> {
             && (start != 0 || list.items.get(2).and_then(item_number) == Some(1));
         let tab_width = usize::from(self.context.print_options().indent_width.value());
         for (index, item) in list.items.iter().enumerate() {
-            if let Some(before) = previous {
+            if let Some((end, loose)) = previous {
                 writer.hard_line();
-                if self.loose_item(before)
-                    || has_blank_line(&self.document.source[before.span.end..item.span.start])
-                {
+                if loose || has_blank_line(&self.document.source[end..item.span.start]) {
                     writer.hard_line();
                 }
             }
-            let first = item
+            let mut children = item
                 .blocks
                 .iter()
-                .find(|block| !matches!(block.kind, BlockKind::Blank));
+                .filter(|block| !matches!(block.kind, BlockKind::Blank));
+            let first = children.next();
+            let mut loose = false;
+            let mut minimum_indent = layout.minimum_indent;
+            let mut may_replay_html = first.is_some_and(|child| formats_children(&child.kind));
+            if let Some(mut before) = first {
+                for child in children {
+                    loose = loose
+                        || has_blank_line(&self.document.source[before.span.end..child.span.start]);
+                    if matches!(child.kind, BlockKind::Html)
+                        && let Some(line) = lazy_html_opening(before, child)
+                    {
+                        if line.starts_lazy_html(self.document.source) {
+                            // The opening must fall short of the item's continuation indent.
+                            minimum_indent =
+                                minimum_indent.max(line.indent(self.document.source) + 1);
+                        } else {
+                            may_replay_html = true;
+                        }
+                    } else if formats_children(&child.kind) {
+                        may_replay_html = true;
+                    }
+                    before = child;
+                }
+            }
             // Empty markers and code bodies on the marker line both use a
             // one-column separator when CommonMark computes the item indent.
             let max_padding = match first {
@@ -396,63 +487,69 @@ impl<'a> Formatter<'a, '_, '_> {
             } else {
                 1
             };
-            let padding = layout
-                .minimum_indent
+            let mut padding = minimum_indent
                 .saturating_sub(marker.len())
                 .max(aligned_padding)
                 .min(max_padding);
-            let leading = layout
-                .minimum_indent
-                .saturating_sub(marker.len() + padding)
-                .min(3);
-            let indent = leading + marker.len() + padding;
+            let leading = minimum_indent.saturating_sub(marker.len() + padding).min(3);
+            let mut indent = leading + marker.len() + padding;
+            if first.is_some_and(|child| matches!(child.kind, BlockKind::List(_))) {
+                // Spaces before a nested marker on the opening line all contribute
+                // to the outer item's width, including on its later HTML lines.
+                let extra = tab_width
+                    .saturating_sub(indent)
+                    .min(3)
+                    .min(max_padding - padding);
+                indent += extra;
+                padding += extra;
+            }
             writer.text(&"   "[..leading]);
             writer.text(marker);
-            if first.is_some() {
+            if let Some(first) = first {
                 writer.text(&"    "[..padding]);
-                let mut children = item
-                    .blocks
-                    .iter()
-                    .filter(|b| !matches!(b.kind, BlockKind::Blank));
-                let preserve_html_column = match (children.next(), children.next(), children.next())
-                {
-                    (Some(first), Some(html), None) if matches!(html.kind, BlockKind::Html) => {
-                        self.content_column(first) != self.content_column(html)
-                    }
-                    _ => false,
-                };
-                let prefix = if preserve_html_column {
-                    ""
-                } else {
-                    self.context.allocator().alloc_str(&" ".repeat(indent))
-                };
+                let prefix = self.context.allocator().alloc_str(&" ".repeat(indent));
                 let continuation = tab_width.saturating_sub(indent).min(3);
                 let container = Container::Item {
-                    loose: self.loose_item(item),
+                    loose,
                     alternate_marker: layout.alternate_marker,
                     continuation_indent: &"   "[..continuation],
                     task: item.task,
                 };
-                self.aligned(prefix, writer, |formatter, writer| {
+                let changed_width = may_replay_html
+                    && self.original_item_widths
+                    && !self.item_width_matches(item, first, before_marker + indent);
+                if changed_width {
+                    self.original_item_widths = false;
+                }
+                let result = self.aligned(prefix, writer, |formatter, writer| {
                     formatter.blocks(&item.blocks, container, writer)
-                })?;
+                });
+                if changed_width {
+                    self.original_item_widths = true;
+                }
+                result?;
             }
-            previous = Some(item);
+            previous = Some((item.span.end, loose));
         }
         Ok(())
     }
 
-    fn loose_item(&self, item: &ListItem) -> bool {
-        let mut children = item
-            .blocks
-            .iter()
-            .filter(|block| !matches!(block.kind, BlockKind::Blank));
-        let mut previous = children.next();
-        children.any(|block| {
-            previous.replace(block).is_some_and(|before| {
-                has_blank_line(&self.document.source[before.span.end..block.span.start])
-            })
-        })
+    fn item_width_matches(&self, item: &ListItem, first: &Block, width: usize) -> bool {
+        let Some(body) = first.lines.first() else {
+            return false;
+        };
+        let end = item
+            .task
+            .map_or(body.content.start, |task| task.marker.start);
+        // A tab can straddle the original container boundary. Rebuild the
+        // prefix when its column width cannot be read from the marker's bytes.
+        body.raw.start <= item.marker.start
+            && self
+                .document
+                .source
+                .as_bytes()
+                .get(item.span.start..end)
+                .is_some_and(|prefix| prefix.len() == width && !prefix.contains(&b'\t'))
     }
 
     fn is_aligned_list(&self, list: &List) -> bool {
@@ -471,7 +568,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 .as_bytes()
                 .get(..2)
                 .is_some_and(|bytes| bytes.iter().all(u8::is_ascii_whitespace));
-            Some((self.content_column(block), padded))
+            Some((self.content_column(block)?, padded))
         };
         let Some((first, padded)) = list.items.first().and_then(position) else {
             return false;
@@ -488,15 +585,43 @@ impl<'a> Formatter<'a, '_, '_> {
         }
     }
 
-    fn content_column(&self, block: &Block) -> usize {
-        let line = block.lines[0];
+    fn content_column(&self, block: &Block) -> Option<usize> {
+        let line = block.lines.first()?;
         let text = self.text(line.content);
-        line.content.start - line.raw.start
-            + (text.len() - text.trim_start_matches([' ', '\t']).len())
+        Some(
+            line.content.start - line.raw.start
+                + (text.len() - text.trim_start_matches([' ', '\t']).len()),
+        )
     }
 }
 
-fn indentation_before_code(block: &Block) -> usize {
+fn lazy_html_opening<'b>(previous: &Block, html: &'b Block) -> Option<&'b SourceLine> {
+    match &previous.kind {
+        BlockKind::Paragraph(_) => html.lines.first().filter(|line| line.lazy),
+        _ => None,
+    }
+}
+
+fn formats_children(kind: &BlockKind) -> bool {
+    matches!(
+        kind,
+        BlockKind::List(_)
+            | BlockKind::BlockQuote(_)
+            | BlockKind::Extension(BlockExtension::Footnote { .. })
+    )
+}
+
+fn minimum_list_indent_before(list: &List, block: &Block, source: &str) -> usize {
+    if matches!(block.kind, BlockKind::Html) {
+        // A verbatim sibling must fall short of the preceding item's body.
+        let indent = block.lines.first().map_or(0, |line| line.indent(source));
+        let shortest_item = if list.ordered { 3 } else { 2 };
+        return if indent < shortest_item {
+            0
+        } else {
+            indent + 1
+        };
+    }
     let BlockKind::IndentedCode(code) = &block.kind else {
         return 0;
     };

@@ -540,6 +540,12 @@ fn paragraph_continuation(source: &str, previous: Span, line: SourceLine) -> Par
 }
 
 impl SourceLine {
+    /// Whether this parser ends a paragraph at a type 7 HTML tag because an enclosing
+    /// container accepted the line as a lazy continuation.
+    pub fn starts_lazy_html(self, source: &str) -> bool {
+        self.lazy && complete_html_tag(source, self)
+    }
+
     /// Whether removing this continuation's indentation would open a Markdown
     /// block or turn the previous paragraph line into a heading or table.
     pub fn indent_protects_paragraph(self, source: &str, previous: SourceLine) -> bool {
@@ -560,7 +566,7 @@ fn lazy_candidate(source: &str, line: SourceLine) -> bool {
     can_continue(source, line) && list_marker(source, line).is_none()
 }
 fn continues_paragraph(source: &str, line: SourceLine) -> bool {
-    can_continue(source, line) && !(line.lazy && complete_html_tag(source, line))
+    can_continue(source, line) && !line.starts_lazy_html(source)
 }
 fn interrupts(source: &str, line: SourceLine) -> bool {
     let Some(v) = visible(source, line) else {

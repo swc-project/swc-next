@@ -78,6 +78,21 @@ fn blocks() {
     let source = "* first\n\n- second\n";
     assert_eq!(format(source, layout, syntax), "- first\n\n* second\n");
 
+    let source = "- para\n   <div>\n   body\n   </div>\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "1. para\n\n    <div>\n    </div>\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "- para\n  <div>\n  </div>\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "- para\n<div>\n</div>\n";
+    assert_eq!(format(source, layout, syntax), "- para\n\n<div>\n</div>\n");
+
+    let source = "- para\n<span>\n  text\n";
+    assert_eq!(format(source, layout, syntax), source);
+
     let source = "-    item\n\n    separate code block\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, source);
@@ -121,6 +136,99 @@ fn blocks() {
     let source = "$$\n   \n$$\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, "$$\n$$\n");
+}
+
+#[test]
+fn list_html() {
+    use swc_next_markdown_parser::Block;
+
+    fn quoted(blocks: &[Block]) -> &[Block] {
+        let [
+            Block {
+                kind: BlockKind::BlockQuote(children),
+                ..
+            },
+        ] = blocks
+        else {
+            panic!("expected a block quote");
+        };
+        children
+    }
+
+    fn item(blocks: &[Block]) -> &[Block] {
+        let [
+            Block {
+                kind: BlockKind::List(list),
+                ..
+            },
+        ] = blocks
+        else {
+            panic!("expected a list");
+        };
+        let [item] = list.items.as_slice() else {
+            panic!("expected one list item");
+        };
+        &item.blocks
+    }
+
+    fn after_html(blocks: &[Block]) -> &[Block] {
+        let [paragraph, html, rest @ ..] = blocks else {
+            panic!("expected a paragraph followed by HTML");
+        };
+        assert!(matches!(paragraph.kind, BlockKind::Paragraph(_)));
+        assert!(matches!(html.kind, BlockKind::Html));
+        rest
+    }
+
+    let layout = PrintOptions::default();
+    let wider = PrintOptions {
+        indent_width: 4.try_into().unwrap(),
+        ..layout
+    };
+    let syntax = SyntaxOptions::default();
+
+    let source = "> 1. Install\n     <div>Note</div>\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert!(after_html(item(quoted(&parse(&result).blocks))).is_empty());
+
+    let source = "> 1. Read this\n     <pre>\n>    Example\n>    </pre>\n>    Continue\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    let document = parse(&result);
+    let [continuation] = after_html(item(quoted(&document.blocks))) else {
+        panic!("expected a paragraph after the HTML");
+    };
+    assert!(matches!(continuation.kind, BlockKind::Paragraph(_)));
+    assert_eq!(document.text(continuation.span), "Continue");
+
+    for layout in [layout, wider] {
+        let source = "- -  Install\n\n    <div>Note</div>\n";
+        let result = format(source, layout, syntax);
+        let document = parse(&result);
+        let [nested, blank, html] = item(&document.blocks) else {
+            panic!("expected HTML after the nested list");
+        };
+        let [paragraph] = item(std::slice::from_ref(nested)) else {
+            panic!("expected a paragraph in the nested item");
+        };
+        assert!(matches!(paragraph.kind, BlockKind::Paragraph(_)));
+        assert!(matches!(blank.kind, BlockKind::Blank));
+        assert!(matches!(html.kind, BlockKind::Html));
+        assert_eq!(html.logical_text(&result, html.span), "  <div>Note</div>");
+    }
+
+    let source = "-  Read this\n  <span>\n     text\n     </span>\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert!(after_html(item(&parse(&result).blocks)).is_empty());
+
+    let source = "> -\tpara\n   \t<div>Note</div>\n";
+    let result = format(source, layout, syntax);
+    assert!(after_html(item(quoted(&parse(&result).blocks))).is_empty());
+
+    let source = "1.  one\n2.  two\n\n  <div>Note</div>\n";
+    assert_eq!(format(source, layout, syntax), source);
 }
 
 #[test]
