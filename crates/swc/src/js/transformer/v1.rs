@@ -280,10 +280,7 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     // ======================= Options =======================
     let parser_options = options.parser.unwrap_or_default();
-    let comments = parser_options
-        .comments
-        .or(options.comments)
-        .unwrap_or(CommentsOption::All);
+    let output_comments = options.comments.unwrap_or(CommentsOption::All);
     let lang = {
         let inferred = options.filename.as_deref().map(Lang::from_path);
         let explicit = parser_options.lang.map(Into::into);
@@ -303,13 +300,17 @@ pub fn transform_js<const TRANSFORM: bool>(
     let mut ast = {
         let jsx_enabled = !matches!(&transform.jsx, None | Some(BoolOr::Bool(false)));
         let typescript_enabled = !matches!(&transform.typescript, None | Some(BoolOr::Bool(false)));
+        let amd_enabled = matches!(
+            transform.module.and_then(|module| module.r#type),
+            Some(JsModuleType::Amd)
+        );
         let collect_pragmas = TRANSFORM
             && parser_options.comments.is_none()
-            && (jsx_enabled || (typescript_enabled && lang.is_jsx()));
+            && (jsx_enabled || (typescript_enabled && lang.is_jsx()) || amd_enabled);
         let parser_comments = if collect_pragmas {
             CommentsOption::All
         } else {
-            comments
+            parser_options.comments.unwrap_or(output_comments)
         };
         let source_type = {
             let inferred = options.filename.as_deref().map(SourceType::from_path);
@@ -356,7 +357,7 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     // ======================= Generate =======================
     {
-        if comments == CommentsOption::None {
+        if output_comments == CommentsOption::None {
             // SAFETY: This AST remains owned by the transform call.
             unsafe { ast.ast_mut() }.clear_attached_comments();
         }
@@ -364,7 +365,7 @@ pub fn transform_js<const TRANSFORM: bool>(
         let source_map = options.source_map.unwrap_or(false);
         let filename = options.filename.as_deref().unwrap_or("input.js");
         generator.source_map_path = source_map.then(|| filename.into());
-        generator.comments = options.comments.unwrap_or(CommentsOption::All) == CommentsOption::All;
+        generator.comments = output_comments == CommentsOption::All;
         let generated = generate(&ast, generator);
         output.code = generated.code;
         output.map = generated.map.as_ref().map(serialize_source_map);
