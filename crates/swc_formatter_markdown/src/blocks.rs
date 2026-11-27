@@ -273,7 +273,7 @@ impl<'a> Formatter<'a, '_, '_> {
                         super::fences::write_code_lines(writer, &code.value, false);
                     });
                 } else {
-                    super::fences::unlabelled_fence(&code.value, writer);
+                    self.unlabelled_fence(&code.value, writer);
                 }
             }
             BlockKind::Definition(definition) => self.definition(block, definition, writer),
@@ -596,7 +596,12 @@ impl<'a> Formatter<'a, '_, '_> {
                 if !math_starts_on_next_line {
                     writer.text(&"    "[..padding]);
                 }
-                let prefix = self.context.allocator().alloc_str(&" ".repeat(indent));
+                // Parsed items fit three leading spaces, nine digits, a delimiter and four
+                // spaces of padding. A caller-edited marker can require a wider prefix.
+                const ITEM_INDENT: &str = "                 ";
+                let prefix = ITEM_INDENT
+                    .get(..indent)
+                    .unwrap_or_else(|| self.context.allocator().alloc_str(&" ".repeat(indent)));
                 let continuation = tab_width.saturating_sub(indent).min(3);
                 let container = Container::Item {
                     loose,
