@@ -218,13 +218,6 @@ pub struct JsTypeScriptConfig {
     #[cfg(feature = "js_transformer_v2")]
     #[cfg_attr(feature = "bridge", bridge(skip))]
     pub preserve_const_enums: Option<bool>,
-    /// JSX runtime used to determine which factory imports to retain when JSX
-    /// syntax is preserved. Does not enable JSX lowering. When JSX lowering is
-    /// enabled, its runtime takes precedence.
-    ///
-    /// @default "classic"
-    #[cfg_attr(feature = "bridge", bridge(ts_type = "\"classic\" | \"automatic\""))]
-    pub jsx_runtime: Option<JsxRuntime>,
     /// Classic JSX factory used to preserve its value import when JSX syntax
     /// is retained.
     ///

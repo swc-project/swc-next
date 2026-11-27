@@ -1,4 +1,0 @@
----
-source: crates/swc_ecma_transformer_v1/tests/compile.rs
----
-export const App = () => <div />;

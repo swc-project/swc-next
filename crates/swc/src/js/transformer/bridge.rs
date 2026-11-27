@@ -178,17 +178,16 @@ fn decode_transformer(reader: &mut Reader<'_>) -> Option<JsTransformerConfig> {
         2 => Some(BoolOr::Bool(true)),
         3 => {
             let ts_flags = u32::from(reader.read_u8()?);
-            if ts_flags & !0x3f != 0 {
+            if ts_flags & !0x0f != 0 {
                 return None;
             }
             let verbatim_module_syntax = decode_opt_bool(ts_flags)?;
-            let jsx_runtime = decode_jsx_runtime(ts_flags >> 2)?;
-            let jsx_pragma = if (ts_flags & 0x10) != 0 {
+            let jsx_pragma = if (ts_flags & 0x04) != 0 {
                 Some(reader.read_string()?)
             } else {
                 None
             };
-            let jsx_pragma_frag = if (ts_flags & 0x20) != 0 {
+            let jsx_pragma_frag = if (ts_flags & 0x08) != 0 {
                 Some(reader.read_string()?)
             } else {
                 None
@@ -197,7 +196,6 @@ fn decode_transformer(reader: &mut Reader<'_>) -> Option<JsTransformerConfig> {
                 verbatim_module_syntax,
                 #[cfg(feature = "js_transformer_v2")]
                 preserve_const_enums: None,
-                jsx_runtime,
                 jsx_pragma,
                 jsx_pragma_frag,
             }))

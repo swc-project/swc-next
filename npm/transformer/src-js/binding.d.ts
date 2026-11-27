@@ -273,14 +273,6 @@ export interface TypeScriptConfig {
    */
   verbatimModuleSyntax?: boolean
   /**
-   * JSX runtime used to determine which factory imports to retain when JSX
-   * syntax is preserved. Does not enable JSX lowering. When JSX lowering is
-   * enabled, its runtime takes precedence.
-   *
-   * @default "classic"
-   */
-  jsxRuntime?: "classic" | "automatic"
-  /**
    * Classic JSX factory used to preserve its value import when JSX syntax
    * is retained.
    *

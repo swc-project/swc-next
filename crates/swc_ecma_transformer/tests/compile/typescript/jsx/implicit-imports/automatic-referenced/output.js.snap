@@ -1,5 +1,0 @@
----
-source: crates/swc_ecma_transformer/tests/compile.rs
----
-import React from "react";
-export const x = <React.Component />;

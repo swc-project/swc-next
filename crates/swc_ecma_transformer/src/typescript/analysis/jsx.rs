@@ -9,11 +9,12 @@ pub(in crate::typescript) fn dependencies(
     ast: &Ast<'_>,
     semantic: &Semantic<'_>,
     options: &JsxImportOptions,
+    jsx_automatic: bool,
 ) -> FxHashSet<SymbolId> {
     if semantic.jsx_usages().is_empty() {
         return FxHashSet::default();
     }
-    let mut automatic = options.automatic;
+    let mut automatic = jsx_automatic;
     let mut pragma = options.pragma.as_deref().unwrap_or("React.createElement");
     let mut fragment = options.pragma_frag.as_deref().unwrap_or("React.Fragment");
     for (kind, value) in pragmas(program, ast) {

@@ -10,7 +10,7 @@ pub use options::{JsxImportOptions, TypeScriptOptions};
 
 impl MultiPassTransformer<'_, '_> {
     // The caller must reanalyze before the next pass or discard the pipeline.
-    pub(super) fn typescript(&mut self, options: &TypeScriptOptions) {
+    pub(super) fn typescript(&mut self, options: &TypeScriptOptions, jsx_automatic: bool) {
         let program = self.ctx.root_program();
         // SAFETY: The pipeline supplies this AST's current model. Lowering
         // uses only handles from this AST and preserves its invariants.
@@ -24,10 +24,12 @@ impl MultiPassTransformer<'_, '_> {
             return;
         }
 
-        let dependencies = analysis::jsx_dependencies(program, ast, semantic, &options.jsx);
+        let dependencies =
+            analysis::jsx_dependencies(program, ast, semantic, &options.jsx, jsx_automatic);
         let analysis =
             analysis::TypeScriptAnalysis::analyze(program, ast, semantic, options, dependencies);
-        lower::TypeScriptLowerer::new(options, analysis, ast, semantic).lower_program(program);
+        lower::TypeScriptLowerer::new(options, jsx_automatic, analysis, ast, semantic)
+            .lower_program(program);
         let lang = match ast.lang() {
             Lang::Ts => Lang::Js,
             Lang::Tsx => Lang::Jsx,

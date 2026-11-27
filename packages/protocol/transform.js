@@ -39,7 +39,6 @@ const transformerKeys = new Set([
 ]);
 const typescriptKeys = new Set([
   "verbatimModuleSyntax",
-  "jsxRuntime",
   "jsxPragma",
   "jsxPragmaFrag",
 ]);
@@ -256,9 +255,8 @@ function writeTransformerConfig(transformer) {
     const jsxPragmaFrag = string(ts.jsxPragmaFrag, "transformer.typescript.jsxPragmaFrag");
     writeU8(
       boolean(ts.verbatimModuleSyntax, "transformer.typescript.verbatimModuleSyntax") |
-        (enumeration(ts.jsxRuntime, jsxRuntimes, "transformer.typescript.jsxRuntime") << 2) |
-        (jsxPragma != null ? 0x10 : 0) |
-        (jsxPragmaFrag != null ? 0x20 : 0),
+        (jsxPragma != null ? 0x04 : 0) |
+        (jsxPragmaFrag != null ? 0x08 : 0),
     );
     if (jsxPragma != null) writeString(jsxPragma);
     if (jsxPragmaFrag != null) writeString(jsxPragmaFrag);
