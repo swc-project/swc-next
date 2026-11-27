@@ -7,26 +7,22 @@
     "url": "git+https://github.com/swc-project/swc-next.git",
     "directory": "packages/walker"
   },
-  "main": "index.js",
+  "main": "./dist/index.js",
   "type": "module",
   "sideEffects": false,
-  "types": "./index.d.ts",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "import": "./index.js",
-      "default": "./index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
-  "files": [
-    "index.js",
-    "index.d.ts",
-    "child-visitors.js",
-    "visitor-keys.js",
-    "visitor-keys.d.ts",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build:js": "pnpm -w exec rslib build --lib walker",
+    "prepack": "pnpm build:js"
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"

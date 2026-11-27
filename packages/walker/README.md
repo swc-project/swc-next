@@ -115,6 +115,9 @@ on return or failure. Captured callback closures remain alive with the compiled
 walker. Ordinary `walk(root, hooks, state)` continues to compile on every call;
 there is no implicit cache of mutable hook objects.
 
+Build the workspace package with `pnpm --filter @swc-next/walker build:js`.
+Rslib emits both JavaScript and declarations from TypeScript into `dist/`.
+
 ### Context and edits
 
 | API | Semantics |

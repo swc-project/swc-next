@@ -285,6 +285,9 @@ importers:
       playwright:
         specifier: 'catalog:'
         version: 1.62.1
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
 
   npm/core:
     dependencies:
