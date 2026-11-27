@@ -6,7 +6,7 @@ use swc_next_formatter_host::{
     EmbeddedRequest, FormatContext, FormatSession, InputKind, PreserveReason,
 };
 use swc_next_markdown_parser::{
-    BlockKind, Dialect, Document, InlineKind, ParseOptions, parse, parse_with_options,
+    BlockKind, Dialect, Document, InlineKind, ParseOptions, SyntaxKind, parse, parse_with_options,
 };
 
 use crate::{MarkdownDocumentProducer, ProseWrap, SyntaxOptions, ast_to_doc, plugin_document};
@@ -229,6 +229,46 @@ fn list_html() {
 
     let source = "1.  one\n2.  two\n\n  <div>Note</div>\n";
     assert_eq!(format(source, layout, syntax), source);
+}
+
+#[test]
+fn footnotes() {
+    fn continuation(source: &str) -> (SyntaxKind, &str) {
+        let document = parse(source);
+        let root = document.syntax();
+        let [footnote] = root.children.as_slice() else {
+            panic!("expected one footnote");
+        };
+        assert_eq!(footnote.kind, SyntaxKind::FootnoteDefinition);
+        let [paragraph] = footnote.children.as_slice() else {
+            panic!("expected one paragraph");
+        };
+        assert_eq!(paragraph.kind, SyntaxKind::Paragraph);
+        let [_, hard_break, next] = paragraph.children.as_slice() else {
+            panic!("expected text on both sides of a hard break");
+        };
+        assert_eq!(hard_break.kind, SyntaxKind::HardBreak);
+        (next.kind, document.text(next.span))
+    }
+
+    let layout = PrintOptions::default();
+    let syntax = SyntaxOptions {
+        prose_wrap: ProseWrap::Never,
+        ..SyntaxOptions::default()
+    };
+
+    let source = "[^n]: first  \n    2. second\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert_eq!(continuation(&result), (SyntaxKind::Text, "2. second"));
+
+    let source = "[^n]: first  \n    <span>\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert_eq!(continuation(&result), (SyntaxKind::InlineHtml, "<span>"));
+
+    let source = "[^n]: first\n    2. second\n";
+    assert_eq!(format(source, layout, syntax), "[^n]: first 2. second\n");
 }
 
 #[test]
