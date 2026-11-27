@@ -356,6 +356,16 @@ impl<'a> Formatter<'a, '_, '_> {
                     writer.hard_line();
                 }
             }
+            let first = item
+                .blocks
+                .iter()
+                .find(|block| !matches!(block.kind, BlockKind::Blank));
+            // Empty markers and code bodies on the marker line both use a
+            // one-column separator when CommonMark computes the item indent.
+            let max_padding = match first {
+                Some(block) if !matches!(block.kind, BlockKind::IndentedCode(_)) => 4,
+                _ => 1,
+            };
             let marker = if list.ordered {
                 let number = if use_ones && index != 0 {
                     1
@@ -363,33 +373,34 @@ impl<'a> Formatter<'a, '_, '_> {
                     start.saturating_add(index as u64).min(999_999_999)
                 };
                 let delimiter = if layout.alternate_marker { ')' } else { '.' };
-                format!("{number}{delimiter}")
+                // Only the final nonempty item can absorb a following code block.
+                // Keep enough digits when three leading spaces, the delimiter,
+                // and the permitted separator still fall short.
+                let digits = if index + 1 == list.items.len() && first.is_some() {
+                    layout
+                        .minimum_indent
+                        .saturating_sub(3 + 1 + max_padding)
+                        .min(item.marker.len().saturating_sub(1))
+                } else {
+                    0
+                };
+                format!("{number:0digits$}{delimiter}")
             } else if layout.alternate_marker {
                 "*".to_string()
             } else {
                 "-".to_string()
             };
-            let first = item
-                .blocks
-                .iter()
-                .find(|block| !matches!(block.kind, BlockKind::Blank));
-            // Empty markers and code bodies on the marker line both use a
-            // one-column separator when CommonMark computes the item indent.
             let aligned_padding = if list.ordered && self.lists_aligned && tab_width != 0 {
                 let extra = (tab_width - (marker.len() + 1) % tab_width) % tab_width;
                 if extra <= 3 { 1 + extra } else { 1 }
             } else {
                 1
             };
-            let padding =
-                if first.is_none_or(|block| matches!(block.kind, BlockKind::IndentedCode(_))) {
-                    1
-                } else {
-                    layout
-                        .minimum_indent
-                        .saturating_sub(marker.len())
-                        .clamp(aligned_padding, 4)
-                };
+            let padding = layout
+                .minimum_indent
+                .saturating_sub(marker.len())
+                .max(aligned_padding)
+                .min(max_padding);
             let leading = layout
                 .minimum_indent
                 .saturating_sub(marker.len() + padding)

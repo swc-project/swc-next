@@ -28,6 +28,16 @@ fn format(source: &str, layout: PrintOptions, syntax: SyntaxOptions) -> String {
 
 #[test]
 fn blocks() {
+    fn assert_list_and_code(source: &str, start: u64, value: &str) {
+        let document = parse(source);
+        let [list, blank, code] = document.blocks.as_slice() else {
+            panic!("expected a list and a sibling code block");
+        };
+        assert!(matches!(&list.kind, BlockKind::List(list) if list.start == Some(start)));
+        assert!(matches!(blank.kind, BlockKind::Blank));
+        assert!(matches!(&code.kind, BlockKind::IndentedCode(code) if code.value == value));
+    }
+
     let layout = PrintOptions::default();
     let syntax = SyntaxOptions::default();
 
@@ -75,6 +85,26 @@ fn blocks() {
     let source = "1.   first\n2.   second\n\n    separate code block\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, source);
+
+    let source = "   09.    item\n\n         separate code\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert_list_and_code(&result, 9, "     separate code");
+
+    let source = "   09.    item\n\n        separate code\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, "   9.    item\n\n        separate code\n");
+    assert_list_and_code(&result, 9, "    separate code");
+
+    let source = "   10.    item\n\n         separate code\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert_list_and_code(&result, 10, "     separate code");
+
+    let source = "   09.     inner code\n\n      separate code\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, source);
+    assert_list_and_code(&result, 9, "  separate code");
 
     let source = "   -     inner code block\n\n    separate code block\n";
     let result = format(source, layout, syntax);
