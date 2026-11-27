@@ -10,13 +10,15 @@ export const extensions = ["js", "ts", "tsx", "mjs", "cjs", "unknown"];
 
 export const cases = [
   ...[...fixtures].reverse().flatMap(name => ["parse", "generate"].map(operation => `${operation}/${name}`)),
+  "walk/underscore-1.5.2.js",
   ...["lang", "source_type"].flatMap(operation => extensions.map(name => `${operation}/${name}`)),
 ];
 
-// Keep PR coverage of all four operations without the large profiling fixtures.
+// Keep PR coverage of every operation without the large profiling fixtures.
 export const representativeCases = [
   "parse/underscore-1.5.2.js",
   "generate/underscore-1.5.2.js",
+  "walk/underscore-1.5.2.js",
   "lang/tsx",
   "source_type/mjs",
 ];
@@ -49,10 +51,28 @@ export function prepare(api, operation, name, source) {
     return { iterations: 10_000, run: () => fn(`input.${name}`), validate: value => assert.equal(typeof value, "string") };
   }
   assert(fixtures.includes(name), "unknown fixture");
-  assert(["parse", "generate"].includes(operation), "unknown operation");
+  assert(["parse", "generate", "walk"].includes(operation), "unknown operation");
   const options = { lang: name.endsWith(".tsx") ? "tsx" : name.endsWith(".ts") ? "ts" : "js" };
   const parsed = api.parseSync(source, options);
   assert.equal(parsed.diagnostics.length, 0);
+  if (operation === "walk") {
+    assert.equal(typeof api.createWalker, "function", 'benchmark requires API export "createWalker" to be a function');
+    const program = parsed.program;
+    const walker = api.createWalker({
+      Identifier(node, context) {
+        context.state.length += node.name.length;
+      },
+    });
+    return {
+      iterations: 10,
+      run() {
+        const state = { length: 0 };
+        walker.walk(program, state);
+        return state.length;
+      },
+      validate: value => assert.equal(value, 11_265),
+    };
+  }
   if (operation === "generate") {
     // Materialize input outside the measured region, including lazy strings.
     touch(parsed.program);
