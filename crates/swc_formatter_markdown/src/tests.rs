@@ -6,7 +6,7 @@ use swc_next_formatter_host::{
     EmbeddedRequest, FormatContext, FormatSession, InputKind, PreserveReason,
 };
 use swc_next_markdown_parser::{
-    BlockKind, Dialect, InlineKind, ParseOptions, parse, parse_with_options,
+    BlockKind, Dialect, Document, InlineKind, ParseOptions, parse, parse_with_options,
 };
 
 use crate::{MarkdownDocumentProducer, ProseWrap, SyntaxOptions, ast_to_doc, plugin_document};
@@ -512,33 +512,41 @@ fn verbatim() {
 fn extended_dialect_and_recovery() {
     let session = FormatSession::default();
     let syntax = SyntaxOptions::default();
+    let print = |document: &Document<'_>| {
+        ast_to_doc(document, session.context(), syntax)
+            .unwrap()
+            .print(session.print_options())
+    };
+    let markdown = ParseOptions::default();
+    let extended = ParseOptions {
+        dialect: Dialect::Extended,
+        ..markdown
+    };
 
     let source = "$$\na   +   b\n$$\n";
-    let parsed = parse_with_options(
-        source,
-        ParseOptions {
-            dialect: Dialect::Extended,
-            ..ParseOptions::default()
-        },
-    );
+    let parsed = parse_with_options(source, extended);
     assert!(matches!(parsed.blocks[0].kind, BlockKind::Extension(_)));
-    let result = ast_to_doc(&parsed, session.context(), syntax)
-        .unwrap()
-        .print(session.print_options());
-    assert_eq!(result, source);
+    assert_eq!(print(&parsed), source);
+
+    for options in [markdown, extended] {
+        let format = |source: &str| print(&parse_with_options(source, options));
+
+        let source = "~~literal .~!struck?~. tail\n";
+        assert_eq!(format(source), source);
+
+        let source = "~~start .~!word!~. end~~\n";
+        assert_eq!(format(source), source);
+    }
 
     let source = "\u{feff}#  keep   \n\n";
     let parsed = parse_with_options(
         source,
         ParseOptions {
             max_input_bytes: Some(1),
-            ..ParseOptions::default()
+            ..markdown
         },
     );
-    let result = ast_to_doc(&parsed, session.context(), syntax)
-        .unwrap()
-        .print(session.print_options());
-    assert_eq!(result, "#  keep   \n\n");
+    assert_eq!(print(&parsed), "#  keep   \n\n");
 }
 
 struct TestDispatcher {

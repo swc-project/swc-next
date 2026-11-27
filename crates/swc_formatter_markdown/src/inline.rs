@@ -551,7 +551,12 @@ impl<'a> Formatter<'a, '_, '_> {
                 }
                 InlineKind::Delete(children) => {
                     let context = context.inside_inline();
-                    self.inline_container(block, children, wrap, "~~", context, prose);
+                    let marker = if self.text(node.span).starts_with("~~") {
+                        "~~"
+                    } else {
+                        "~"
+                    };
+                    self.inline_container(block, children, wrap, marker, context, prose);
                 }
                 InlineKind::Link(link) | InlineKind::Image(link) => {
                     let context = context.inside_link();
