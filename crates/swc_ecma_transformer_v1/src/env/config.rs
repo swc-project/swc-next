@@ -154,7 +154,7 @@ impl EnvConfig {
     /// Errors are returned for invalid queries, malformed engine versions, and
     /// empty engine maps. Queries are explicit and do not discover local config
     /// files. Engines absent from a feature's compatibility data conservatively
-    /// require lowering. This includes Bun, which has no entry in the pinned data.
+    /// require lowering.
     pub fn to_env_options(&self) -> Result<EnvOptions, TargetError> {
         let target = self.target.as_ref().map(Target::resolve).transpose()?;
         let needs = |feature| target.as_ref().is_some_and(|target| target.needs(feature));

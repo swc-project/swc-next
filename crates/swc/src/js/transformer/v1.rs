@@ -89,6 +89,16 @@ fn resolve_env(
 fn to_v1_target(target: &JsTarget) -> Result<Target, Diagnostic> {
     match target {
         JsTarget::Query(query) => {
+            if matches!(query.as_str(), "es3" | "es5") {
+                let mut diagnostic = Diagnostic::error("Unsupported transformer target", DUMMY_SP);
+                diagnostic.help = Some(
+                    format!(
+                        "Unsupported ES edition `{query}`; supported editions are es2015–es2026 and esnext"
+                    )
+                    .into(),
+                );
+                return Err(diagnostic);
+            }
             if let Ok(version) = query.parse::<EsVersion>() {
                 Ok(Target::EsVersion(version))
             } else {
@@ -361,4 +371,30 @@ pub fn transform_js<const TRANSFORM: bool>(
     }
 
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use super::*;
+
+    #[test]
+    fn unsupported_targets() {
+        let es5 = resolve_env(Some(&JsTarget::Query("es5".into())), None).unwrap_err();
+        assert_eq!(es5.message.as_ref(), "Unsupported transformer target");
+
+        let es3 = resolve_env(Some(&JsTarget::Query("es3".into())), None).unwrap_err();
+        assert_eq!(es3.message.as_ref(), "Unsupported transformer target");
+
+        let bun = resolve_env(
+            Some(&JsTarget::Engines(BTreeMap::from([(
+                "bun".into(),
+                "1.0".into(),
+            )]))),
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(bun.message.as_ref(), "Invalid transformer target");
+    }
 }

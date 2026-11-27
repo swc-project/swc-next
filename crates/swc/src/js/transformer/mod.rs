@@ -35,9 +35,16 @@ pub struct JsTransformerConfig {
     /// Overrides the API's shared filename when set.
     pub filename: Option<String>,
     /// Target environment for ECMAScript lowering.
+    ///
+    /// Accepts an ES edition (`"es2015"`–`"es2026"`, `"esnext"`), a Browserslist
+    /// query or query list, or a map of minimum engine versions. Currently lowers
+    /// ES2016–ES2022 and supported RegExp syntax; ES2015 and older syntax is not
+    /// lowered.
     #[cfg_attr(
         feature = "bridge",
-        bridge(ts_type = "string | Array<string> | Record<string, string>")
+        bridge(
+            ts_type = "\"es2015\" | \"es2016\" | \"es2017\" | \"es2018\" | \"es2019\" | \"es2020\" | \"es2021\" | \"es2022\" | \"es2023\" | \"es2024\" | \"es2025\" | \"es2026\" | \"esnext\" | (string & {}) | Array<string> | Partial<Record<\"chrome\" | \"edge\" | \"firefox\" | \"safari\" | \"ios\" | \"opera\" | \"samsung\" | \"node\" | \"deno\" | \"electron\" | \"ie\" | \"android\" | \"opera_mobile\" | \"op_mini\" | \"bb\" | \"baidu\" | \"kaios\" | \"and_qq\" | \"and_uc\", string>>"
+        )
     )]
     pub target: Option<JsTarget>,
     /// TypeScript transform. `false` keeps TypeScript syntax in the output.
