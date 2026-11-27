@@ -46,43 +46,54 @@ function assertSync(result) {
     );
 }
 
+function validHandlers(value) {
+  if (typeof value === "function") return true;
+  if (!Array.isArray(value)) return false;
+  for (let index = 0; index < value.length; index++) {
+    if (!owns(value, index) || typeof value[index] !== "function") return false;
+  }
+  return true;
+}
+
+function append(handlers, value, prepend = false) {
+  if (value === undefined) return;
+  if (typeof value !== "function" && Array.isArray(value)) {
+    if (prepend) handlers.unshift(...value);
+    else handlers.push(...value);
+  } else if (prepend) handlers.unshift(value);
+  else handlers.push(value);
+}
+
+function compact(handlers) {
+  return handlers.length === 0 ? null : handlers.length === 1 ? handlers[0] : handlers;
+}
+
 function compile(hooks) {
   if (!hooks || typeof hooks !== "object")
     throw new TypeError("Expected a hooks object");
-  const validHandlers = (value) => {
-    if (typeof value === "function") return true;
-    if (!Array.isArray(value)) return false;
-    for (let index = 0; index < value.length; index++) {
-      if (!owns(value, index) || typeof value[index] !== "function") return false;
-    }
-    return true;
-  };
-  const append = (handlers, value, prepend = false) => {
-    if (value === undefined) return;
-    if (Array.isArray(value)) {
-      if (prepend) handlers.unshift(...value);
-      else handlers.push(...value);
-    } else if (prepend) handlers.unshift(value);
-    else handlers.push(value);
-  };
   const entries = Object.entries(hooks);
   const table = new Map();
   let enter, leave;
   const add = (name, value) => {
-    const pair = typeof value === "function" ? { enter: value } : value;
-    if (!pair || typeof pair !== "object")
+    if (typeof value === "function") {
+      const entry = table.get(name);
+      if (entry === undefined) table.set(name, { enter: [value], leave: [] });
+      else entry.enter.push(value);
+      return;
+    }
+    if (!value || typeof value !== "object")
       throw new TypeError(`Invalid hook: ${name}`);
-    for (const key of Object.keys(pair)) {
+    for (const key of Object.keys(value)) {
       if (
         (key !== "enter" && key !== "leave") ||
-        (pair[key] !== undefined && !validHandlers(pair[key]))
+        (value[key] !== undefined && !validHandlers(value[key]))
       ) {
         throw new TypeError(`Invalid hook: ${name}.${key}`);
       }
     }
     const entry = table.get(name) ?? { enter: [], leave: [] };
-    append(entry.enter, pair.enter);
-    append(entry.leave, pair.leave, true);
+    append(entry.enter, value.enter);
+    append(entry.leave, value.leave, true);
     table.set(name, entry);
   };
   for (const [name, value] of entries) {
@@ -109,14 +120,8 @@ function compile(hooks) {
     append(pair.enter, enter, true);
     append(pair.leave, leave);
   }
-  const compact = (handlers) =>
-    handlers.length === 0
-      ? null
-      : handlers.length === 1
-        ? handlers[0]
-        : handlers;
-  if (Array.isArray(enter)) enter = compact(enter.slice());
-  if (Array.isArray(leave)) leave = compact(leave.slice());
+  if (enter !== undefined && typeof enter !== "function") enter = compact(enter.slice());
+  if (leave !== undefined && typeof leave !== "function") leave = compact(leave.slice());
   const dispatch =
     table.size === 0 ? baseDispatch : Object.create(baseDispatch);
   for (const [type, pair] of table) {
