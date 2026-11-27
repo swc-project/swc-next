@@ -124,6 +124,21 @@ test("compiled and merged walkers reject sparse callbacks before traversal", () 
   expect(() => merge([{ Identifier: { leave: callbacks } }])).toThrow(TypeError);
 });
 
+test("merge expands only targeted types unless a visitor has a global hook", () => {
+  const targeted = merge([
+    { Identifier() {} },
+    { Function() {} },
+  ]);
+  expect(Object.keys(targeted)).toEqual([
+    "ArrowFunctionExpression", "FunctionDeclaration", "FunctionExpression",
+    "Identifier", "TSDeclareFunction", "TSEmptyBodyFunctionExpression",
+  ]);
+  const enter = () => {};
+  const mixed = merge([targeted, { enter }]);
+  expect(mixed.Program.enter).toEqual([enter]);
+  expect(mixed.Identifier.enter).toEqual([targeted.Identifier.enter[0], enter]);
+});
+
 test("merged visitors share skip, replacement, removal, and stop controls", () => {
   const statement = (name) => ({ type: "ExpressionStatement", expression: id(name) });
   const ast = { type: "Program", body: [statement("skip"), statement("remove"), statement("replace"), statement("stop"), statement("tail")] };

@@ -152,7 +152,22 @@ export function merge(visitors) {
     if (Array.isArray(hook)) handlers.push(...hook);
     else if (hook !== null) handlers.push(hook);
   };
-  for (const type of Object.keys(baseDispatch)) {
+  const hasGlobalHooks = compiled.some(
+    (visitor) => visitor.globalEnter !== null || visitor.globalLeave !== null,
+  );
+  let types;
+  if (hasGlobalHooks) {
+    types = Object.keys(baseDispatch);
+  } else {
+    const sparseTypes = new Set();
+    for (const { dispatch } of compiled) {
+      if (dispatch !== baseDispatch) {
+        for (const type of Object.keys(dispatch)) sparseTypes.add(type);
+      }
+    }
+    types = [...sparseTypes].sort();
+  }
+  for (const type of types) {
     const enter = [];
     const leave = [];
     for (const visitor of compiled) {
