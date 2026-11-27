@@ -269,11 +269,11 @@ pub fn estree_visitor_keys(schema: &Schema) -> Vec<RawOutput> {
     children.push_str("  }\n  throw new TypeError(`Unsupported AST node type: ${type}`);\n}\n");
     vec![
         RawOutput {
-            path: "packages/walker/child-visitors.ts".into(),
+            path: "packages/walker/src/child-visitors.ts".into(),
             content: children.into_bytes(),
         },
         RawOutput {
-            path: "packages/walker/visitor-keys.ts".into(),
+            path: "packages/walker/src/visitor-keys.ts".into(),
             content: keys_ts.into_bytes(),
         },
     ]

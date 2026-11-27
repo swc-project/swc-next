@@ -2,8 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
+    "rootDir": "src",
     "strict": true,
     "types": []
   },
-  "include": ["*.ts"]
+  "include": ["src/**/*.ts"]
 }

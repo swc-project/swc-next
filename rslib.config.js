@@ -26,7 +26,7 @@ const walker = {
     entry: Object.fromEntries(
       ["index", "child-visitors", "visitor-keys"].map((entry) => [
         entry,
-        path.join(walkerDirectory, `${entry}.ts`),
+        path.join(walkerDirectory, "src", `${entry}.ts`),
       ]),
     ),
   },
