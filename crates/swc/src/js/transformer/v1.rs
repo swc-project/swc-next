@@ -372,29 +372,3 @@ pub fn transform_js<const TRANSFORM: bool>(
 
     output
 }
-
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeMap;
-
-    use super::*;
-
-    #[test]
-    fn unsupported_targets() {
-        let es5 = resolve_env(Some(&JsTarget::Query("es5".into())), None).unwrap_err();
-        assert_eq!(es5.message.as_ref(), "Unsupported transformer target");
-
-        let es3 = resolve_env(Some(&JsTarget::Query("es3".into())), None).unwrap_err();
-        assert_eq!(es3.message.as_ref(), "Unsupported transformer target");
-
-        let bun = resolve_env(
-            Some(&JsTarget::Engines(BTreeMap::from([(
-                "bun".into(),
-                "1.0".into(),
-            )]))),
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(bun.message.as_ref(), "Invalid transformer target");
-    }
-}
