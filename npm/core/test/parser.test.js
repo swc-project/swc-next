@@ -368,6 +368,24 @@ test("parseSync decodes diagnostic arrays and optional metadata", () => {
   assert.equal(ambient.diagnostics[0].help, undefined);
 });
 
+test("parseSync includes trivia in the program range", () => {
+  const source = "// 😀\nlet value = 1;\n";
+  const trivia = "// 😀";
+  for (const parse of [parseSync, parseStandalone]) {
+    for (const lang of ["js", "ts"]) {
+      const { program } = parse(source, { lang });
+      assert.equal(program.start, 0);
+      assert.equal(program.end, source.length);
+      assert.equal(program.body[0].start, source.indexOf("let"));
+
+      const empty = parse(trivia, { lang }).program;
+      assert.deepEqual(empty.body, []);
+      assert.equal(empty.start, 0);
+      assert.equal(empty.end, trivia.length);
+    }
+  }
+});
+
 test("parseSync preserves source encoding at the API boundary", () => {
   const empty = parseSync("");
   assert.deepEqual(empty.program.body, []);

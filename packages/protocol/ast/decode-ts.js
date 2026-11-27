@@ -457,11 +457,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         const extraId = _i32[(payload + 12) >> 2];
         const f_hashbang = optionalNode(_i32[(payload + 8) >> 2]);
         const body = nodeArrayPair(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2], _i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2]);
-        const first = body[0];
-        const declaration = first?.declaration ?? first;
-        const firstStart = first?.start ?? end;
-        const programStart = Math.min(firstStart, declaration?.decorators?.[0]?.start ?? firstStart);
-        result = { type: "Program", start: programStart, end, sourceType, hashbang: f_hashbang, body };
+        result = { type: "Program", start, end, sourceType, hashbang: f_hashbang, body };
         break;
       }
       case 1: {
