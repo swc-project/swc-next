@@ -100,7 +100,9 @@ const walker = createWalker(visitor);
 walker.walk(program);
 ```
 
-`merge` returns a frozen snapshot that also works with `walk(program, visitor)`.
+`merge` returns an opaque, frozen snapshot that also works with `walk(program, visitor)`.
+Each `enter` or `leave` hook accepts a single function. Pass multiple visitors to
+`merge` rather than passing arrays of callbacks.
 At each node, enter and leave callbacks run in visitor array order. Each visitor
 keeps its global, alias, and concrete hook order. Later visitors see earlier
 edits to the current node; they do not wait for earlier visitors to finish the

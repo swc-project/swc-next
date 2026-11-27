@@ -24,6 +24,7 @@ const SKIP = 1;
 const REMOVED = 2;
 const REPLACED = 4;
 const owns = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
+const mergedVisitors = new WeakMap();
 // Every supported type has an entry; the table has no inherited properties.
 const isNodeType = (type) => baseDispatch[type] !== undefined;
 
@@ -46,49 +47,52 @@ function assertSync(result) {
     );
 }
 
+function compact(handlers) {
+  return handlers.length === 0
+    ? null
+    : handlers.length === 1
+      ? handlers[0]
+      : handlers;
+}
+
+function appendHandlers(handlers, hook) {
+  if (Array.isArray(hook)) {
+    for (const handler of hook) handlers.push(handler);
+  } else if (hook !== null) {
+    handlers.push(hook);
+  }
+}
+
 function compile(hooks) {
   if (!hooks || typeof hooks !== "object")
     throw new TypeError("Expected a hooks object");
-  const validHandlers = (value) => {
-    if (typeof value === "function") return true;
-    if (!Array.isArray(value)) return false;
-    for (let index = 0; index < value.length; index++) {
-      if (!owns(value, index) || typeof value[index] !== "function") return false;
-    }
-    return true;
-  };
-  const append = (handlers, value, prepend = false) => {
-    if (value === undefined) return;
-    if (Array.isArray(value)) {
-      if (prepend) handlers.unshift(...value);
-      else handlers.push(...value);
-    } else if (prepend) handlers.unshift(value);
-    else handlers.push(value);
-  };
   const entries = Object.entries(hooks);
   const table = new Map();
   let enter, leave;
   const add = (name, value) => {
     const pair = typeof value === "function" ? { enter: value } : value;
-    if (!pair || typeof pair !== "object")
+    if (!pair || typeof pair !== "object" || Array.isArray(pair))
       throw new TypeError(`Invalid hook: ${name}`);
     for (const key of Object.keys(pair)) {
-      if (
-        (key !== "enter" && key !== "leave") ||
-        (pair[key] !== undefined && !validHandlers(pair[key]))
-      ) {
+      if (key !== "enter" && key !== "leave") {
         throw new TypeError(`Invalid hook: ${name}.${key}`);
       }
     }
+    const enterHook = pair.enter;
+    const leaveHook = pair.leave;
+    if (enterHook !== undefined && typeof enterHook !== "function")
+      throw new TypeError(`Invalid hook: ${name}.enter`);
+    if (leaveHook !== undefined && typeof leaveHook !== "function")
+      throw new TypeError(`Invalid hook: ${name}.leave`);
     const entry = table.get(name) ?? { enter: [], leave: [] };
-    append(entry.enter, pair.enter);
-    append(entry.leave, pair.leave, true);
+    if (enterHook !== undefined) entry.enter.push(enterHook);
+    if (leaveHook !== undefined) entry.leave.unshift(leaveHook);
     table.set(name, entry);
   };
   for (const [name, value] of entries) {
     if (value === undefined) continue;
     if (name === "enter" || name === "leave") {
-      if (!validHandlers(value))
+      if (typeof value !== "function")
         throw new TypeError(`Invalid hook: ${name}`);
       if (name === "enter") enter = value;
       else leave = value;
@@ -106,17 +110,9 @@ function compile(hooks) {
     if (value !== undefined && isNodeType(name)) add(name, value);
   }
   for (const pair of table.values()) {
-    append(pair.enter, enter, true);
-    append(pair.leave, leave);
+    if (enter !== undefined) pair.enter.unshift(enter);
+    if (leave !== undefined) pair.leave.push(leave);
   }
-  const compact = (handlers) =>
-    handlers.length === 0
-      ? null
-      : handlers.length === 1
-        ? handlers[0]
-        : handlers;
-  if (Array.isArray(enter)) enter = compact(enter.slice());
-  if (Array.isArray(leave)) leave = compact(leave.slice());
   const dispatch =
     table.size === 0 ? baseDispatch : Object.create(baseDispatch);
   for (const [type, pair] of table) {
@@ -143,15 +139,17 @@ function compile(hooks) {
   };
 }
 
-/** Merge visitors into a snapshot of concrete enter/leave callback lists. */
+function resolveHooks(hooks) {
+  return mergedVisitors.get(hooks) ?? compile(hooks);
+}
+
+/** Merge visitors into an opaque snapshot for walk or createWalker. */
 export function merge(visitors) {
   if (!Array.isArray(visitors)) throw new TypeError("Expected an array of visitors");
-  const compiled = visitors.map(compile);
-  const hooks = Object.create(null);
-  const append = (handlers, hook) => {
-    if (Array.isArray(hook)) handlers.push(...hook);
-    else if (hook !== null) handlers.push(hook);
-  };
+  const compiled = [];
+  for (let index = 0; index < visitors.length; index++) {
+    compiled.push(resolveHooks(visitors[index]));
+  }
   const hasGlobalHooks = compiled.some(
     (visitor) => visitor.globalEnter !== null || visitor.globalLeave !== null,
   );
@@ -165,23 +163,29 @@ export function merge(visitors) {
         for (const type of Object.keys(dispatch)) sparseTypes.add(type);
       }
     }
-    types = [...sparseTypes].sort();
+    types = sparseTypes;
   }
+  const dispatch = Object.create(baseDispatch);
+  const walkers = Object.create(nodeWalkers);
   for (const type of types) {
     const enter = [];
     const leave = [];
     for (const visitor of compiled) {
       const entry = visitor.dispatch[type];
-      append(enter, entry.enter ?? visitor.globalEnter);
-      append(leave, entry.leave ?? visitor.globalLeave);
+      appendHandlers(enter, entry.enter ?? visitor.globalEnter);
+      appendHandlers(leave, entry.leave ?? visitor.globalLeave);
     }
     if (enter.length === 0 && leave.length === 0) continue;
-    hooks[type] = Object.freeze({
-      enter: Object.freeze(enter),
-      leave: Object.freeze(leave),
-    });
+    dispatch[type] = {
+      children: childVisitors[type],
+      enter: compact(enter),
+      leave: compact(leave),
+    };
+    walkers[type] = enter.length === 0 ? walkLeave : walkEnter;
   }
-  return Object.freeze(hooks);
+  const merged = Object.freeze(Object.create(null));
+  mergedVisitors.set(merged, { dispatch, walkers, globalEnter: null, globalLeave: null });
+  return merged;
 }
 
 function walkEnter(node, walker, parent, key, list, index) {
@@ -485,7 +489,7 @@ function runWalk(root, compiled, state) {
  */
 export function walk(root, hooks, state) {
   assertNode(root);
-  return runWalk(root, compile(hooks), state);
+  return runWalk(root, resolveHooks(hooks), state);
 }
 
 /**
@@ -493,7 +497,7 @@ export function walk(root, hooks, state) {
  * @type {typeof import("./index.js").createWalker}
  */
 export function createWalker(hooks) {
-  const compiled = compile(hooks);
+  const compiled = resolveHooks(hooks);
   return Object.freeze({
     walk(root, state) {
       assertNode(root);
