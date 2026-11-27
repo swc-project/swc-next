@@ -183,7 +183,6 @@ impl Transformer {
     ///
     /// Supports the selected JSX, TypeScript, ES2016–ES2022, RegExp, and module passes.
     /// Runtime helpers are loaded from `@swc/helpers`.
-    /// React Refresh reports a diagnostic because it is not implemented.
     ///
     /// # Panics
     ///

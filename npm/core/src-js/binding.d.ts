@@ -112,7 +112,11 @@ export interface JsxConfig {
   pragmaFrag?: string
   /** @default true */
   throwIfNamespace?: boolean
-  /** Mark factory calls as pure. */
+  /**
+   * Mark factory calls as pure.
+   *
+   * @default true
+   */
   pure?: boolean
   /**
    * Add `displayName` to `createReactClass` calls.
@@ -121,7 +125,8 @@ export interface JsxConfig {
    */
   displayName?: boolean
   /**
-   * React Refresh. `true` uses default options.
+   * React Refresh in development mode. Requires `development: true` and ES
+   * module source. `true` uses default options.
    *
    * @default false
    */

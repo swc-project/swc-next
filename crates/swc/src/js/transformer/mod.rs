@@ -279,12 +279,15 @@ pub struct JsxConfig {
     /// @default true
     pub throw_if_namespace: Option<bool>,
     /// Mark factory calls as pure.
+    ///
+    /// @default true
     pub pure: Option<bool>,
     /// Add `displayName` to `createReactClass` calls.
     ///
     /// @default false
     pub display_name: Option<bool>,
-    /// React Refresh. `true` uses default options.
+    /// React Refresh in development mode. Requires `development: true` and ES
+    /// module source. `true` uses default options.
     ///
     /// @default false
     #[cfg_attr(feature = "bridge", bridge(ts_type = "boolean | ReactRefreshConfig"))]

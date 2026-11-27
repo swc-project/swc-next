@@ -142,7 +142,16 @@ pub(super) fn to_options(
         };
     }
 
-    let decorators = enabled_options(config.decorators);
+    let decorators: Option<DecoratorOptions> = enabled_options(config.decorators);
+    if let Some(decorators) = decorators
+        && decorators.metadata
+        && decorators.version != DecoratorVersion::Legacy
+    {
+        let mut diagnostic = Diagnostic::error("Invalid decorator configuration", DUMMY_SP);
+        diagnostic.help =
+            Some("`decorators.metadata` requires `decorators.version` to be \"legacy\"".into());
+        return Err(diagnostic);
+    }
 
     Ok(TransformerOptions {
         filename: config.filename.or(filename),
@@ -179,15 +188,14 @@ fn apply_assumptions(env: &mut EnvOptions, assumptions: JsAssumptions) {
 
     let set_public_fields = assumptions.set_public_class_fields.unwrap_or(false);
     let pure_getters = assumptions.pure_getters.unwrap_or(false);
-    if set_public_fields {
-        env.es2022.class_fields_use_set = Some(ClassFieldsUseSetOptions { pure_getters });
-    }
     if let Some(opts) = &mut env.es2022.class_properties {
         opts.private_as_properties = assumptions.private_fields_as_properties.unwrap_or(false);
         opts.set_public_fields = set_public_fields;
         opts.constant_super = assumptions.constant_super.unwrap_or(false);
         opts.no_document_all = assumptions.no_document_all.unwrap_or(false);
         opts.pure_getter = pure_getters;
+    } else if set_public_fields {
+        env.es2022.class_fields_use_set = Some(ClassFieldsUseSetOptions { pure_getters });
     }
 }
 
