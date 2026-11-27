@@ -183,7 +183,6 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
                 .preserve_const_enums
                 .unwrap_or(defaults.preserve_const_enums),
             jsx: JsxImportOptions {
-                automatic: options.jsx_runtime == Some(JsxRuntime::Automatic),
                 pragma: options.jsx_pragma,
                 pragma_frag: options.jsx_pragma_frag,
             },

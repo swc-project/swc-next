@@ -8,6 +8,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
         let ast = &*self.ast;
         let semantic = self.semantic;
         let jsx = &self.options.jsx;
+        let jsx_automatic = self.jsx_automatic;
         let uid = self.uid_generator.get_or_insert_with(|| {
             let mut uid = UidGenerator::new(ast.allocator());
             for entry in semantic.iter_symbols() {
@@ -16,7 +17,7 @@ impl<'ast> TypeScriptLowerer<'_, 'ast> {
             for entry in semantic.iter_references() {
                 uid.observe(ast.get_utf8(entry.reference.name).as_bytes());
             }
-            if !jsx.automatic {
+            if !jsx_automatic {
                 for name in [
                     jsx.pragma.as_deref().unwrap_or("React.createElement"),
                     jsx.pragma_frag.as_deref().unwrap_or("React.Fragment"),

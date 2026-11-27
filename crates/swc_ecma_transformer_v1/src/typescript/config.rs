@@ -33,8 +33,6 @@ pub struct Config {
 /// legacy SWC's byte-string type.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct TsxConfig {
-    /// Whether JSX uses the automatic runtime (which does not require classic factory imports).
-    pub automatic: bool,
     pub pragma: Option<String>,
     pub pragma_frag: Option<String>,
 }

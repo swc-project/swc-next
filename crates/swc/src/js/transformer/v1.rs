@@ -205,7 +205,6 @@ impl From<JsTypeScriptConfig> for TypeScriptOptions {
         Self {
             verbatim_module_syntax: options.verbatim_module_syntax.unwrap_or(false),
             jsx: JsxImportOptions {
-                automatic: options.jsx_runtime == Some(JsxRuntime::Automatic),
                 pragma: options.jsx_pragma,
                 pragma_frag: options.jsx_pragma_frag,
             },

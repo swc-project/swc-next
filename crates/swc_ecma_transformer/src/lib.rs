@@ -68,12 +68,13 @@ impl Transformer {
 
         // TypeScript Transformer
         if let Some(typescript) = options.typescript.as_mut() {
+            let mut jsx_automatic = false;
             if let Some(jsx) = jsx {
-                typescript.jsx.automatic = jsx.runtime == jsx::JsxRuntime::Automatic;
+                jsx_automatic = jsx.runtime == jsx::JsxRuntime::Automatic;
                 typescript.jsx.pragma = jsx.pragma.clone();
                 typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
             }
-            transformer.typescript(typescript);
+            transformer.typescript(typescript, jsx_automatic);
             transformer.analyze();
         }
 

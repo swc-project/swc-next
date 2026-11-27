@@ -215,8 +215,9 @@ impl Transformer {
                 Some(jsx) => jsx.runtime != Some(jsx::JsxRuntime::Preserve),
                 None => false,
             };
+            let mut jsx_automatic = false;
             if jsx_enabled && let Some(jsx) = &options.jsx {
-                typescript.jsx.automatic = jsx.runtime == Some(jsx::JsxRuntime::Automatic);
+                jsx_automatic = jsx.runtime == Some(jsx::JsxRuntime::Automatic);
                 typescript.jsx.pragma = jsx.pragma.clone();
                 typescript.jsx.pragma_frag = jsx.pragma_frag.clone();
             }
@@ -225,6 +226,7 @@ impl Transformer {
                 context.ast,
                 typescript,
                 tsx,
+                jsx_automatic,
                 header_end,
                 options.module.r#type,
                 context.state.resolver,

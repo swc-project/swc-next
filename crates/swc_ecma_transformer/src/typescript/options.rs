@@ -15,7 +15,6 @@ pub struct TypeScriptOptions {
 
 #[derive(Debug, Default, Clone)]
 pub struct JsxImportOptions {
-    pub automatic: bool,
     pub pragma: Option<String>,
     pub pragma_frag: Option<String>,
 }

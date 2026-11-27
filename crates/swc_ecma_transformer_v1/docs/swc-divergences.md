@@ -13,12 +13,12 @@
   - Omits `useBuiltIns` and `useSpread` from public options.
 - **Rationale:** Aligns with React 19 and Babel 8. Modern React uses the automatic runtime and native Owner Stacks instead of `__source`/`__self` in development, making `sourceSelf: false` a smaller, faster default while keeping opt-in support for React 18 and custom runtimes. `createReactClass` is obsolete, so `displayName` is opt-in.
 
-## ADR-002: TypeScript JSX factory import retention respects preserved JSX and `jsxRuntime`
+## ADR-002: TypeScript JSX factory import retention respects preserved JSX and runtime
 
 - **Legacy SWC transformer:** Skips `typescript::tsx` factory import analysis whenever JSX lowering is disabled (`runtime: "preserve"`), causing factory imports such as `import { h } from "preact"` to be erased. Conversely, when JSX lowering is enabled with `runtime: "automatic"`, it still conservatively retains `React` (or configured `pragma`) imports.
-- **v1 transformer:** Runs TSX factory import analysis whenever the AST language is TSX, regardless of whether JSX lowering is enabled, and respects `jsxRuntime` (`classic` vs `automatic`) and `@jsxRuntime` pragmas:
-  - When JSX is preserved (`jsx: false`) with classic runtime (default), configured `jsxPragma` / `jsxPragmaFrag` imports are retained for downstream transforms.
-  - Under `automatic` runtime, unused classic factory imports (such as `import React from "react"`) are erased.
+- **v1 transformer:** Runs TSX factory import analysis whenever the AST language is TSX, regardless of whether JSX lowering is enabled, and respects the active JSX runtime (`classic` vs `automatic`) and `@jsxRuntime` pragmas:
+  - When JSX is preserved (`jsx: false`), configured `jsxPragma` / `jsxPragmaFrag` imports are retained under classic semantics for downstream transforms (unless overridden by a file-header `@jsxRuntime automatic` pragma).
+  - Under `automatic` runtime (when JSX lowering is enabled), unused classic factory imports (such as `import React from "react"`) are erased.
 - **Rationale:** Modern pipelines frequently separate TypeScript stripping from JSX lowering (or use React's automatic runtime). TypeScript erasure should neither break downstream classic JSX transforms nor leave dead `React` imports in automatic-runtime output.
 
 ## ADR-003: Standard (`2023-11`) decorators as default

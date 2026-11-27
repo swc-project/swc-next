@@ -29,6 +29,7 @@ pub(crate) fn typescript(
     ast: &mut Ast<'_>,
     mut options: TypeScriptOptions,
     tsx: bool,
+    jsx_automatic: bool,
     header_end: u32,
     module_type: ModuleType,
     resolver: &mut Resolver,
@@ -40,7 +41,7 @@ pub(crate) fn typescript(
     }
     let pass = TypeScript { config: &options };
     if tsx {
-        TypeScriptReact { typescript: pass }.process(ast, resolver, header_end)
+        TypeScriptReact { typescript: pass }.process(ast, resolver, jsx_automatic, header_end)
     } else {
         pass.process(ast, resolver, HashSet::new())
     }
@@ -124,13 +125,14 @@ impl TypeScriptReact<'_> {
         &self,
         ast: &mut Ast<'_>,
         resolver: &mut Resolver,
+        jsx_automatic: bool,
         header_end: u32,
     ) -> Vec<Diagnostic> {
         let options = self.typescript.config;
         let id_usage = if matches!(ast.source_type(), SourceType::Module | SourceType::CommonJs)
             && !options.verbatim_module_syntax
         {
-            jsx_usage(ast, options, resolver, header_end)
+            jsx_usage(ast, options, resolver, jsx_automatic, header_end)
         } else {
             HashSet::new()
         };
@@ -157,6 +159,7 @@ fn jsx_usage(
     ast: &Ast<'_>,
     options: &TypeScriptOptions,
     resolver: &Resolver,
+    jsx_automatic: bool,
     header_end: u32,
 ) -> HashSet<SymbolId> {
     let jsx = &options.jsx;
@@ -164,7 +167,7 @@ fn jsx_usage(
     let automatic = match directives.runtime {
         Some(JsxRuntime::Automatic) => true,
         Some(JsxRuntime::Classic) => false,
-        Some(JsxRuntime::Preserve) | None => jsx.automatic,
+        Some(JsxRuntime::Preserve) | None => jsx_automatic,
     };
     if automatic {
         return HashSet::new();

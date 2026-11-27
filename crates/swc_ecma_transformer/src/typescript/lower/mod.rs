@@ -22,6 +22,7 @@ use statements::StatementExpansion;
 pub(super) struct TypeScriptLowerer<'visit, 'ast> {
     ast: &'visit mut Ast<'ast>,
     options: &'visit TypeScriptOptions,
+    jsx_automatic: bool,
     analysis: TypeScriptAnalysis<'ast>,
     semantic: &'visit Semantic<'ast>,
     semantic_node_count: usize,
@@ -37,6 +38,7 @@ pub(super) struct TypeScriptLowerer<'visit, 'ast> {
 impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
     pub(super) fn new(
         options: &'visit TypeScriptOptions,
+        jsx_automatic: bool,
         analysis: TypeScriptAnalysis<'ast>,
         ast: &'visit mut Ast<'ast>,
         semantic: &'visit Semantic<'ast>,
@@ -45,6 +47,7 @@ impl<'visit, 'ast> TypeScriptLowerer<'visit, 'ast> {
         Self {
             ast,
             options,
+            jsx_automatic,
             analysis,
             semantic,
             semantic_node_count,
