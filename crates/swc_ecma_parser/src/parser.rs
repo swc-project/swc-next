@@ -925,6 +925,26 @@ impl ClassElementModifiers {
         }
     }
 
+    /// No modifier follows `get` or `set`, and `static` does not follow `async`, so the
+    /// keyword there is the member key.
+    fn is_key_after_method_prefix(self, tag: TokenTag) -> bool {
+        let accessor = matches!(
+            self.kind,
+            MethodDefinitionKind::Get | MethodDefinitionKind::Set
+        );
+        match tag {
+            TokenTag::Static => self.is_async || accessor,
+            TokenTag::Declare
+            | TokenTag::Abstract
+            | TokenTag::Override
+            | TokenTag::Readonly
+            | TokenTag::Public
+            | TokenTag::Private
+            | TokenTag::Protected => accessor,
+            _ => false,
+        }
+    }
+
     fn set(&mut self, tag: TokenTag) {
         match tag {
             TokenTag::Static => self.is_static = true,
@@ -3726,8 +3746,9 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             && !(requires_same_line(tag) && next.has_line_terminator_before());
         let conflicting_modifier =
             can_start_modifier && !invalid_modifier && modifiers.conflicts(tag);
-        let consume_as_modifier =
-            can_start_modifier && !(conflicting_modifier && next.has_line_terminator_before());
+        let consume_as_modifier = can_start_modifier
+            && !modifiers.is_key_after_method_prefix(tag)
+            && !(conflicting_modifier && next.has_line_terminator_before());
 
         if !consume_as_modifier {
             self.advance_without_escape_check()?;
@@ -18510,6 +18531,63 @@ mod tests {
         assert!(has_errors("class C { a: T, b: U }", options));
 
         assert!(has_errors("class C { m() {}, n() {} }", options));
+    }
+
+    #[test]
+    fn class_modifiers_after_method_prefixes() {
+        for lang in [Lang::Js, Lang::Ts] {
+            let options = Options {
+                lang,
+                ..Options::default()
+            };
+            let errors = |source| has_errors(source, options);
+
+            assert!(errors("class C { async static m() {} }"));
+
+            assert!(errors("class C { get static m() {} }"));
+
+            assert!(errors("class C { set static m(v) {} }"));
+
+            assert!(errors("class C { async static #m() {} }"));
+
+            assert!(errors("class C { get static [m]() {} }"));
+
+            assert!(!errors("class C { static async m() {} }"));
+
+            assert!(!errors("class C { static get m() {} }"));
+
+            assert!(!errors("class C { async static() {} }"));
+
+            assert!(!errors("class C { get static() {} }"));
+        }
+
+        let options = Options {
+            lang: Lang::Ts,
+            ..Options::default()
+        };
+        let errors = |source| has_errors(source, options);
+
+        assert!(errors("class C { get readonly x() { return 1 } }"));
+
+        assert!(errors("class C { set declare x(v) {} }"));
+
+        assert!(errors("abstract class C { get abstract x(): number }"));
+
+        assert!(errors("class C { get private x() { return 1 } }"));
+
+        assert!(errors("class C { get public x() { return 1 } }"));
+
+        assert!(errors("class C { set protected x(v) {} }"));
+
+        assert!(errors("class C extends B { get override x() {} }"));
+
+        assert!(!errors("class C { get readonly() { return 1 } }"));
+
+        assert!(!errors("class C { get private() { return 1 } }"));
+
+        assert!(!errors("class C { private get x() { return 1 } }"));
+
+        assert!(!errors("abstract class C { abstract get x(): number }"));
     }
 
     #[test]
