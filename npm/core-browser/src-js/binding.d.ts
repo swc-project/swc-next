@@ -246,7 +246,7 @@ export interface TransformerConfig {
   /** Module output format. Defaults to preserving ECMAScript modules. */
   module?: ModuleConfig
   /** Per-feature overrides. `true` enables a transform; `false` disables it. */
-  features?: Partial<Record<"class-static-block" | "optional-catch-binding", boolean>>
+  features?: Partial<Record<"exponentiation-operator" | "async-to-generator" | "async-generator-functions" | "object-rest-spread" | "optional-catch-binding" | "export-namespace-from" | "nullish-coalescing-operator" | "optional-chaining" | "logical-assignment-operators" | "class-static-block" | "class-properties" | "private-property-in-object" | "dotall-regex" | "sticky-regex" | "unicode-regex" | "unicode-sets-regex", boolean>>
   /** Babel-compatible assumptions. */
   assumptions?: Assumptions
 }

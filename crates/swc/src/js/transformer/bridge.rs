@@ -321,17 +321,32 @@ fn decode_transformer(reader: &mut Reader<'_>) -> Option<JsTransformerConfig> {
         _ => return None,
     };
 
+    const FEATURES: [JsFeature; 16] = [
+        JsFeature::ExponentiationOperator,
+        JsFeature::AsyncToGenerator,
+        JsFeature::AsyncGeneratorFunctions,
+        JsFeature::ObjectRestSpread,
+        JsFeature::OptionalCatchBinding,
+        JsFeature::ExportNamespaceFrom,
+        JsFeature::NullishCoalescingOperator,
+        JsFeature::OptionalChaining,
+        JsFeature::LogicalAssignmentOperators,
+        JsFeature::ClassStaticBlock,
+        JsFeature::ClassProperties,
+        JsFeature::PrivatePropertyInObject,
+        JsFeature::DotallRegex,
+        JsFeature::StickyRegex,
+        JsFeature::UnicodeRegex,
+        JsFeature::UnicodeSetsRegex,
+    ];
+
     let features = if (flags & 0x1000) != 0 {
-        let feature_flags = u32::from(reader.read_u8()?);
-        if feature_flags & !0x0f != 0 {
-            return None;
-        }
+        let feature_flags = reader.read_u32()?;
         let mut map = BTreeMap::new();
-        if let Some(enabled) = decode_opt_bool(feature_flags)? {
-            map.insert(JsFeature::ClassStaticBlock, enabled);
-        }
-        if let Some(enabled) = decode_opt_bool(feature_flags >> 2)? {
-            map.insert(JsFeature::OptionalCatchBinding, enabled);
+        for (index, feature) in FEATURES.into_iter().enumerate() {
+            if let Some(enabled) = decode_opt_bool(feature_flags >> (index * 2))? {
+                map.insert(feature, enabled);
+            }
         }
         Some(map)
     } else {

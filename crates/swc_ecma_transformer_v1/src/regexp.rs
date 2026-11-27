@@ -13,10 +13,6 @@ use crate::common::{build as b, resolver::context::Resolver};
 pub struct RegExpOptions {
     /// Rewrite literals with the `s` (dotAll) flag.
     pub dot_all_regex: bool,
-    /// Rewrite literals with the `d` (match indices) flag.
-    pub has_indices: bool,
-    /// Rewrite literals with lookbehind assertions.
-    pub lookbehind_assertion: bool,
     /// Reserved for named capture group lowering. Currently ignored.
     pub named_capturing_groups_regex: bool,
     /// Reserved for duplicate named capture group lowering. Currently ignored.
@@ -34,8 +30,6 @@ pub struct RegExpOptions {
 impl RegExpOptions {
     fn is_enabled(self) -> bool {
         self.dot_all_regex
-            || self.has_indices
-            || self.lookbehind_assertion
             || self.sticky_regex
             || self.unicode_regex
             || self.unicode_sets_regex
@@ -60,14 +54,11 @@ struct RegexpPass<'a, 'ast> {
 
 impl RegexpPass<'_, '_> {
     /// SWC: <https://github.com/swc-project/swc/blob/3ad7952d41f6ee568ce1e7084a44e2b6aafa3752/crates/swc_ecma_transformer/src/regexp.rs#L188>.
-    fn needs_regexp_constructor(&self, pattern: &str, flags: &str) -> bool {
+    fn needs_regexp_constructor(&self, flags: &str) -> bool {
         (self.options.dot_all_regex && flags.contains('s'))
             || (self.options.sticky_regex && flags.contains('y'))
             || (self.options.unicode_regex && flags.contains('u'))
             || (self.options.unicode_sets_regex && flags.contains('v'))
-            || (self.options.has_indices && flags.contains('d'))
-            || (self.options.lookbehind_assertion
-                && (pattern.contains("(?<=") || pattern.contains("(?<!")))
     }
 }
 
@@ -83,7 +74,7 @@ impl<'ast> VisitMut<'ast> for RegexpPass<'_, 'ast> {
         };
         let pattern = self.ast.get_utf8(regex.pattern(self.ast));
         let flags = self.ast.get_utf8(regex.flags(self.ast));
-        if !self.needs_regexp_constructor(pattern, flags) {
+        if !self.needs_regexp_constructor(flags) {
             return None;
         }
 

@@ -51,8 +51,34 @@ fn resolve_env(
     if let Some(features) = features {
         for (&feature, &enabled) in features {
             match feature {
-                JsFeature::ClassStaticBlock => env.es2022.static_blocks = enabled,
+                JsFeature::ExponentiationOperator => env.es2016.exponentiation = enabled,
+                JsFeature::AsyncToGenerator => {
+                    env.es2017.async_to_generator = enabled.then(Default::default);
+                }
+                JsFeature::AsyncGeneratorFunctions => {
+                    env.es2017.async_generator_functions = enabled.then(Default::default);
+                }
+                JsFeature::ObjectRestSpread => {
+                    env.es2018.object_rest_spread = enabled.then(Default::default);
+                }
                 JsFeature::OptionalCatchBinding => env.es2019.optional_catch_binding = enabled,
+                JsFeature::ExportNamespaceFrom => env.es2020.export_namespace_from = enabled,
+                JsFeature::NullishCoalescingOperator => {
+                    env.es2020.nullish_coalescing = enabled.then(Default::default);
+                }
+                JsFeature::OptionalChaining => {
+                    env.es2020.optional_chaining = enabled.then(Default::default);
+                }
+                JsFeature::LogicalAssignmentOperators => env.es2021.logical_assignments = enabled,
+                JsFeature::ClassStaticBlock => env.es2022.static_blocks = enabled,
+                JsFeature::ClassProperties => {
+                    env.es2022.class_properties = enabled.then(Default::default);
+                }
+                JsFeature::PrivatePropertyInObject => env.es2022.private_in_object = enabled,
+                JsFeature::DotallRegex => env.regexp.dot_all_regex = enabled,
+                JsFeature::StickyRegex => env.regexp.sticky_regex = enabled,
+                JsFeature::UnicodeRegex => env.regexp.unicode_regex = enabled,
+                JsFeature::UnicodeSetsRegex => env.regexp.unicode_sets_regex = enabled,
             }
         }
     }

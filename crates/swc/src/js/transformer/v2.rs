@@ -43,6 +43,7 @@ pub(super) fn to_options(
             match feature {
                 JsFeature::ClassStaticBlock => defaults.es2022.static_blocks = enabled,
                 JsFeature::OptionalCatchBinding => defaults.es2019.optional_catch_binding = enabled,
+                feature => unimplemented!("transformer v2 does not support feature `{feature:?}`"),
             }
         }
     }

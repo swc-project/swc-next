@@ -91,12 +91,9 @@ config!(/// Explicit ES2022 transform overrides.
     }
 );
 config!(
-    /// Explicit RegExp overrides. Indices and lookbehind have no automatic
-    /// target selection in SWC's preset; they must be enabled explicitly.
+    /// Explicit RegExp overrides.
     RegExpConfig {
         dot_all_regex: bool,
-        has_indices: bool,
-        lookbehind_assertion: bool,
         /// Reserved for named capture group lowering. Currently ignored.
         named_capturing_groups_regex: bool,
         /// Reserved for duplicate named capture group lowering. Currently ignored.
@@ -236,8 +233,6 @@ impl EnvConfig {
             options.regexp,
             self.regexp,
             dot_all_regex,
-            has_indices,
-            lookbehind_assertion,
             named_capturing_groups_regex,
             duplicate_named_capturing_groups_regex,
             sticky_regex,
