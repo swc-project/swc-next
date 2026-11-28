@@ -237,7 +237,43 @@ impl<'ast> StatementGap<'_, 'ast> {
             .is_some_and(|tail| tail.modes.current == ContentMode::Verbatim)
     }
 
+    fn retains_case_terminator(&self) -> bool {
+        self.next.is_none()
+            && matches!(
+                self.kind,
+                StatementSequenceKind::Case {
+                    retain_last_terminator: true,
+                    ..
+                }
+            )
+    }
+
+    #[inline]
     pub(super) fn resolve(
+        self,
+        formatter: &Formatter<'ast, '_>,
+        mode: ContentMode,
+        source_line: StatementSourceLine,
+        flat_source: bool,
+        suppression: Option<&StatementSuppressionTail>,
+    ) -> Result<StatementEnding, FormatError> {
+        // Without a source-owned separator, explicit semicolons need no lookahead.
+        if formatter.options.semicolons == Semicolons::Always
+            && !source_line.owns()
+            && suppression.is_none()
+            && self.current.annotation_tail.is_none()
+            && !self.retains_case_terminator()
+        {
+            return Ok(StatementEnding {
+                punctuation: StatementPunctuation::Canonical(Semicolons::Always),
+                continuation: ContinuationBoundary::End,
+                source_packet: None,
+            });
+        }
+        self.resolve_source_or_asi(formatter, mode, source_line, flat_source, suppression)
+    }
+
+    fn resolve_source_or_asi(
         self,
         formatter: &Formatter<'ast, '_>,
         mode: ContentMode,
@@ -261,13 +297,7 @@ impl<'ast> StatementGap<'_, 'ast> {
                 StatementPunctuation::Canonical(Semicolons::AsNeeded),
                 StatementPunctuation::Source,
             )
-        } else if matches!(
-            self.kind,
-            StatementSequenceKind::Case {
-                retain_last_terminator: true,
-                ..
-            }
-        ) && self.next.is_none()
+        } else if self.retains_case_terminator()
             && let Some(source) = source
         {
             StatementPunctuation::Source(source)
