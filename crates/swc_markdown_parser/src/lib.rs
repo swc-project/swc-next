@@ -11,7 +11,7 @@ pub use block::{
 pub use inline::{delimiter_flanking, emphasis_runs_match};
 pub use reference::character_reference;
 mod syntax;
-pub use syntax::{SyntaxKind, SyntaxNode, SyntaxPart, SyntaxRole};
+pub use syntax::{SyntaxCursor, SyntaxKind, SyntaxPart, SyntaxRole, SyntaxView};
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -539,6 +539,20 @@ mod tests {
         nodes
     }
 
+    impl SyntaxCursor<'_> {
+        fn children(self) -> Vec<Self> {
+            let mut children = Vec::new();
+            self.for_each_child(|node| children.push(node));
+            children
+        }
+
+        fn descendants(self) -> impl Iterator<Item = Self> {
+            let mut nodes = Vec::new();
+            self.walk(&mut |node| nodes.push(node));
+            nodes.into_iter()
+        }
+    }
+
     #[test]
     fn source_lines() {
         let mut document = parse("one\ntwo\n\nthree");
@@ -564,11 +578,11 @@ mod tests {
         let doc = parse(&source);
         let tree = doc.syntax();
         let link = tree
-            .walk()
+            .descendants()
             .find(|node| matches!(node.kind, SyntaxKind::Link { .. }))
             .unwrap();
         let emphasis: Vec<_> = link
-            .walk()
+            .descendants()
             .filter(|node| node.kind == SyntaxKind::Emphasis)
             .map(|node| node.span)
             .collect();
@@ -619,8 +633,8 @@ mod tests {
         fn body(source: &str, kind: SyntaxKind) -> Vec<(&str, bool, u8)> {
             let document = parse_extended(source);
             let syntax = document.syntax();
-            let node = syntax.walk().find(|node| node.kind == kind).unwrap();
-            node.container_lines(source)
+            let node = syntax.descendants().find(|node| node.kind == kind).unwrap();
+            node.container_lines()
                 .unwrap()
                 .map(|line| (line.content.text(source), line.lazy, line.virtual_spaces))
                 .collect()
@@ -725,7 +739,7 @@ mod tests {
             let document = parse(source);
             let syntax = document.syntax();
             syntax
-                .walk()
+                .descendants()
                 .filter(|node| matches!(node.kind, SyntaxKind::Link { .. }))
                 .map(|node| node.span.text(source))
                 .collect()
@@ -805,15 +819,15 @@ mod tests {
     fn footnote_paragraphs() {
         let doc = parse_extended("[^n]: first\ncontinued\n\noutside");
         let tree = doc.syntax();
-        let note = &tree.children[0];
+        let note = tree.children()[0];
         assert_eq!(note.kind, SyntaxKind::FootnoteDefinition);
-        assert_eq!(doc.text(note.children[0].span), "first\ncontinued");
-        assert_eq!(doc.text(tree.children[2].span), "outside");
+        assert_eq!(doc.text(note.children()[0].span), "first\ncontinued");
+        assert_eq!(doc.text(tree.children()[2].span), "outside");
 
         let doc = parse_extended("[^n]: first\n\n    second\ncontinued");
         let tree = doc.syntax();
         assert_eq!(
-            doc.text(tree.children[0].children[2].span),
+            doc.text(tree.children()[0].children()[2].span),
             "second\ncontinued"
         );
     }
@@ -822,11 +836,11 @@ mod tests {
     fn description_paragraphs() {
         let doc = parse_extended("Term\n: first\n\n    second\n\n  outside");
         let tree = doc.syntax();
-        let description = &tree.children[0].children[1];
+        let description = tree.children()[0].children()[1];
         assert_eq!(description.kind, SyntaxKind::Description);
-        assert_eq!(description.children[2].kind, SyntaxKind::Paragraph);
-        assert_eq!(doc.text(description.children[2].span), "second");
-        assert_eq!(doc.text(tree.children[2].span).trim_start(), "outside");
+        assert_eq!(description.children()[2].kind, SyntaxKind::Paragraph);
+        assert_eq!(doc.text(description.children()[2].span), "second");
+        assert_eq!(doc.text(tree.children()[2].span).trim_start(), "outside");
     }
 
     #[test]
@@ -859,27 +873,27 @@ mod tests {
 
         let doc = parse("> - item\n\t~~~\noutside");
         let tree = doc.syntax();
-        let quote = &tree.children[0];
-        assert_eq!(doc.text(quote.children[0].span), "- item\n\t~~~");
-        assert_eq!(doc.text(quote.children[1].span), "outside");
+        let quote = tree.children()[0];
+        assert_eq!(doc.text(quote.children()[0].span), "- item\n\t~~~");
+        assert_eq!(doc.text(quote.children()[1].span), "outside");
 
         let doc = parse("> [^n]: note\n> continued\n> 2. item\nnext");
         let tree = doc.syntax();
-        let list = &tree.children[0].children[1];
+        let list = tree.children()[0].children()[1];
         assert_eq!(list.kind, SyntaxKind::List { ordered: true });
         assert_eq!(doc.text(list.span), "2. item\nnext");
 
         let doc = parse("> > a\n> +");
         let tree = doc.syntax();
         assert_eq!(
-            tree.children[0].children[1].kind,
+            tree.children()[0].children()[1].kind,
             SyntaxKind::List { ordered: false }
         );
 
         let doc = parse("> a\n> 2. text\ncontinued");
         let tree = doc.syntax();
-        assert_eq!(tree.children[0].children.len(), 1);
-        assert_eq!(doc.text(tree.children[0].span), doc.source());
+        assert_eq!(tree.children()[0].children().len(), 1);
+        assert_eq!(doc.text(tree.children()[0].span), doc.source());
 
         let doc = parse("> > <pre>\n> > code\n> paragraph\ncontinued");
         let BlockKind::BlockQuote(children) = &doc.blocks[0].kind else {
@@ -901,7 +915,7 @@ mod tests {
         let doc = parse("> a | b\n> - | -\nc | d");
         let tree = doc.syntax();
         assert_eq!(
-            tree.children[0].children[1].kind,
+            tree.children()[0].children()[1].kind,
             SyntaxKind::List { ordered: false }
         );
 
@@ -909,14 +923,14 @@ mod tests {
         assert_eq!(doc.text(doc.blocks[1].span), "|c|");
         let tree = doc.syntax();
         let table = tree
-            .walk()
+            .descendants()
             .find(|node| node.kind == SyntaxKind::Table)
             .unwrap();
-        assert_eq!(table.children.len(), 2);
+        assert_eq!(table.children().len(), 2);
 
         let doc = parse("> a | b\n-|-\nc | d");
         assert_eq!(
-            doc.syntax().children[0].children[0].kind,
+            doc.syntax().children()[0].children()[0].kind,
             SyntaxKind::Paragraph
         );
 
@@ -928,14 +942,26 @@ mod tests {
 
     #[test]
     fn lexical_fields() {
+        let doc = parse("# *first* and last ##");
+        let heading = doc.syntax().children()[0];
+        assert_eq!(
+            doc.text(heading.heading_content().unwrap()),
+            "*first* and last"
+        );
+
+        let doc = parse("#");
+        assert!(doc.syntax().children()[0].heading_content().is_none());
+
         let doc = parse("> [](< > \"\")\r\n> ![][id]");
         let view = doc.syntax();
         let links: Vec<_> = view
-            .walk()
+            .descendants()
             .filter(|n| matches!(n.kind, SyntaxKind::Link { .. }))
             .collect();
         assert_eq!(links.len(), 2);
+        let mut fields = Vec::new();
         let empty = links[0]
+            .read(&mut fields)
             .parts
             .iter()
             .find(|p| p.role == SyntaxRole::Title)
@@ -945,17 +971,21 @@ mod tests {
             links[0].fragments_in(empty.span).collect::<Vec<_>>(),
             [empty.span]
         );
-        for node in view.walk() {
-            let mut ranges: Vec<_> = node
-                .gaps()
-                .chain(node.children.iter().map(|c| c.span))
-                .collect();
+        view.walk(&mut |node| {
+            let mut ranges = Vec::new();
+            node.for_each_gap(|gap| ranges.push(gap));
+            node.for_each_child(|child| ranges.push(child.span));
             ranges.sort_by_key(|s| (s.start, s.end));
             let combined: String = ranges.into_iter().map(|r| doc.text(r)).collect();
             assert_eq!(combined, doc.text(node.span));
-        }
+        });
 
         let doc = parse("> ~~~text\r\n> 一\r\n> two\r\n> ~~~");
+        let node = doc.syntax().children()[0].children()[0];
+        assert_eq!(node.lines().len(), 2);
+        let surface: String = node.fragments().map(|span| doc.text(span)).collect();
+        assert_eq!(surface, "~~~text\r\n一\r\ntwo\r\n~~~");
+
         let BlockKind::BlockQuote(children) = &doc.blocks[0].kind else {
             panic!()
         };
@@ -968,6 +998,16 @@ mod tests {
             ["一\r\n", "two"]
         );
         assert!(code.contiguous_range().is_none());
+
+        let doc = parse("> *one*\r\n> two");
+        let emphasis = doc
+            .syntax()
+            .descendants()
+            .find(|n| n.kind == SyntaxKind::Emphasis)
+            .unwrap();
+        let entire = Span::new(0, doc.source().len());
+        let fragments: Vec<_> = emphasis.fragments_in(entire).map(|s| doc.text(s)).collect();
+        assert_eq!(fragments, ["*one*", "\r\n"]);
     }
 
     #[test]
@@ -976,12 +1016,12 @@ mod tests {
             let document = parse(source);
             let syntax = document.syntax();
             syntax
-                .walk()
+                .descendants()
                 .filter(|node| node.kind == SyntaxKind::Escape)
                 .map(|node| {
                     assert_eq!(node.fragments().collect::<Vec<_>>(), [node.span]);
                     assert_eq!(
-                        node.parts,
+                        node.read(&mut Vec::new()).parts,
                         [SyntaxPart {
                             role: SyntaxRole::Marker,
                             span: Span::new(node.span.start, node.span.start + 1),
@@ -1019,7 +1059,7 @@ mod tests {
             let document = parse(source);
             let syntax = document.syntax();
             syntax
-                .walk()
+                .descendants()
                 .filter(|node| node.kind == SyntaxKind::Entity)
                 .map(|node| node.span.text(source))
                 .collect()
@@ -1066,7 +1106,7 @@ mod tests {
         );
         let root = doc.syntax();
         let recovered = root
-            .walk()
+            .descendants()
             .find(|n| n.kind == SyntaxKind::Recovery(RecoveryReason::InlineWork))
             .unwrap();
         assert_eq!(doc.text(recovered.span), "一");
@@ -1093,7 +1133,7 @@ mod tests {
         let doc = parse(&source);
         let tree = doc.syntax();
         let recovered = tree
-            .walk()
+            .descendants()
             .find(|node| node.kind == SyntaxKind::Recovery(RecoveryReason::Nesting))
             .unwrap();
         assert_eq!(doc.text(recovered.span), "> > text\n> more\nlast");

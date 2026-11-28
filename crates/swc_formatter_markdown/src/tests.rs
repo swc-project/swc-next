@@ -6,7 +6,8 @@ use swc_next_formatter_host::{
     EmbeddedRequest, FormatContext, FormatSession, InputKind, PreserveReason,
 };
 use swc_next_markdown_parser::{
-    BlockKind, Dialect, Document, InlineKind, ParseOptions, SyntaxKind, parse, parse_with_options,
+    BlockExtension, BlockKind, Dialect, Document, Inline, InlineKind, ParseOptions, parse,
+    parse_with_options,
 };
 
 use crate::{MarkdownDocumentProducer, ProseWrap, SyntaxOptions, ast_to_doc, plugin_document};
@@ -233,22 +234,24 @@ fn list_html() {
 
 #[test]
 fn footnotes() {
-    fn continuation(source: &str) -> (SyntaxKind, &str) {
-        let document = parse(source);
-        let root = document.syntax();
-        let [footnote] = root.children.as_slice() else {
+    fn continuation<'a>(document: &'a Document<'_>) -> &'a Inline {
+        let [footnote] = document.blocks.as_slice() else {
             panic!("expected one footnote");
         };
-        assert_eq!(footnote.kind, SyntaxKind::FootnoteDefinition);
-        let [paragraph] = footnote.children.as_slice() else {
+        let BlockKind::Extension(BlockExtension::Footnote { blocks, .. }) = &footnote.kind else {
+            panic!("expected a footnote definition");
+        };
+        let [paragraph] = blocks.as_slice() else {
             panic!("expected one paragraph");
         };
-        assert_eq!(paragraph.kind, SyntaxKind::Paragraph);
-        let [_, hard_break, next] = paragraph.children.as_slice() else {
+        let BlockKind::Paragraph(children) = &paragraph.kind else {
+            panic!("expected a paragraph");
+        };
+        let [_, hard_break, next] = children.as_slice() else {
             panic!("expected text on both sides of a hard break");
         };
-        assert_eq!(hard_break.kind, SyntaxKind::HardBreak);
-        (next.kind, document.text(next.span))
+        assert!(matches!(hard_break.kind, InlineKind::HardBreak));
+        next
     }
 
     let layout = PrintOptions::default();
@@ -260,12 +263,18 @@ fn footnotes() {
     let source = "[^n]: first  \n    2. second\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, source);
-    assert_eq!(continuation(&result), (SyntaxKind::Text, "2. second"));
+    let document = parse(&result);
+    let next = continuation(&document);
+    assert!(matches!(next.kind, InlineKind::Text));
+    assert_eq!(document.text(next.span), "2. second");
 
     let source = "[^n]: first  \n    <span>\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, source);
-    assert_eq!(continuation(&result), (SyntaxKind::InlineHtml, "<span>"));
+    let document = parse(&result);
+    let next = continuation(&document);
+    assert!(matches!(next.kind, InlineKind::Html));
+    assert_eq!(document.text(next.span), "<span>");
 
     let source = "[^n]: first\n    2. second\n";
     assert_eq!(format(source, layout, syntax), "[^n]: first 2. second\n");
