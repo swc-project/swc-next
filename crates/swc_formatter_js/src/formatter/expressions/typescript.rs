@@ -507,6 +507,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(None)
     }
 
+    #[inline]
     pub(super) fn ts_binary_operand_needs_parentheses(
         &self,
         data: ExprData,
@@ -514,9 +515,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         side: OperandSide,
         mode: ContentMode,
     ) -> bool {
-        if !self.ast.is_ts() {
-            return false;
-        }
+        self.ast.is_ts() && self.instantiation_operand_needs_parentheses(data, operator, side, mode)
+    }
+
+    fn instantiation_operand_needs_parentheses(
+        &self,
+        data: ExprData,
+        operator: BinaryOperatorKind,
+        side: OperandSide,
+        mode: ContentMode,
+    ) -> bool {
         let BinaryOperatorKind::Binary(operator) = operator else {
             return false;
         };
