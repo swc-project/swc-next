@@ -58,9 +58,7 @@ pub(super) fn inline_kind(inline: &Inline) -> K {
         | InlineKind::Extension(InlineExtension::WikiLink | InlineExtension::Liquid) => K::Raw,
         InlineKind::Extension(InlineExtension::Entity) => K::Entity,
         InlineKind::Extension(InlineExtension::Footnote { .. }) => K::FootnoteReference,
-        InlineKind::Extension(InlineExtension::Math { opening, .. }) => K::Math {
-            display: opening.len() == 2,
-        },
+        InlineKind::Extension(InlineExtension::Math { display }) => K::Math { display: *display },
         InlineKind::Recovery(why) => K::Recovery(*why),
     }
 }
@@ -179,12 +177,9 @@ pub(super) fn inline_parts(source: &str, i: &Inline, kind: K, output: &mut Vec<S
     let s = i.span;
     match &i.kind {
         InlineKind::Escape => fields.0.push(escape_marker(s)),
-        InlineKind::CodeSpan {
-            opening, closing, ..
-        }
-        | InlineKind::Extension(InlineExtension::Math { opening, closing }) => {
-            fields.push(R::Marker, *opening);
-            fields.push(R::Marker, *closing);
+        InlineKind::CodeSpan { width, .. } => fields.delimiters(s, *width),
+        InlineKind::Extension(InlineExtension::Math { display }) => {
+            fields.delimiters(s, 1 + usize::from(*display));
         }
         InlineKind::Emphasis(_) | InlineKind::Strong(_) | InlineKind::Delete(_) => {
             let width = match kind {
