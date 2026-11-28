@@ -141,7 +141,7 @@ export function decodeDoc(buffer, options = { tabWidth: 2 }, labels = []) {
     });
   }
   if (hasEntries(docs[0])) throw invalid();
-  return docs[0];
+  return { doc: docs[0], labelData };
 }
 
 // Validate every fragment, including unreachable ones, without recursive walks.

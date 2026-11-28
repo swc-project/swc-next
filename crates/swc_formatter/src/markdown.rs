@@ -8,7 +8,7 @@ use swc_next_formatter_host::{EmbeddedDispatcher, EmbeddedError, EmbeddedOptions
 pub use swc_next_formatter_markdown::{MarkdownDocumentProducer, ProseWrap, SyntaxOptions};
 use swc_next_markdown_parser::Document;
 
-use crate::{BuiltinFormatters, restore_bom};
+use crate::{BuiltinFormatters, print_source_document};
 
 /// Options for whole-document Markdown formatting.
 #[derive(Clone, Copy, Debug, Default)]
@@ -49,7 +49,7 @@ pub fn format_with_dispatcher(
     let session = FormatSession::new(options.layout);
     let context = session.context_with_embedded(dispatcher, options.embedded);
     let doc = context.produce(&MarkdownDocumentProducer, source, &options.syntax)?;
-    Ok(restore_bom(source, doc.print(options.layout)))
+    Ok(print_source_document(source, doc, options.layout))
 }
 
 /// Format a parsed document using the supplied host, preserving its file-leading BOM.
@@ -61,5 +61,5 @@ pub fn format_ast_with_dispatcher(
     let session = FormatSession::new(options.layout);
     let context = session.context_with_embedded(dispatcher, options.embedded);
     let doc = swc_next_formatter_markdown::ast_to_doc(ast, context, options.syntax)?;
-    Ok(restore_bom(ast.source(), doc.print(options.layout)))
+    Ok(print_source_document(ast.source(), doc, options.layout))
 }

@@ -139,7 +139,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if !self.has_suppression {
             return None;
         }
-        let comments = self.comments.in_range(Span::new(span.start, limit));
+        let comments = self.source_comments_in_range(Span::new(span.start, limit));
         let mut first = comments.len();
         let mut following = limit;
         let mut suppression = false;
@@ -279,7 +279,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let expression = node.test(self.ast).span(self.ast);
                     let end = node.span(self.ast).end;
                     let span = Span::new(expression.end, end);
-                    let closing = self.find_token(span, self.comments.in_range(span), ")");
+                    let closing = self.find_token(span, self.source_comments_in_range(span), ")");
                     return Semicolon(closing.map_or(end, |closing| closing + 1));
                 }
                 StmtData::WithStatement(node) => {
@@ -488,5 +488,31 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             comments = remaining;
         }
         modes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ContentMode, Formatter, StatementItem, StatementTailRelation};
+    use crate::formatter::with_first_statement;
+
+    #[test]
+    fn statement_gap_comments() {
+        let source = "a;\n/* prettier-ignore */ [ 1 ];";
+        with_first_statement(source, |formatter, statement| {
+            let limit = source.find('[').unwrap() as u32;
+            let following_is_ignored = |f: &Formatter<'_, '_>| {
+                f.prepare_statement_suppression_tail(
+                    StatementItem::Statement(statement),
+                    limit,
+                    StatementTailRelation::Statement,
+                )
+                .is_some_and(|tail| tail.modes.following == ContentMode::Verbatim)
+            };
+
+            assert!(following_is_ignored(formatter));
+            formatter.comments.claim(formatter.ast.comments()).unwrap();
+            assert!(following_is_ignored(formatter));
+        });
     }
 }

@@ -245,8 +245,8 @@ impl<'source> Visit<'source> for RequiredTypeBreak<'_, '_, 'source> {
 
     fn visit_template_element(&mut self, node: TemplateElement) {
         self.required |= self
-            .ast()
-            .get_utf8(node.raw(self.ast()))
+            .formatter
+            .template_element_raw(node)
             .contains(['\r', '\n']);
     }
 }

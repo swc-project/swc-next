@@ -1753,12 +1753,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.format_property_member(property, quoting, continuation_width, writer)
             }
             MemberContent::Signature(mut signature) => {
-                let generics = signature.generics.as_ref().map(|(node, _, _)| *node);
-                let can_group_parameters = self.signature_parameters_can_group(
-                    signature.parameters.count() == 1,
-                    generics,
-                    signature.result.as_ref(),
-                );
                 let group_return = signature.key.is_some();
                 if let Some(key) = &mut signature.key {
                     self.format_type_member_leading(key.leading.take(), writer)?;
@@ -1792,14 +1786,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.format_callable_signature_contents(
                         signature.parameters,
                         signature.result,
-                        signature
-                            .generics
-                            .map(|(node, mode, following)| SignatureGenerics {
+                        signature.generics.map(|(node, mode, following)| {
+                            SignatureGenerics::WithParameters {
                                 node,
                                 mode,
                                 following,
-                            }),
-                        can_group_parameters,
+                            }
+                        }),
                         SignatureResultLayout {
                             grouped: group_return,
                             continuation_width,

@@ -1389,7 +1389,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     *declaration,
                     *context,
                     None,
-                    false,
                     operator_tail_destination,
                     writer,
                 )?;

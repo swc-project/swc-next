@@ -185,8 +185,23 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         comments: &'a [Comment],
         following_start: u32,
     ) -> impl Iterator<Item = (&'a [Comment], SuppressionPosition)> + 'a {
-        let comments = if self.has_suppression { comments } else { &[] };
-        let mut runs = comments
+        self.suppression_runs_with_remainder(comments)
+            .map(move |(run, remaining)| {
+                let following = remaining
+                    .first()
+                    .map_or(following_start, |comment| comment.span.start);
+                let position =
+                    self.source_comment_run_position(run[0], run[run.len() - 1], following);
+                (run, position)
+            })
+    }
+
+    fn suppression_runs_with_remainder<'a>(
+        &'a self,
+        comments: &'a [Comment],
+    ) -> impl Iterator<Item = (&'a [Comment], &'a [Comment])> + 'a {
+        let mut remaining = if self.has_suppression { comments } else { &[] };
+        remaining
             .chunk_by(|left, right| {
                 self.source(Span::new(left.span.end, right.span.start))
                     .chars()
@@ -195,23 +210,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             && !matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')
                     })
             })
-            .peekable();
-        std::iter::from_fn(move || {
-            while let Some(run) = runs.next() {
-                if self.content_mode(run) != ContentMode::Verbatim {
-                    continue;
-                }
-                let first = run.first()?;
-                let last = run.last()?;
-                let following = runs
-                    .peek()
-                    .and_then(|next| next.first())
-                    .map_or(following_start, |comment| comment.span.start);
-                let position = self.source_comment_run_position(*first, *last, following);
-                return Some((run, position));
-            }
-            None
-        })
+            .filter_map(move |run| {
+                remaining = &remaining[run.len()..];
+                (self.content_mode(run) == ContentMode::Verbatim).then_some((run, remaining))
+            })
     }
 
     /// Physical placement belongs to the original run and its actual next frontier.
@@ -254,6 +256,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// Whether this source gap selects verbatim content, even after its comments were printed.
+    pub(super) fn source_content_mode(&self, gap: Span) -> ContentMode {
+        if self.has_suppression {
+            self.content_mode(self.source_comments_in_range(gap))
+        } else {
+            ContentMode::Formatted
+        }
+    }
+
     pub(super) fn delimited_suppression(
         &self,
         target: Span,
@@ -273,43 +284,28 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         following: DelimitedFollowing,
     ) -> Option<DelimitedSuppression> {
         let span = Span::new(target.end, end);
-        let comments = self.comments.in_range(span);
+        let comments = self.source_comments_in_range(span);
         if self.content_mode(comments) != ContentMode::Verbatim {
             return None;
         }
         let mut preceding_target = None;
         let mut following_mode = ContentMode::Formatted;
-        let mut first = 0;
-        while first < comments.len() {
-            let mut last = first + 1;
-            while last < comments.len() {
-                let gap = Span::new(comments[last - 1].span.end, comments[last].span.start);
-                if self.source_line_breaks(gap.start, gap.end) != 0
-                    || !self.source(gap).chars().all(is_source_whitespace)
-                {
-                    break;
-                }
-                last += 1;
+        for (run, remaining) in self.suppression_runs_with_remainder(comments) {
+            let after = run[run.len() - 1];
+            let next = remaining.first().map_or(end, |comment| comment.span.start);
+            let end_of_line = self.comment_run_ends_line(after, next);
+            let preceding = matches!(following, DelimitedFollowing::End)
+                || matches!(following, DelimitedFollowing::ModuleSpecifier) && end_of_line
+                || !self.source_position_starts_line(run[0].span.start)
+                    && (end_of_line
+                        || self
+                            .find_comma(Span::new(after.span.end, end), remaining)
+                            .is_some());
+            if preceding {
+                preceding_target = Some(target);
+            } else {
+                following_mode = ContentMode::Verbatim;
             }
-            let run = &comments[first..last];
-            if self.content_mode(run) == ContentMode::Verbatim {
-                let after = run[run.len() - 1];
-                let next = comments.get(last).map_or(end, |comment| comment.span.start);
-                let end_of_line = self.comment_run_ends_line(after, next);
-                let preceding = matches!(following, DelimitedFollowing::End)
-                    || matches!(following, DelimitedFollowing::ModuleSpecifier) && end_of_line
-                    || !self.source_position_starts_line(run[0].span.start)
-                        && (end_of_line
-                            || self
-                                .find_token(Span::new(after.span.end, end), &comments[last..], ",")
-                                .is_some());
-                if preceding {
-                    preceding_target = Some(target);
-                } else {
-                    following_mode = ContentMode::Verbatim;
-                }
-            }
-            first = last;
         }
         Some(DelimitedSuppression {
             preceding: preceding_target,
@@ -324,7 +320,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         gap: Span,
         following: DelimitedFollowing,
     ) -> DelimitedSourceGap {
-        let comments = self.comments.in_range(gap);
+        let comments = self.source_comments_in_range(gap);
         let mut source_end = gap.start;
         let mut leading = true;
         let mut leading_line = false;
@@ -387,8 +383,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if gap.break_parent {
             writer.break_parent();
         }
-        let comments = self.comments.between(gap.source)?;
-        self.comments.claim(comments)?;
+        let comments = self.comments.claim_between(gap.source)?;
         let mut start = gap.source.start;
         for &comment in comments {
             let prefix = self.source(Span::new(start, comment.span.start));
@@ -435,9 +430,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 
     pub(super) fn trailing_content_mode(&self, span: Span, terminal: bool) -> ContentMode {
-        if self
-            .trailing_suppression_from_comments(span, self.comments.in_range(span), terminal)
-            .is_some()
+        if self.has_suppression
+            && self
+                .trailing_suppression_from_comments(
+                    span,
+                    self.source_comments_in_range(span),
+                    terminal,
+                )
+                .is_some()
         {
             ContentMode::Verbatim
         } else {
@@ -482,9 +482,35 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         span: Span,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let comments = self.comments.between(span)?;
-        self.comments.claim(comments)?;
+        self.comments.claim_between(span)?;
         self.write_verbatim_source(span, writer);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ContentMode, DelimitedFollowing, Formatter, Span};
+    use crate::formatter::with_first_statement;
+
+    #[test]
+    fn delimited_ignore_targets() {
+        let source = "call(first /* prettier-ignore */,\n/* prettier-ignore */ second);";
+        with_first_statement(source, |formatter, _| {
+            let start = source.find("first").unwrap() as u32;
+            let target = Span::new(start, start + 5);
+            let end = source.find("second").unwrap() as u32;
+            let check = |f: &Formatter<'_, '_>| {
+                let relation = f
+                    .delimited_suppression(target, end, DelimitedFollowing::Node)
+                    .unwrap();
+                assert_eq!(relation.preceding, Some(target));
+                assert!(relation.following == ContentMode::Verbatim);
+            };
+
+            check(formatter);
+            formatter.comments.claim(formatter.ast.comments()).unwrap();
+            check(formatter);
+        });
     }
 }

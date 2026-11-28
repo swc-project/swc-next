@@ -9,8 +9,8 @@ use crate::formatter::diagnostics::FlatSeparator;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
 use crate::formatter::types::TypeGap;
 use crate::formatter::types::callable::{
-    CallableParameters, SignatureIncoming, SignatureReturn, SignatureReturnDelimiter,
-    SignatureReturnEolTarget,
+    CallableParameters, SignatureGenerics, SignatureIncoming, SignatureReturn,
+    SignatureReturnDelimiter, SignatureReturnEolTarget,
 };
 use crate::formatter::types::generics::{TypeListKind, TypeListPrefix, TypeParameterContext};
 use crate::{FormatError, document::Writer};
@@ -253,12 +253,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         signature: PreparedBodylessSignature<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let generics = signature.generics.as_ref().map(|generic| generic.node);
-        let can_group_parameters = self.signature_parameters_can_group(
-            signature.parameters.count() == 1,
-            generics,
-            signature.result.as_ref(),
-        );
         if let Some(prefix) = signature.prefix {
             self.format_type_gap(
                 prefix,
@@ -270,7 +264,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
         }
-        if let Some(generic) = signature.generics {
+        let generics = if let Some(generic) = signature.generics {
             if let Some(ref prefix) = generic.prefix {
                 self.format_type_list_prefix(prefix, writer)?;
             }
@@ -281,13 +275,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 writer,
             )?;
             self.format_type_gap(generic.following, FlatSeparator::Empty, writer)?;
-        }
+            Some(SignatureGenerics::InHeader(generic.node))
+        } else {
+            None
+        };
         writer.group(false, |writer| {
             self.format_callable_signature_contents(
                 signature.parameters,
                 signature.result,
-                None,
-                can_group_parameters,
+                generics,
                 Default::default(),
                 writer,
             )

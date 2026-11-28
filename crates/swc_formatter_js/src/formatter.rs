@@ -1,5 +1,6 @@
 //! Formatting context and the program entry point.
 
+mod array_slots;
 mod bindings;
 mod classes;
 mod comments;
@@ -360,4 +361,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )
         })
     }
+}
+
+#[cfg(test)]
+fn with_first_statement(
+    source: &str,
+    check: impl FnOnce(&mut Formatter<'_, '_>, swc_next_ecma_ast::Stmt),
+) {
+    let allocator = swc_next_allocator::Allocator::new();
+    let parser = swc_next_ecma_parser::Options {
+        lang: swc_next_ecma_ast::Lang::Ts,
+        ..Default::default()
+    };
+    let parsed = crate::EcmaDocumentProducer::new(parser)
+        .parse(&allocator, source)
+        .unwrap();
+    // SAFETY: The formatter only reads handles from this unmodified AST.
+    let ast = unsafe { parsed.ast() };
+    let first = ast.root_program().body(ast).iter().next().unwrap();
+    let mut formatter = Formatter::new(ast, FormatOptions::prettier(), &allocator);
+    check(&mut formatter, ast.get_node_in_sub_range(first));
 }

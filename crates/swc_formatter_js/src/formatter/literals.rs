@@ -31,18 +31,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         string::format_string(raw, self.options.quote_style, context)
     }
 
+    pub(super) fn string_literal_raw_content(&self, literal: StringLiteral) -> &'ast str {
+        string::raw_content(self.ast.get_utf8(literal.raw(self.ast)))
+    }
+
     pub(super) fn format_numeric_literal(
         &self,
         literal: NumericLiteral,
         writer: &mut Writer<'ast>,
     ) {
-        match literal.raw(self.ast) {
-            Some(raw) => writer.text(number::format_number(self.ast.get_utf8(raw))),
-            None => {
-                let mut buffer = zmij_ecma::Buffer::new();
-                writer.text_copied(buffer.format(literal.value(self.ast)));
-            }
-        }
+        writer.text(self.numeric_literal_text(literal));
     }
 
     pub(in crate::formatter) fn numeric_literal_text(
@@ -51,11 +49,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Cow<'ast, str> {
         match literal.raw(self.ast) {
             Some(raw) => number::format_number(self.ast.get_utf8(raw)),
-            None => Cow::Owned(
-                zmij_ecma::Buffer::new()
-                    .format(literal.value(self.ast))
-                    .to_owned(),
-            ),
+            None => {
+                let mut buffer = zmij_ecma::Buffer::new();
+                Cow::Borrowed(
+                    self.allocator
+                        .alloc_str(buffer.format(literal.value(self.ast))),
+                )
+            }
         }
     }
 

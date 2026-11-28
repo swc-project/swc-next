@@ -23,6 +23,49 @@ fn indentation_width_bounds() {
 }
 
 #[test]
+fn layout_configuration() {
+    use swc_next_formatter::{LineEnding as ConfigLineEnding, PrintConfig, js::JsFormatterConfig};
+
+    let print = PrintConfig {
+        line_ending: Some(ConfigLineEnding::CrLf),
+        ..PrintConfig::default()
+    };
+    let layout = PrintOptions::try_from(print).unwrap();
+    assert_eq!(
+        layout,
+        PrintOptions {
+            line_ending: LineEnding::CrLf,
+            ..PrintOptions::default()
+        }
+    );
+
+    let js = JsFormatterConfig {
+        line_ending: Some(ConfigLineEnding::CrLf),
+        ..JsFormatterConfig::default()
+    };
+    let options = FormatOptions::try_from(js).unwrap();
+    assert_eq!(
+        options,
+        FormatOptions {
+            line_ending: LineEnding::CrLf,
+            ..FormatOptions::default()
+        }
+    );
+
+    let invalid = PrintConfig {
+        indent_width: Some(65),
+        ..print
+    };
+    assert!(PrintOptions::try_from(invalid).is_err());
+
+    let invalid = JsFormatterConfig {
+        indent_width: Some(65),
+        ..js
+    };
+    assert!(FormatOptions::try_from(invalid).is_err());
+}
+
+#[test]
 fn parser_options() {
     let options = FormatOptions::prettier();
     let invalid = format("const = ;", ParserOptions::default(), options);
@@ -67,6 +110,31 @@ fn formatting_results(
         )
         .map(|document| document.print(session.print_options()));
     [source_result, ast_result, document_result]
+}
+
+#[test]
+fn edited_numeric_literal() {
+    let allocator = Allocator::new();
+    let parser = ParserOptions {
+        comments: CommentMode::Flat,
+        preserve_parens: true,
+        ..Default::default()
+    };
+    let mut parsed = Parser::init(&allocator, "0x10;", parser, NoTokenParserConfig).parse();
+    // SAFETY: The handle comes from this program. Editing the value clears its source spelling.
+    let ast = unsafe { parsed.ast.ast_mut() };
+    let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+    let expression = statement
+        .as_expression_statement(ast)
+        .unwrap()
+        .expression(ast);
+    expression
+        .as_numeric_literal(ast)
+        .unwrap()
+        .set_value(ast, 2.5);
+
+    let output = format_ast(&parsed.ast, FormatOptions::prettier()).unwrap();
+    assert_eq!(output, "2.5;\n");
 }
 
 #[test]

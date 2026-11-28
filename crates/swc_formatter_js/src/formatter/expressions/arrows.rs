@@ -678,10 +678,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.layout_line_starts_line(start) {
             return false;
         }
-        template.quasis(self.ast).iter().any(|id| {
-            let quasi = self.ast.get_node_in_sub_range(id);
-            self.ast.get_utf8(quasi.raw(self.ast)).contains('\n')
-        })
+        self.template_raw_parts(template)
+            .any(|raw| raw.contains('\n'))
     }
 
     fn prepare_arrow_jsx_comments(

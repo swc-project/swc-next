@@ -6,10 +6,10 @@ use std::borrow::Cow;
 
 use swc_next_ecma_ast::{
     Comment, CommentKind, Expr, ExprData, GetSpan, JsxAttribute, JsxAttributeItemData,
-    JsxAttributeName, JsxAttributeNameData, JsxAttributeValueData, JsxClosingElement, JsxElement,
-    JsxElementName, JsxElementNameData, JsxExpressionContainer, JsxExpressionData, JsxFragment,
-    JsxMemberExpression, JsxMemberExpressionObjectData, JsxNamespacedName, JsxOpeningElement,
-    NodeId, NodeKindData, Span, StringLiteral,
+    JsxAttributeName, JsxAttributeNameData, JsxAttributeValueData, JsxChild, JsxClosingElement,
+    JsxElement, JsxElementName, JsxElementNameData, JsxExpressionContainer, JsxExpressionData,
+    JsxFragment, JsxMemberExpression, JsxMemberExpressionObjectData, JsxNamespacedName,
+    JsxOpeningElement, NodeId, NodeKindData, Span, StringLiteral, SubRange,
 };
 
 use super::arrows::ArrowLayout;
@@ -217,51 +217,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_jsx_opening(opening, writer)?;
             return self.format_jsx_closing(closing, writer);
         }
-        let (opening_doc, opening_layout) = self.record_jsx_opening(opening, writer)?;
-        let span = node.span(ast);
-        let fixed_line = self.line_constraint(span.start, span.end) == LineConstraint::SameLine;
-        let (children_doc, children_layout) = writer
-            .record_with_value(|writer| self.format_jsx_children(children, fixed_line, writer))?;
-        let opening_constraint = children_layout.source.map_or_else(
-            || self.line_constraint(opening.span(ast).end, closing.span(ast).start),
-            |source| self.line_constraint(opening.span(ast).end, source.start),
-        );
-        let closing_constraint = children_layout
-            .source
-            .map_or(LineConstraint::Unconstrained, |source| {
-                self.line_constraint(source.end, closing.span(ast).start)
-            });
-        if children_layout.template_only {
-            writer.write_fragment(opening_doc);
-            opening_constraint.write(writer, FlatSeparator::Empty, |_| {});
-            writer.write_fragment(children_doc);
-            closing_constraint.write(writer, FlatSeparator::Empty, |_| {});
-            return self.format_jsx_closing(closing, writer);
-        }
-        let expand = children_layout.has_content
-            && (opening_layout.multiple_attributes
-                || children_layout.contains_tag
-                || children_layout.multiple_expressions);
-        writer.group_with_id(expand.into(), children_layout.group, |writer| {
-            writer.write_fragment(opening_doc);
-            if children_layout.has_content {
-                writer.indent(|writer| {
-                    opening_constraint.write(writer, FlatSeparator::Empty, |writer| {
-                        children_layout.leading_line.write(writer);
-                    });
-                    children_layout.write(children_doc, writer);
-                });
-            } else {
-                opening_constraint.write(writer, FlatSeparator::Empty, |_| {});
-                children_layout.write(children_doc, writer);
-            }
-            closing_constraint.write(writer, FlatSeparator::Empty, |writer| {
-                if children_layout.has_content {
-                    children_layout.trailing_line.write(writer);
-                }
-            });
-            self.format_jsx_closing(closing, writer)
-        })
+        let opening_doc = self.record_jsx_opening(opening, writer)?;
+        self.format_jsx_paired_children(
+            children,
+            (opening.span(ast), closing.span(ast)),
+            opening_doc,
+            writer,
+            |formatter, writer| formatter.format_jsx_closing(closing, writer),
+        )
     }
 
     fn format_jsx_closing(
@@ -305,16 +268,33 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let closing = node.closing_fragment(ast).span(ast);
         if node.children(ast).is_empty() {
             self.format_jsx_fragment_opening(opening, writer)?;
-            self.format_jsx_fragment_closing(closing, writer)?;
-            return Ok(());
+            return self.format_jsx_fragment_closing(closing, writer);
         }
-        let (opening_doc, ()) =
-            writer.record_with_value(|writer| self.format_jsx_fragment_opening(opening, writer))?;
+        let opening_doc = writer.record_with_value(|writer| {
+            self.format_jsx_fragment_opening(opening, writer)?;
+            Ok::<_, FormatError>(JsxOpeningLayout::default())
+        })?;
+        self.format_jsx_paired_children(
+            node.children(ast),
+            (opening, closing),
+            opening_doc,
+            writer,
+            |formatter, writer| formatter.format_jsx_fragment_closing(closing, writer),
+        )
+    }
+
+    fn format_jsx_paired_children(
+        &mut self,
+        children: SubRange<JsxChild>,
+        (opening, closing): (Span, Span),
+        (opening_doc, opening_layout): (Fragment<'ast>, JsxOpeningLayout),
+        writer: &mut Writer<'ast>,
+        write_closing: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<(), FormatError>,
+    ) -> Result<(), FormatError> {
         let fixed_line =
             self.line_constraint(opening.start, closing.end) == LineConstraint::SameLine;
-        let (children_doc, layout) = writer.record_with_value(|writer| {
-            self.format_jsx_children(node.children(ast), fixed_line, writer)
-        })?;
+        let (children_doc, layout) = writer
+            .record_with_value(|writer| self.format_jsx_children(children, fixed_line, writer))?;
         let opening_constraint = layout.source.map_or_else(
             || self.line_constraint(opening.end, closing.start),
             |source| self.line_constraint(opening.end, source.start),
@@ -329,10 +309,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             opening_constraint.write(writer, FlatSeparator::Empty, |_| {});
             writer.write_fragment(children_doc);
             closing_constraint.write(writer, FlatSeparator::Empty, |_| {});
-            self.format_jsx_fragment_closing(closing, writer)?;
-            return Ok(());
+            return write_closing(self, writer);
         }
-        let expand = layout.has_content && (layout.contains_tag || layout.multiple_expressions);
+        let expand = layout.has_content
+            && (opening_layout.multiple_attributes
+                || layout.contains_tag
+                || layout.multiple_expressions);
         writer.group_with_id(expand.into(), layout.group, |writer| {
             writer.write_fragment(opening_doc);
             if layout.has_content {
@@ -351,8 +333,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     layout.trailing_line.write(writer);
                 }
             });
-            self.format_jsx_fragment_closing(closing, writer)?;
-            Ok(())
+            write_closing(self, writer)
         })
     }
 

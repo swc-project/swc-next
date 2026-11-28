@@ -25,16 +25,13 @@ mod producer;
 
 use std::{error::Error, fmt};
 
-use swc_next_allocator::Allocator;
-use swc_next_ecma_ast::{AstCtx, Diagnostic, NodeKind, Severity, Span};
-use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
-use swc_next_formatter_host::FormatSession;
+use swc_next_ecma_ast::{Diagnostic, NodeKind, Span};
 
 pub use options::{
     ArrowParentheses, FormatOptions, IndentStyle, IndentWidth, InvalidIndentWidth, LineEnding,
     QuoteProperties, QuoteStyle, Semicolons, SyntaxOptions, TrailingCommas,
 };
-pub use producer::{EcmaDocumentProducer, ast_to_doc};
+pub use producer::{EcmaDocumentProducer, ast_to_doc, format_to_doc_buffer};
 
 /// Prettier version used as the output oracle for [`FormatOptions::prettier`].
 pub const PRETTIER_COMPATIBILITY_VERSION: &str = "3.10.1";
@@ -85,37 +82,3 @@ impl fmt::Display for FormatError {
 }
 
 impl Error for FormatError {}
-
-fn parse_source<'a>(
-    allocator: &'a Allocator,
-    source: &'a str,
-    mut parser_options: ParserOptions,
-) -> Result<AstCtx<'a>, FormatError> {
-    parser_options.comments = CommentMode::Flat;
-    parser_options.preserve_parens = true;
-    let parsed = Parser::init(allocator, source, parser_options, NoTokenParserConfig).parse();
-    if parsed
-        .diagnostics
-        .iter()
-        .any(|diagnostic| diagnostic.severity == Severity::Error)
-    {
-        return Err(FormatError::Parse(parsed.diagnostics));
-    }
-    Ok(parsed.ast)
-}
-
-/// Parse source and encode an unprinted document for the SWCFMT Prettier adapter.
-///
-/// The binary protocol is internal and must match the JavaScript decoder version.
-/// All borrowed source and document storage is released before returning.
-pub fn format_to_doc_buffer(
-    source: &str,
-    parser_options: ParserOptions,
-    options: FormatOptions,
-) -> Result<Vec<u8>, FormatError> {
-    let session = FormatSession::new(options.into());
-    let producer = EcmaDocumentProducer::new(parser_options);
-    Ok(session
-        .produce(&producer, source, &options.into())?
-        .encode())
-}

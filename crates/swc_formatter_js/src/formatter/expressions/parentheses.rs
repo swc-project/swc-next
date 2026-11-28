@@ -383,14 +383,14 @@ struct NumericCastBoundary<'ast> {
     source: SourceCastState,
 }
 
-/// A source operand's opening packet is inspected without extending its operator gap.
+/// The outer pairs retain the comment binding; only the content span can be the raw operand.
 #[derive(Clone, Copy)]
 pub(super) struct SourceOpeningPacket<'ast> {
     outer: Span,
     pub(super) content: Expr,
-    pub(super) content_start: u32,
+    pub(super) content_span: Span,
     pub(super) comments: &'ast [Comment],
-    body_mode: Option<ContentMode>,
+    body_mode: ContentMode,
 }
 
 struct SourceParenthesesComments<'ast> {
@@ -587,20 +587,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if content == expression {
             return None;
         }
-        let content_start = content.span(self.ast).start;
-        let comments = self
-            .comments
-            .in_range(Span::new(outer.start, content_start));
+        let content_span = content.span(self.ast);
+        let comments = self.source_comments_in_range(Span::new(outer.start, content_span.start));
         // Inline packets move with the child's existing prepared head. Only a
         // line-owning packet needs this source envelope to retain its binding.
-        self.suppression_positions(comments, content_start)
+        self.suppression_positions(comments, content_span.start)
             .any(|position| !matches!(position, SuppressionPosition::Inline))
-            .then_some(SourceOpeningPacket {
+            .then(|| SourceOpeningPacket {
                 outer,
                 content,
-                content_start,
+                content_span,
                 comments,
-                body_mode: None,
+                body_mode: self.source_content_mode(Span::new(content_span.end, outer.end)),
             })
     }
 
@@ -640,9 +638,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some(SourceOpeningPacket {
             outer,
             content,
-            content_start: inner.start,
+            content_span: inner,
             comments,
-            body_mode: Some(mode),
+            body_mode: mode,
         })
     }
 
@@ -653,18 +651,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let content_span = source.content.span(self.ast);
+        let content_span = source.content_span;
         let closing = Span::new(content_span.end, source.outer.end);
-        let mode = if context.content_mode == ContentMode::Verbatim {
-            ContentMode::Verbatim
-        } else {
-            source
-                .body_mode
-                .unwrap_or_else(|| self.content_mode(self.comments.in_range(closing)))
-        };
         self.format_verbatim(Span::new(source.outer.start, content_span.start), writer)?;
         let mut pending = None;
-        if mode == ContentMode::Verbatim {
+        if context.content_mode == ContentMode::Verbatim
+            || source.body_mode == ContentMode::Verbatim
+        {
             self.format_verbatim(content_span, writer)?;
         } else {
             let position =
@@ -2395,10 +2388,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if mode == ContentMode::Verbatim || !self.has_suppression {
             return mode;
         }
-        let leading = self
-            .comments
-            .in_range(Span::new(boundary.outer.start, boundary.inner.start));
-        if self.content_mode(leading) == ContentMode::Verbatim {
+        let leading = Span::new(boundary.outer.start, boundary.inner.start);
+        if self.source_content_mode(leading) == ContentMode::Verbatim {
             return ContentMode::Verbatim;
         }
         let trailing = Span::new(boundary.inner.end, boundary.outer.end - 1);
@@ -3875,48 +3866,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionStart, FormatError> {
         let binding = context.resolve_emitted_head_binding(&head, binding);
         let prefix_gap_end = head.gap_end;
-        if context.expression_start.needs_statement_guard()
-            && context.content_mode == ContentMode::Verbatim
-            && head.layout.is_source()
-            && head.comments.last().is_some_and(|comment| {
-                comment.kind == CommentKind::Block
-                    && self.line_breaks(comment.span.end, head.content_start) == 0
-            })
-            && (matches!(
-                context.expression_start,
-                ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
-            ) || self.expression_needs_asi_guard(expression, context)?)
+        if let Some(guard) = context
+            .expression_start
+            .guard_at_comments(self, expression, &context, &mut head, binding, released)?
         {
-            // The guard hugs the final annotation. A split prefix still needs its gap.
-            head.gap_end = None;
-        }
-        if context.expression_start.needs_statement_guard()
-            && self.has_target_annotations
-            && let Some(index) = head
-                .comments
-                .iter()
-                .position(|&comment| self.comment_has_target_annotation(comment))
-                .or_else(|| {
-                    // Removing a wrapper joins this source-bound exterior run
-                    // with its released annotation head. Choose the guard owner
-                    // before either renderer claims or prints its own comments.
-                    (!head.comments.is_empty()
-                        && matches!(binding, CommentBinding::SourceBound)
-                        && released
-                            .iter()
-                            .any(|&comment| self.comment_has_target_annotation(comment)))
-                    .then_some(0)
-                })
-            && (matches!(
-                context.expression_start,
-                ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
-            ) || self.expression_needs_asi_guard(expression, context)?)
-        {
-            let ignored_head =
-                self.has_suppression && context.content_mode == ContentMode::Verbatim;
-            let source_bound = matches!(binding, CommentBinding::SourceBound);
-            let index = if source_bound { 0 } else { index };
-            let (prefix, protected) = head.comments.split_at(index);
+            let (prefix, protected) = head.comments.split_at(guard.prefix_len);
             self.format_node_head(
                 NodeHead {
                     comments: prefix,
@@ -3928,26 +3882,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 array_comments.as_deref_mut(),
                 writer,
             )?;
-            context.expression_start.write_statement_guard(writer);
-            if source_bound {
-                writer.hard_line();
-            } else if ignored_head && !self.comment_is_type_cast(protected[0]) {
-                // A cast's guard belongs directly before its annotation, as in
-                // format_node_head. Only other ignored heads retain their
-                // original line relationship to the surrounding source.
-                let prefix = if self.source_position_starts_line(protected[0].span.start) {
-                    LineConstraint::NewLine(1)
-                } else {
-                    LineConstraint::SameLine
-                };
-                prefix.write(writer, FlatSeparator::Empty, |_| {});
-            } else if protected
-                .iter()
-                .any(|comment| comment.kind == CommentKind::Line)
-                && !self.comment_is_type_cast(protected[0])
-            {
-                writer.space();
-            }
+            guard.write(context.expression_start, writer);
             context.expression_start = ExpressionStart::StatementGuarded;
             head.comments = protected;
         }

@@ -66,7 +66,7 @@ function parser(lang) {
         type: "SWCFMT",
         start: 0,
         end: source.length,
-        doc: decodeDoc(buffer, options),
+        doc: decodeDoc(buffer, options).doc,
       };
     },
   };

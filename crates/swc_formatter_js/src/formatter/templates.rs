@@ -76,10 +76,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         CommentRunLayout::SourceLeading { next, placement }
     }
 
+    /// Template Raw Value comes from the AST. Delimiter offsets come from source spans.
+    pub(super) fn template_element_raw(&self, node: TemplateElement) -> &'ast str {
+        self.ast.get_utf8(node.raw(self.ast))
+    }
+
+    pub(super) fn template_raw_parts(
+        &self,
+        template: TemplateLiteral,
+    ) -> impl Iterator<Item = &'ast str> {
+        template
+            .quasis(self.ast)
+            .iter()
+            .map(|id| self.template_element_raw(self.ast.get_node_in_sub_range(id)))
+    }
+
+    pub(super) fn single_template_raw(&self, template: TemplateLiteral) -> Option<&'ast str> {
+        if !template.expressions(self.ast).is_empty() {
+            return None;
+        }
+        self.single_template_element(template.quasis(self.ast))
+            .map(|element| self.template_element_raw(element))
+    }
+
+    fn single_template_element(
+        &self,
+        quasis: SubRange<TemplateElement>,
+    ) -> Option<TemplateElement> {
+        let id = quasis.first().filter(|_| quasis.len() == 1)?;
+        Some(self.ast.get_node_in_sub_range(id))
+    }
+
     fn template_quasi(&self, node: TemplateElement) -> TemplateQuasi<'ast> {
         TemplateQuasi {
             span: node.span(self.ast),
-            raw: self.ast.get_utf8(node.raw(self.ast)),
+            raw: self.template_element_raw(node),
             tail: node.tail(self.ast),
         }
     }
@@ -89,6 +120,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .source()
             .get(span.start as usize..span.end as usize)
             == Some(token)
+    }
+
+    fn template_slot_between(
+        &self,
+        template: Span,
+        preceding: &TemplateQuasi<'_>,
+        following: &TemplateQuasi<'_>,
+        content: Span,
+    ) -> Result<TemplateSlot, FormatError> {
+        if following.span.end >= template.end
+            || following.span.start > following.span.end
+            || preceding.span.start > preceding.span.end
+            || preceding.tail
+            || preceding.span.end > content.start
+            || content.start > content.end
+            || content.end >= following.span.start
+            || !self.template_token(Span::new(preceding.span.end, preceding.span.end + 2), "${")
+            || !self.template_token(
+                Span::new(following.span.start - 1, following.span.start),
+                "}",
+            )
+            || preceding.span.end + 2 > content.start
+        {
+            return Err(FormatError::unsupported(
+                "template slot geometry",
+                None,
+                template,
+            ));
+        }
+        let interior = Span::new(preceding.span.end + 2, following.span.start - 1);
+        Ok(TemplateSlot {
+            content,
+            interior,
+            source_newline: self.source(interior).contains(['\r', '\n']),
+        })
     }
 
     /// Complete child and comment scopes once, retaining their own finite-width
@@ -188,10 +254,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         quasis: SubRange<TemplateElement>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let Some(first) = quasis.first().filter(|_| quasis.len() == 1) else {
+        let Some(element) = self.single_template_element(quasis) else {
             return Err(FormatError::unsupported("template quasi count", None, span));
         };
-        let quasi = self.template_quasi(self.ast.get_node_in_sub_range(first));
+        let quasi = self.template_quasi(element);
         if quasi.span.start > quasi.span.end
             || !quasi.tail
             || span.start >= span.end
@@ -260,31 +326,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Err(FormatError::unsupported("template quasi count", None, span));
             };
             let next = self.template_quasi(next);
-            let slot_span = slot.span(ast);
-            if next.span.end >= span.end
-                || next.span.start > next.span.end
-                || current.span.start > current.span.end
-                || current.tail
-                || current.span.end > slot_span.start
-                || slot_span.start > slot_span.end
-                || slot_span.end >= next.span.start
-                || !self.template_token(Span::new(current.span.end, current.span.end + 2), "${")
-                || !self.template_token(Span::new(next.span.start - 1, next.span.start), "}")
-                || current.span.end + 2 > slot_span.start
-            {
-                return Err(FormatError::unsupported(
-                    "template slot geometry",
-                    None,
-                    span,
-                ));
-            }
+            let geometry = self.template_slot_between(span, &current, &next, slot.span(ast))?;
             indentation = current.indentation(indentation, tab_width);
-            let interior = Span::new(current.span.end + 2, next.span.start - 1);
-            let geometry = TemplateSlot {
-                content: slot_span,
-                interior,
-                source_newline: self.source(interior).contains(['\r', '\n']),
-            };
             let absolute = indentation > 0 || current.raw.ends_with('\n');
             writer.text("${");
             let mut format = |writer: &mut Writer<'ast>| format_slot(self, slot, geometry, writer);

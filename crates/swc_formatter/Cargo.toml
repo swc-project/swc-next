@@ -31,6 +31,10 @@ serde_json         = { workspace = true }
 swc_next_allocator = { workspace = true }
 tempfile           = { workspace = true }
 
+[[example]]
+name = "directive_targets"
+test = true
+
 [[test]]
 name              = "fixtures"
 required-features = ["serde"]

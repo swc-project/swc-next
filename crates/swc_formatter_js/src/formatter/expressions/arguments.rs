@@ -6,6 +6,7 @@ use super::typescript::ExpressionTypeArguments;
 use super::{
     AccessKind, ExpressionContext, ExpressionPosition, Formatter, JsxCallbackContext, OperandIndent,
 };
+use crate::formatter::array_slots::ArrayItem;
 use crate::formatter::comments::{
     ArrayCommentOwner, CommentBinding, CommentRunLayout, ExpressionTail, NodeHead,
     PreparedSeparatorGap, PreparedTrailingRun, SourceSeparatorTransition,
@@ -23,28 +24,8 @@ use crate::{
 };
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrowFunctionExpression, CallExpression, Comment, CommentKind, Expr,
-    ExprData, GetSpan, Span, SubRange, TemplateElement,
+    ExprData, GetSpan, Span, SubRange,
 };
-
-#[derive(Clone, Copy)]
-pub(super) enum FollowingArgument {
-    End,
-    Argument(Argument),
-    Elision {
-        argument: Option<Argument>,
-        holes: usize,
-    },
-}
-
-pub(super) struct ArrayArgumentSlot {
-    pub(super) argument: Argument,
-    pub(super) following: FollowingArgument,
-    pub(super) mode: ContentMode,
-    pub(super) layout: ArgumentLayout,
-    pub(super) transition: Option<SourceSeparatorTransition>,
-    /// Only the real terminal slot borrows the array's prepared closing owner.
-    pub(super) closing: Option<TerminalCloseBoundary>,
-}
 
 #[derive(Clone, Copy)]
 pub(in crate::formatter) enum FollowingItem {
@@ -165,17 +146,19 @@ impl PreparedItem {
     }
 
     pub(in crate::formatter) fn set_leading_mode(&mut self, mode: ContentMode) {
-        self.mode = if mode == ContentMode::Verbatim
-            || self
-                .suppression
-                .as_ref()
-                .and_then(|source| source.preceding)
-                .is_some_and(|target| target == self.item_span)
-        {
+        self.mode = Self::content_mode(self.item_span, mode, self.suppression);
+    }
+
+    fn content_mode(
+        item: Span,
+        leading: ContentMode,
+        suppression: Option<DelimitedSuppression>,
+    ) -> ContentMode {
+        if suppression.is_some_and(|source| source.preceding == Some(item)) {
             ContentMode::Verbatim
         } else {
-            ContentMode::Formatted
-        };
+            leading
+        }
     }
 }
 
@@ -239,7 +222,7 @@ pub(in crate::formatter) struct ItemBoundary {
 }
 
 impl ArgumentLayout {
-    pub(super) fn entry<'a, T>(
+    pub(in crate::formatter) fn entry<'a, T>(
         self,
         writer: &mut Writer<'a>,
         write: impl FnOnce(&mut Writer<'a>) -> T,
@@ -288,51 +271,36 @@ impl ArgumentLayout {
 impl<'ast, 'source> Formatter<'ast, 'source> {
     pub(super) fn format_argument_item_with_array_comments(
         &mut self,
-        slot: ArrayArgumentSlot,
-        span: Span,
+        slot: ArrayItem<Argument>,
+        closing: TerminalCloseBoundary,
         trailing_comma: TrailingCommaPolicy,
         protect_runtime_items: bool,
         mut array_comments: Option<&mut ArrayCommentOwner<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<ItemBoundary, FormatError> {
-        let ArrayArgumentSlot {
-            argument,
-            following,
-            mode,
-            layout,
-            transition,
-            closing,
-        } = slot;
-        let following = match following {
-            FollowingArgument::Argument(argument) => FollowingItem::Node(argument.span(self.ast)),
-            FollowingArgument::Elision { argument, holes } => FollowingItem::Elision {
-                node: argument.map(|node| node.span(self.ast)),
-                holes,
-            },
-            FollowingArgument::End => FollowingItem::End,
-        };
+        let closing = matches!(slot.following, FollowingItem::End).then_some(closing);
         let mut item = self.prepare_delimited_item_with_comments(
-            argument.span(self.ast),
-            following,
-            span,
+            slot.span,
+            slot.following,
+            slot.remaining,
             !matches!(trailing_comma, TrailingCommaPolicy::Forbidden),
             ItemComments {
                 head: CommentRunLayout::Source,
                 array: array_comments.as_deref_mut(),
-                separator_transition: transition,
+                separator_transition: slot.transition,
                 runtime: protect_runtime_items,
             },
             writer,
         )?;
-        item.set_leading_mode(mode);
+        item.set_leading_mode(slot.mode);
         if protect_runtime_items {
             self.protect_runtime_item(&mut item);
         }
         item.set_trailing_comma(trailing_comma);
-        item.layout = layout;
+        item.layout = slot.layout;
         let mut write = |writer: &mut Writer<'ast>| {
             self.format_argument_with_array_comments(
-                argument,
+                slot.value,
                 item.mode,
                 array_comments.as_deref_mut(),
                 writer,
@@ -340,7 +308,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         // Ordinary elements own their complete expression scope; their comma
         // and separator still observe the array. Concise fill owns its entries.
-        let tail = match layout {
+        let tail = match slot.layout {
             ArgumentLayout::Lines => writer.group(false, write),
             ArgumentLayout::Fill => write(writer),
         }?;
@@ -444,34 +412,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
             )
         };
-        let leading = self
-            .comments
-            .between(Span::new(span.start, item_span.start))?;
+        let leading_gap = Span::new(span.start, item_span.start);
+        let leading_mode = self.source_content_mode(leading_gap);
+        let leading = self.comments.claim_between(leading_gap)?;
         let has_leading_comments = !leading.is_empty();
         let packet = (has_leading_comments
             && suppression.is_none()
-            && self.content_mode(leading) == ContentMode::Formatted)
+            && leading_mode == ContentMode::Formatted)
             .then(|| {
                 self.source_separator_packet(leading, item_span, comments.separator_transition)
             })
             .flatten();
-        let leading = self.comments.take(leading.len());
-        let leading_mode = self.content_mode(leading);
-        let mode = if leading_mode == ContentMode::Verbatim
-            || suppression
-                .as_ref()
-                .and_then(|source| source.preceding)
-                .is_some_and(|target| target == item_span)
-        {
-            ContentMode::Verbatim
-        } else {
-            ContentMode::Formatted
-        };
         let item = PreparedItem {
             item_span,
             following,
             span,
-            mode,
+            mode: PreparedItem::content_mode(item_span, leading_mode, suppression),
             has_leading_comments,
             omit_source_terminal_comma: false,
             trailing_comma: if trailing_comma {
@@ -1414,133 +1370,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             before_separator,
         })
     }
-
-    pub(in crate::formatter) fn format_array_elisions(
-        &mut self,
-        holes: usize,
-        gap: Span,
-        elisions: ElisionLayout,
-        previous: Option<Separator>,
-        layout: ArgumentLayout,
-        writer: &mut Writer<'ast>,
-    ) -> Result<(u32, Separator), FormatError> {
-        if let ElisionLayout::Source(count) = elisions {
-            debug_assert_eq!(
-                count, holes,
-                "a source elision boundary covers the prepared AST slots"
-            );
-            return Ok((gap.start, previous.unwrap_or(Separator::Line)));
-        }
-        let mut comments = self.comments.between(gap)?;
-        let constrained = self.diagnostic_range_is_sensitive(gap);
-        let mut end = gap.start;
-        let mut separator = previous.unwrap_or(Separator::Line);
-        let mut has_slot = previous.is_some();
-        let mut located = match elisions {
-            ElisionLayout::Located { comma, separator } => Some((comma, separator)),
-            ElisionLayout::Formatted | ElisionLayout::Source(_) => None,
-        };
-        // Borrow the packet once and advance its comment and token frontiers
-        // together. Dense arrays never enter this path.
-        for _ in 0..holes {
-            if constrained || !comments.is_empty() || located.is_some() {
-                let relocated = located.take();
-                let comma = match relocated
-                    .map(|(comma, _)| comma)
-                    .or_else(|| self.find_comma(Span::new(end, gap.end), comments))
-                {
-                    Some(comma) => comma,
-                    None => {
-                        return Err(FormatError::unsupported(
-                            "array elision boundary",
-                            None,
-                            gap,
-                        ));
-                    }
-                };
-                let count = comments.partition_point(|comment| comment.span.end <= comma);
-                let leading = self.comments.take(count);
-                comments = &comments[count..];
-                match (leading.first(), has_slot) {
-                    (Some(first), _) => {
-                        let ordinary = !constrained
-                            && leading
-                                .iter()
-                                .all(|&comment| self.comment_semantics(comment).is_ordinary());
-                        if has_slot {
-                            let start = relocated
-                                .map(|(_, separator)| separator)
-                                .filter(|&separator| {
-                                    end <= separator && separator < first.span.start
-                                })
-                                .map_or(end, |separator| separator + 1);
-                            let entry_gap = self.comment_gap_constraint(start, first.span.start);
-                            if ordinary && matches!(entry_gap, LineConstraint::SameLine) {
-                                // A movable horizontal gap belongs to the hole's slot layout.
-                                layout.separator(separator, LineConstraint::Unconstrained, writer);
-                            } else {
-                                entry_gap.write(writer, FlatSeparator::Space, |_| {});
-                            }
-                        }
-                        if ordinary {
-                            self.format_comment_run(leading, CommentRunLayout::Source, writer)?;
-                            let last = leading.last().expect("a nonempty elision comment packet");
-                            if let Some((_, source_separator)) = relocated
-                                && last.span.end <= source_separator
-                            {
-                                // This packet preceded the old real separator.
-                                // Its following blank belongs to the hole boundary,
-                                // rather than to the removed comma inside the packet.
-                                self.line_constraint(source_separator + 1, comma).write(
-                                    writer,
-                                    FlatSeparator::Empty,
-                                    |writer| {
-                                        if matches!(separator, Separator::EmptyLine) {
-                                            writer.hard_line();
-                                            writer.hard_line();
-                                        } else if last.kind == CommentKind::Line {
-                                            writer.hard_line();
-                                        }
-                                    },
-                                );
-                            } else {
-                                self.prepare_leading_comment_gap(
-                                    last.span, last.kind, comma, false,
-                                )
-                                .gap
-                                .write(
-                                    writer,
-                                    FlatSeparator::Empty,
-                                    |_| {},
-                                );
-                            }
-                        } else {
-                            self.format_comment_run(
-                                leading,
-                                CommentRunLayout::Leading(comma),
-                                writer,
-                            )?;
-                        }
-                    }
-                    (None, true) => {
-                        layout.separator(separator, self.line_constraint(end, comma), writer)
-                    }
-                    // The array opener already owns this physical gap.
-                    (None, false) => {}
-                }
-                writer.text(",");
-                end = comma + 1;
-            } else {
-                if has_slot {
-                    layout.separator(separator, LineConstraint::Unconstrained, writer);
-                }
-                writer.text(",");
-            }
-            separator = Separator::Line;
-            has_slot = true;
-        }
-        Ok((end, separator))
-    }
 }
 
 /// An actual source argument list and its borrowed pre-opener comment owner.
@@ -2450,12 +2279,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.layout_position_starts_line(prepared.expression.span(ast).start) {
             return false;
         }
-        let multiline = template.quasis(ast).iter().any(|id| {
-            let quasi: TemplateElement = ast.get_node_in_sub_range(id);
-            ast.get_utf8(quasi.raw(ast))
-                .bytes()
-                .any(|byte| matches!(byte, b'\n' | b'\r'))
-        });
+        let multiline = self
+            .template_raw_parts(template)
+            .any(|raw| raw.contains(['\r', '\n']));
         if !multiline || self.diagnostic_range_is_sensitive(content) {
             return false;
         }

@@ -104,5 +104,6 @@ test("cursor positions are reported in UTF-16 after trimming and line ending con
     cursor,
     { type: "line-suffix", contents: cursor },
   ]).buffer;
+  assert.equal(printDocBufferSync(extra), "");
   assert.throws(() => printDocBufferWithCursorSync(extra), /cursor/i);
 });

@@ -10,7 +10,7 @@
 //! Enable `serde` for camelCase configuration deserialization.
 //! The `bridge` feature enables the internal binary transport helpers.
 
-use swc_next_formatter_core::{InvalidIndentWidth, PrintOptions};
+use swc_next_formatter_core::{Doc, InvalidIndentWidth, PrintOptions};
 
 mod builtins;
 pub mod js;
@@ -18,7 +18,8 @@ pub mod markdown;
 
 pub use builtins::BuiltinFormatters;
 
-fn restore_bom(source: &str, mut output: String) -> String {
+fn print_source_document(source: &str, document: Doc<'_>, options: PrintOptions) -> String {
+    let mut output = document.print(options);
     if source.starts_with('\u{feff}') {
         output.insert(0, '\u{feff}');
     }
@@ -51,27 +52,32 @@ pub struct PrintConfig {
     pub line_ending: Option<LineEnding>,
 }
 
-impl TryFrom<PrintConfig> for PrintOptions {
-    type Error = InvalidIndentWidth;
-
-    fn try_from(options: PrintConfig) -> Result<Self, Self::Error> {
-        let defaults = Self::default();
-        Ok(Self {
-            line_width: options.line_width.unwrap_or(defaults.line_width),
-            indent_style: options
+impl PrintConfig {
+    fn resolve(self, defaults: PrintOptions) -> Result<PrintOptions, InvalidIndentWidth> {
+        Ok(PrintOptions {
+            line_width: self.line_width.unwrap_or(defaults.line_width),
+            indent_style: self
                 .indent_style
                 .map(Into::into)
                 .unwrap_or(defaults.indent_style),
-            indent_width: options
+            indent_width: self
                 .indent_width
                 .map(TryInto::try_into)
                 .transpose()?
                 .unwrap_or(defaults.indent_width),
-            line_ending: options
+            line_ending: self
                 .line_ending
                 .map(Into::into)
                 .unwrap_or(defaults.line_ending),
         })
+    }
+}
+
+impl TryFrom<PrintConfig> for PrintOptions {
+    type Error = InvalidIndentWidth;
+
+    fn try_from(options: PrintConfig) -> Result<Self, Self::Error> {
+        options.resolve(Self::default())
     }
 }
 
@@ -114,18 +120,18 @@ impl From<LineEnding> for swc_next_formatter_core::LineEnding {
 #[cfg(feature = "bridge")]
 pub mod bridge {
     use swc_next_bridge::{BridgeDecodeOptional, bridge};
-    use swc_next_formatter_core::PrintOptions;
+    use swc_next_formatter_core::{Doc, PrintOptions};
     use swc_next_formatter_host::FormatSession;
 
     use super::{IndentStyle, LineEnding, PrintConfig};
 
     /// Print a versioned document using language-independent layout options.
     pub fn print_doc(bytes: &[u8], options: Option<PrintConfig>) -> Result<String, String> {
-        let options = PrintOptions::try_from(options.unwrap_or_default())
-            .map_err(|error| error.to_string())?;
-        let session = FormatSession::new(options);
-        let document = session.decode(bytes).map_err(|error| error.to_string())?;
-        Ok(document.print(session.print_options()))
+        with_decoded_doc(
+            bytes,
+            options,
+            |document, layout| Ok(document.print(layout)),
+        )
     }
 
     /// Print a versioned document and encode its emitted cursor markers.
@@ -133,14 +139,24 @@ pub mod bridge {
         bytes: &[u8],
         options: Option<PrintConfig>,
     ) -> Result<Vec<u8>, String> {
-        let options = PrintOptions::try_from(options.unwrap_or_default())
-            .map_err(|error| error.to_string())?;
-        let session = FormatSession::new(options);
-        let document = session.decode(bytes).map_err(|error| error.to_string())?;
-        let result = document
-            .print_with_cursor(session.print_options())
-            .map_err(|error| error.to_string())?;
+        let result = with_decoded_doc(bytes, options, |document, layout| {
+            document
+                .print_with_cursor(layout)
+                .map_err(|error| error.to_string())
+        })?;
         encode_print_result(result)
+    }
+
+    fn with_decoded_doc<T>(
+        bytes: &[u8],
+        options: Option<PrintConfig>,
+        print: impl FnOnce(Doc<'_>, PrintOptions) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let layout = PrintOptions::try_from(options.unwrap_or_default())
+            .map_err(|error| error.to_string())?;
+        let session = FormatSession::new(layout);
+        let document = session.decode(bytes).map_err(|error| error.to_string())?;
+        print(document, layout)
     }
 
     fn encode_print_result(

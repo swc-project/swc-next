@@ -437,6 +437,7 @@ struct ChainGroups<'ast> {
 }
 
 enum ChainLayout<'ast> {
+    Compact,
     Expanded,
     SourceExpanded,
     Shared(NeutralFragment<'ast>),
@@ -444,8 +445,93 @@ enum ChainLayout<'ast> {
 }
 
 impl<'ast> ChainGroups<'ast> {
-    fn layout(&self) -> ChainLayout<'ast> {
-        if self.head.facts.source_break {
+    fn write(
+        &mut self,
+        merge_head: ChainHeadMerge,
+        head_data: ExprData,
+        arguments: ChainArgumentLayout,
+        head_frame: MemberCalleeFrame<'ast>,
+        writer: &mut Writer<'ast>,
+    ) -> Result<bool, FormatError> {
+        let merge_head = match merge_head {
+            ChainHeadMerge::Separate => false,
+            ChainHeadMerge::Attach => true,
+            ChainHeadMerge::BareComputed => self.tail.len() <= 1 || atomic_chain_head(head_data),
+        } && !self.head.facts.has_boundary_comments
+            && self.tail.first().is_some_and(|group| {
+                !group.facts.has_boundary_comments && !group.facts.source_break
+            });
+        match self.layout(merge_head, arguments) {
+            ChainLayout::Compact => {
+                writer.group(false, |writer| write_compact(self, None, writer));
+                return Ok(true);
+            }
+            ChainLayout::Expanded => {
+                writer.group(false, |writer| {
+                    write_expanded(self, merge_head, head_frame, writer)
+                });
+            }
+            ChainLayout::SourceExpanded => {
+                writer.group(true, |writer| {
+                    write_group(&self.head, false, writer);
+                    write_breakable_tail(self, merge_head, writer);
+                });
+            }
+            ChainLayout::Shared(head) => {
+                writer.group(false, |writer| write_shared(self, head, merge_head, writer));
+            }
+            ChainLayout::Alternatives(source_flat) => {
+                if let Some(flat) = source_flat
+                    && let Some(last) = self.tail.last_mut()
+                {
+                    last.retain_source_layout(flat, writer)?;
+                }
+                if self
+                    .tail
+                    .last()
+                    .is_some_and(|last| last.facts.preferred_breaks)
+                {
+                    writer.break_parent();
+                }
+                // Curried argument frames observe the selected candidate's
+                // mode without another group choosing its breaks.
+                let (expanded, ()) = writer.record_with_value(|writer| {
+                    write_expanded(self, merge_head, head_frame, writer);
+                    Ok::<_, FormatError>(())
+                })?;
+                let (compact, ()) = writer.record_with_value(|writer| {
+                    write_compact(self, None, writer);
+                    Ok::<_, FormatError>(())
+                })?;
+                if let Some(last) = self.tail.last()
+                    && let Some(arguments) = last.argument_expansion
+                {
+                    let (collection, ()) = writer.record_with_value(|writer| {
+                        write_compact(self, Some(arguments), writer);
+                        Ok::<_, FormatError>(())
+                    })?;
+                    writer.write_alternatives(&[compact, collection], expanded);
+                } else {
+                    writer.write_alternatives(&[compact], expanded);
+                }
+            }
+        }
+        Ok(false)
+    }
+
+    fn layout(&self, merge_head: bool, arguments: ChainArgumentLayout) -> ChainLayout<'ast> {
+        let short_chain = short_chain(self.tail.len() + 1, merge_head);
+        // A short chain has one shared layout even when an argument's own
+        // collection group breaks. Its new source shape must not change the
+        // chain's strategy on the next pass.
+        if short_chain
+            && !self.head.facts.source_break
+            && !self.tail.iter().any(|group| group.facts.source_break)
+        {
+            return ChainLayout::Compact;
+        }
+
+        if self.head.facts.source_break || matches!(arguments, ChainArgumentLayout::Complex) {
             return ChainLayout::Expanded;
         }
         let Some((last, earlier)) = self.tail.split_last() else {
@@ -1314,86 +1400,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             while source.pending.is_some() || source.parts.peek().is_some() {
                 tail.push(self.record_chain_group(&mut source, writer)?);
             }
-            let mut groups = ChainGroups { head, tail };
-            let merge_head = match merge_head {
-                ChainHeadMerge::Separate => false,
-                ChainHeadMerge::Attach => true,
-                ChainHeadMerge::BareComputed => {
-                    groups.tail.len() <= 1 || atomic_chain_head(head_data)
-                }
-            } && !groups.head.facts.has_boundary_comments
-                && groups.tail.first().is_some_and(|group| {
-                    !group.facts.has_boundary_comments && !group.facts.source_break
-                });
-            let short_chain = short_chain(groups.tail.len() + 1, merge_head);
-            // A short chain has one shared layout even when an argument's own
-            // collection group breaks. Its new source shape must not change the
-            // chain's strategy on the next pass.
-            let compact = short_chain
-                && !groups.head.facts.source_break
-                && !groups.tail.iter().any(|group| group.facts.source_break);
-            if compact {
-                writer.group(false, |writer| write_compact(&groups, None, writer));
-            } else {
-                let layout = if matches!(source.argument_layout, ChainArgumentLayout::Complex) {
-                    ChainLayout::Expanded
-                } else {
-                    groups.layout()
-                };
-                match layout {
-                    ChainLayout::Expanded => {
-                        writer.group(false, |writer| {
-                            write_expanded(&groups, merge_head, chain.head_argument_frame, writer)
-                        });
-                    }
-                    ChainLayout::SourceExpanded => {
-                        writer.group(true, |writer| {
-                            write_group(&groups.head, false, writer);
-                            write_breakable_tail(&groups, merge_head, writer);
-                        });
-                    }
-                    ChainLayout::Shared(head) => {
-                        writer.group(false, |writer| {
-                            write_shared(&groups, head, merge_head, writer)
-                        });
-                    }
-                    ChainLayout::Alternatives(source_flat) => {
-                        if let Some(flat) = source_flat
-                            && let Some(last) = groups.tail.last_mut()
-                        {
-                            last.retain_source_layout(flat, writer)?;
-                        }
-                        if groups
-                            .tail
-                            .last()
-                            .is_some_and(|last| last.facts.preferred_breaks)
-                        {
-                            writer.break_parent();
-                        }
-                        // Curried argument frames observe the selected candidate's
-                        // mode without another group choosing its breaks.
-                        let (expanded, ()) = writer.record_with_value(|writer| {
-                            write_expanded(&groups, merge_head, chain.head_argument_frame, writer);
-                            Ok::<_, FormatError>(())
-                        })?;
-                        let (compact, ()) = writer.record_with_value(|writer| {
-                            write_compact(&groups, None, writer);
-                            Ok::<_, FormatError>(())
-                        })?;
-                        if let Some(last) = groups.tail.last()
-                            && let Some(arguments) = last.argument_expansion
-                        {
-                            let (collection, ()) = writer.record_with_value(|writer| {
-                                write_compact(&groups, Some(arguments), writer);
-                                Ok::<_, FormatError>(())
-                            })?;
-                            writer.write_alternatives(&[compact, collection], expanded);
-                        } else {
-                            writer.write_alternatives(&[compact], expanded);
-                        }
-                    }
-                }
-            }
+            let compact = ChainGroups { head, tail }.write(
+                merge_head,
+                head_data,
+                source.argument_layout,
+                chain.head_argument_frame,
+                writer,
+            )?;
             (source.tail, compact)
         };
         let continuation_layout = if !compact

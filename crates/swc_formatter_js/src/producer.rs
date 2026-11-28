@@ -1,9 +1,10 @@
-use swc_next_ecma_ast::AstCtx;
-use swc_next_ecma_parser::Options as ParserOptions;
+use swc_next_allocator::Allocator;
+use swc_next_ecma_ast::{AstCtx, Severity};
+use swc_next_ecma_parser::{CommentMode, NoTokenParserConfig, Options as ParserOptions, Parser};
 use swc_next_formatter_core::{Doc, Writer};
-use swc_next_formatter_host::{DocumentProducer, FormatContext};
+use swc_next_formatter_host::{DocumentProducer, FormatContext, FormatSession};
 
-use crate::{FormatError, FormatOptions, SyntaxOptions, formatter::Formatter, parse_source};
+use crate::{FormatError, FormatOptions, SyntaxOptions, formatter::Formatter};
 
 /// Produces JavaScript and TypeScript documents in a generic host session.
 ///
@@ -34,6 +35,27 @@ impl EcmaDocumentProducer {
     pub fn new(parser_options: ParserOptions) -> Self {
         Self { parser_options }
     }
+
+    pub(super) fn parse<'a>(
+        &self,
+        allocator: &'a Allocator,
+        source: &'a str,
+    ) -> Result<AstCtx<'a>, FormatError> {
+        let options = ParserOptions {
+            comments: CommentMode::Flat,
+            preserve_parens: true,
+            ..self.parser_options
+        };
+        let parsed = Parser::init(allocator, source, options, NoTokenParserConfig).parse();
+        if parsed
+            .diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic.severity == Severity::Error)
+        {
+            return Err(FormatError::Parse(parsed.diagnostics));
+        }
+        Ok(parsed.ast)
+    }
 }
 
 impl DocumentProducer for EcmaDocumentProducer {
@@ -50,7 +72,7 @@ impl DocumentProducer for EcmaDocumentProducer {
         // its header in the session too, so the Doc can outlive this call.
         // Reject future Drop fields rather than silently leaking their resources.
         const { assert!(!std::mem::needs_drop::<AstCtx<'_>>()) };
-        let ast = parse_source(context.allocator(), source, self.parser_options)?;
+        let ast = self.parse(context.allocator(), source)?;
         let ast = context.allocator().alloc(ast);
         ast_to_doc(ast, context, *options)
     }
@@ -82,4 +104,20 @@ pub fn ast_to_doc<'a>(
     let options = FormatOptions::from_parts(context.print_options(), syntax);
     Formatter::new(ast, options, context.allocator()).format_program(&mut writer)?;
     Ok(writer.finish())
+}
+
+/// Parse source and encode an unprinted document for the SWCFMT Prettier adapter.
+///
+/// The binary protocol is internal and must match the JavaScript decoder version.
+/// All borrowed source and document storage is released before returning.
+pub fn format_to_doc_buffer(
+    source: &str,
+    parser_options: ParserOptions,
+    options: FormatOptions,
+) -> Result<Vec<u8>, FormatError> {
+    let session = FormatSession::new(options.into());
+    let producer = EcmaDocumentProducer::new(parser_options);
+    Ok(session
+        .produce(&producer, source, &options.into())?
+        .encode())
 }

@@ -1,52 +1,29 @@
 //! Semicolon ownership between the current statement and the syntax that follows it.
 
+mod head;
+mod left_shift;
+
+pub(super) use head::StatementStart;
+pub(super) use left_shift::ShiftContinuation;
+
 use swc_next_ecma_ast::{
-    CommentKind, DeclData, Expr, ExprData, GetSpan, Span, StmtData, TsModuleReferenceData,
-    TsTypeNameData,
+    Ast, CommentKind, DeclData, Expr, ExprData, GetSpan, Span, StmtData, TsModuleReferenceData,
+    TsTypeNameData, VariableDeclarator,
 };
 
 use super::tails::{StatementSourcePacket, StatementSuppressionTail, StatementTailRelation};
 use super::{
-    Formatter, PreparedStatement, StatementBoundary, StatementItem, StatementPunctuation,
+    Formatter, PreparedStatement, StatementItem, StatementPunctuation, StatementRetention,
     StatementSequenceKind, StatementSourceLine, StatementSourceTerminator,
 };
 use crate::formatter::diagnostics::LineConstraint;
 use crate::formatter::expressions::{
-    ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge, ExpressionStart,
+    CopiedRawOwner, ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge,
     StringStatement,
 };
 use crate::formatter::suppression::ContentMode;
 use crate::formatter::types::{RawTypeTerminal, type_tail_is_bare_abstract};
 use crate::{FormatError, Semicolons};
-
-impl StatementBoundary {
-    pub(super) fn expression_start(
-        previous: Option<Self>,
-        line: StatementSourceLine,
-        semicolons: Semicolons,
-    ) -> ExpressionStart {
-        if semicolons == Semicolons::AsNeeded
-            && !line.incoming
-            && !previous.is_some_and(Self::guards_expression)
-        {
-            ExpressionStart::StatementPending
-        } else {
-            ExpressionStart::StatementGuarded
-        }
-    }
-
-    pub(super) fn needs_same_line_terminator(
-        self,
-        formatter: &Formatter<'_, '_>,
-        constraint: LineConstraint,
-        next: StatementItem,
-    ) -> bool {
-        constraint == LineConstraint::SameLine
-            && formatter.options.semicolons == Semicolons::AsNeeded
-            && !self.has_terminator()
-            && next.is_nonempty(formatter.ast)
-    }
-}
 
 impl StatementSequenceKind<'_> {
     pub(super) fn string_statement(self) -> StringStatement {
@@ -100,11 +77,50 @@ pub(super) enum ContinuationBoundary {
     },
 }
 
-impl ContinuationBoundary {
-    pub(super) fn is_following(self) -> bool {
-        matches!(self, Self::Following { .. })
+/// The source owner that actually reaches a statement's right edge.
+pub(in crate::formatter) enum StatementSourceTail {
+    Expression(CopiedRawOwner),
+    Declarator(VariableDeclarator),
+    Statement { item: StatementItem, end: u32 },
+}
+
+impl StatementSourceTail {
+    pub(in crate::formatter) fn expression(edge: &ExpressionRightEdge) -> Option<Self> {
+        match *edge {
+            ExpressionRightEdge::SourceFenceCandidate(raw) => Some(Self::Expression(raw)),
+            ExpressionRightEdge::Closed | ExpressionRightEdge::Unreported => None,
+        }
     }
 
+    fn type_end(self, enclosing: Span, ast: &Ast<'_>) -> Option<(u32, RawTypeTerminal)> {
+        Some(match self {
+            Self::Expression(raw) => {
+                let span = raw.span(ast);
+                if enclosing.start > span.start || enclosing.end < span.end {
+                    return None;
+                }
+                (span.end, raw.terminal(ast))
+            }
+            Self::Declarator(declarator) => {
+                (enclosing.end, copied_declarator_terminal(declarator, ast))
+            }
+            Self::Statement { item, end } => (end, item.raw_type_terminal(ast)),
+        })
+    }
+}
+
+fn copied_declarator_terminal(declarator: VariableDeclarator, ast: &Ast<'_>) -> RawTypeTerminal {
+    if let Some(initializer) = declarator.init(ast) {
+        return crate::formatter::expressions::raw_tail::raw_expression_terminal(initializer, ast);
+    }
+    declarator
+        .type_annotation(ast)
+        .map_or(RawTypeTerminal::Closed, |annotation| {
+            crate::formatter::types::raw_type_terminal(annotation.type_annotation(ast), ast)
+        })
+}
+
+impl ContinuationBoundary {
     pub(super) fn for_child(self, span: Span) -> Self {
         match self {
             Self::End => Self::End,
@@ -118,17 +134,35 @@ impl ContinuationBoundary {
         }
     }
 
-    pub(super) fn after_raw_type(
+    #[inline(always)]
+    pub(super) fn after_source_tail(
         self,
         punctuation: StatementPunctuation,
-        content_end: u32,
-        terminal: RawTypeTerminal,
+        ast: &Ast<'_>,
+        source_tail: impl FnOnce() -> Option<(Span, StatementSourceTail)>,
     ) -> StatementPunctuation {
         let (
             StatementPunctuation::Canonical(Semicolons::AsNeeded),
             Self::Following { kind, source },
         ) = (punctuation, self)
         else {
+            return punctuation;
+        };
+        let Some((enclosing, tail)) = source_tail() else {
+            return punctuation;
+        };
+        Self::punctuate_source_tail(kind, source, enclosing, tail, ast)
+    }
+
+    fn punctuate_source_tail(
+        kind: FollowingSyntax,
+        source: Option<StatementSourceTerminator>,
+        enclosing: Span,
+        tail: StatementSourceTail,
+        ast: &Ast<'_>,
+    ) -> StatementPunctuation {
+        let punctuation = StatementPunctuation::Canonical(Semicolons::AsNeeded);
+        let Some((content_end, terminal)) = tail.type_end(enclosing, ast) else {
             return punctuation;
         };
         if terminal == RawTypeTerminal::Closed {
@@ -159,11 +193,17 @@ impl ContinuationBoundary {
                 return Ok(StatementPunctuation::Canonical(Semicolons::Always));
             }
             let span = statement.span(formatter.ast);
-            return Ok(self.for_child(span).after_raw_type(
-                punctuation,
-                span.end,
-                statement.raw_type_terminal(formatter.ast),
-            ));
+            return Ok(self
+                .for_child(span)
+                .after_source_tail(punctuation, formatter.ast, || {
+                    Some((
+                        span,
+                        StatementSourceTail::Statement {
+                            item: statement,
+                            end: span.end,
+                        },
+                    ))
+                }));
         }
         Ok(punctuation)
     }
@@ -196,14 +236,7 @@ impl<'ast> StatementGap<'_, 'ast> {
                 return Some(FollowingSyntax::ExpressionStatement {
                     expression: node.expression(formatter.ast),
                     string_statement: self.kind.string_statement(),
-                    mode: if next.has_verbatim_mode(self.current.annotation_tail.as_ref())
-                        || formatter.has_suppression
-                            && self.following_tail_is_verbatim(formatter, next)
-                    {
-                        ContentMode::Verbatim
-                    } else {
-                        ContentMode::Formatted
-                    },
+                    mode: self.following_mode(formatter, next),
                 });
             }
             return Some(FollowingSyntax::Statement);
@@ -216,6 +249,20 @@ impl<'ast> StatementGap<'_, 'ast> {
             }
         )
         .then_some(FollowingSyntax::Keyword)
+    }
+
+    fn following_mode(
+        &self,
+        formatter: &Formatter<'ast, '_>,
+        next: &PreparedStatement<'ast>,
+    ) -> ContentMode {
+        if next.has_verbatim_mode(self.current.annotation_tail.as_ref())
+            || formatter.has_suppression && self.following_tail_is_verbatim(formatter, next)
+        {
+            ContentMode::Verbatim
+        } else {
+            ContentMode::Formatted
+        }
     }
 
     fn following_tail_is_verbatim(
@@ -248,7 +295,7 @@ impl<'ast> StatementGap<'_, 'ast> {
             )
     }
 
-    #[inline]
+    #[inline(always)]
     pub(super) fn resolve(
         self,
         formatter: &Formatter<'ast, '_>,
@@ -256,6 +303,7 @@ impl<'ast> StatementGap<'_, 'ast> {
         source_line: StatementSourceLine,
         flat_source: bool,
         suppression: Option<&StatementSuppressionTail>,
+        shift: &mut ShiftContinuation,
     ) -> Result<StatementEnding, FormatError> {
         // Without a source-owned separator, explicit semicolons need no lookahead.
         if formatter.options.semicolons == Semicolons::Always
@@ -270,7 +318,14 @@ impl<'ast> StatementGap<'_, 'ast> {
                 source_packet: None,
             });
         }
-        self.resolve_source_or_asi(formatter, mode, source_line, flat_source, suppression)
+        self.resolve_source_or_asi(
+            formatter,
+            mode,
+            source_line,
+            flat_source,
+            suppression,
+            shift,
+        )
     }
 
     fn resolve_source_or_asi(
@@ -280,6 +335,7 @@ impl<'ast> StatementGap<'_, 'ast> {
         source_line: StatementSourceLine,
         flat_source: bool,
         suppression: Option<&StatementSuppressionTail>,
+        shift: &mut ShiftContinuation,
     ) -> Result<StatementEnding, FormatError> {
         let source = formatter.statement_source_terminator(self.current.span);
         let source_packet = source_line
@@ -312,7 +368,7 @@ impl<'ast> StatementGap<'_, 'ast> {
             } else {
                 None
             };
-            self.asi_punctuation(formatter, following, retained)?
+            self.asi_punctuation(formatter, mode, following, retained, shift)?
         };
         let continuation = match (punctuation, following) {
             (StatementPunctuation::Canonical(Semicolons::AsNeeded), Some(kind)) => {
@@ -385,13 +441,15 @@ impl<'ast> StatementGap<'_, 'ast> {
     fn asi_punctuation(
         &self,
         formatter: &Formatter<'ast, '_>,
+        mode: ContentMode,
         following: Option<FollowingSyntax>,
         retained: Option<StatementSourceTerminator>,
+        shift: &mut ShiftContinuation,
     ) -> Result<StatementPunctuation, FormatError> {
         let style = formatter.options.semicolons;
         if self
             .next
-            .is_some_and(|next| !next.empty_binding.allows_relocation(None))
+            .is_some_and(|next| next.retention == StatementRetention::BoundEmpty)
         {
             // The retained empty statement needs a semicolon of its own.
             return Ok(retained.map_or(
@@ -406,17 +464,27 @@ impl<'ast> StatementGap<'_, 'ast> {
         if style == Semicolons::Always {
             return Ok(punctuation);
         }
-        let statement = self.current.item;
-        let open_tail = retained.is_none()
-            && (following.is_some() && statement.has_open_type_tail(formatter.ast)
-                || self.next.is_some() && statement.bare_identifier(formatter.ast) == Some("let"));
-        if open_tail || self.grammar_requires_terminator(formatter, following)? {
+        let ast = formatter.ast;
+        let bare_let = retained.is_none()
+            && self.next.is_some()
+            && self.current.item.bare_identifier(ast) == Some("let");
+        if bare_let {
             return Ok(StatementPunctuation::Canonical(Semicolons::Always));
         }
-        Ok(punctuation)
+        if !ast.is_ts() {
+            return Ok(punctuation);
+        }
+        let open_tail = retained.is_none()
+            && (following.is_some() && self.current.item.has_open_type_tail(ast)
+                || self.next.is_some() && shift.needs_terminator(self, formatter, mode));
+        if open_tail || self.typescript_grammar_requires_terminator(formatter, following)? {
+            Ok(StatementPunctuation::Canonical(Semicolons::Always))
+        } else {
+            Ok(punctuation)
+        }
     }
 
-    fn grammar_requires_terminator(
+    fn typescript_grammar_requires_terminator(
         &self,
         formatter: &Formatter<'ast, '_>,
         following: Option<FollowingSyntax>,
@@ -427,7 +495,7 @@ impl<'ast> StatementGap<'_, 'ast> {
             && matches!(ast.stmt_data(next), StmtData::BlockStatement(_))
         {
             return Ok(previous.needs_terminator_before_block(ast)
-                || ast.is_ts() && previous.bare_identifier(ast) == Some("global"));
+                || previous.bare_identifier(ast) == Some("global"));
         }
         let Some(
             head @ FollowingSyntax::ExpressionStatement {
@@ -439,9 +507,6 @@ impl<'ast> StatementGap<'_, 'ast> {
         else {
             return Ok(false);
         };
-        if !ast.is_ts() {
-            return Ok(false);
-        }
         if let Some(declaration) = previous.declaration(ast)
             && let DeclData::TsImportEqualsDeclaration(node) = ast.decl_data(declaration)
             && let TsModuleReferenceData::TsTypeName(name) =
@@ -482,29 +547,30 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         content_end: u32,
         following: Option<(StatementItem, ContinuationBoundary)>,
     ) -> StatementPunctuation {
-        let StatementPunctuation::Canonical(style) = punctuation else {
+        let StatementPunctuation::Canonical(_) = punctuation else {
             return punctuation;
         };
         if self.has_suppression
             && let Some(source) = self.statement_source_terminator(span)
-            && self.content_mode(
-                self.comments
-                    .in_range(Span::new(content_end, source.start())),
-            ) == ContentMode::Verbatim
+            && self.source_content_mode(Span::new(content_end, source.start()))
+                == ContentMode::Verbatim
         {
             return StatementPunctuation::Source(source);
         }
-        if style == Semicolons::AsNeeded
-            && let Some((item, boundary)) = following
-            && boundary.is_following()
-        {
-            return boundary.for_child(span).after_raw_type(
-                punctuation,
-                content_end,
-                item.raw_type_terminal(self.ast),
-            );
-        }
-        punctuation
+        let Some((item, boundary)) = following else {
+            return punctuation;
+        };
+        boundary
+            .for_child(span)
+            .after_source_tail(punctuation, self.ast, || {
+                Some((
+                    span,
+                    StatementSourceTail::Statement {
+                        item,
+                        end: content_end,
+                    },
+                ))
+            })
     }
 
     pub(super) fn punctuation_for_expression_output(
@@ -514,20 +580,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         statement: Span,
         output: &ExpressionOutput<'ast>,
     ) -> StatementPunctuation {
-        if !matches!(
-            punctuation,
-            StatementPunctuation::Canonical(Semicolons::AsNeeded)
-        ) || !boundary.is_following()
-        {
-            return punctuation;
-        }
-        let ExpressionRightEdge::SourceFenceCandidate(raw) = &output.right_edge else {
-            return punctuation;
-        };
-        let span = raw.span(self.ast);
-        if statement.start > span.start || span.end > statement.end {
-            return punctuation;
-        }
-        boundary.after_raw_type(punctuation, span.end, raw.terminal(self.ast))
+        boundary.after_source_tail(punctuation, self.ast, || {
+            StatementSourceTail::expression(&output.right_edge).map(|tail| (statement, tail))
+        })
     }
 }

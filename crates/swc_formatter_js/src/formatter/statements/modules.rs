@@ -120,11 +120,55 @@ struct ModuleList<'ast> {
     key_quoting: PropertyKeyQuoting,
     span: Span,
     comments: &'ast [Comment],
-    breakable: bool,
-    expand: bool,
+    layout: ModuleListLayout,
     kind: ModuleListKind,
     terminal: Option<ModuleSourceBoundary<'ast>>,
     relocated_tail: &'ast [Comment],
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ModuleListLayout {
+    Inline,
+    Breakable,
+    Expanded,
+}
+
+impl ModuleListLayout {
+    fn write<'ast>(
+        self,
+        opening: LineConstraint,
+        spaced: bool,
+        writer: &mut Writer<'ast>,
+        items: impl FnOnce(&mut Writer<'ast>) -> Result<LineConstraint, FormatError>,
+    ) -> Result<(), FormatError> {
+        let flat = if spaced {
+            FlatSeparator::Space
+        } else {
+            FlatSeparator::Empty
+        };
+        let edge = |constraint: LineConstraint, writer: &mut Writer<'ast>| {
+            constraint.write(writer, flat, |writer| match (self, spaced) {
+                (Self::Inline, true) => writer.space(),
+                (Self::Inline, false) => {}
+                (_, true) => writer.line(),
+                (_, false) => writer.soft_line(),
+            });
+        };
+        let braces = |writer: &mut Writer<'ast>| {
+            writer.text("{");
+            let closing = writer.indent(|writer| {
+                edge(opening, writer);
+                items(writer)
+            })?;
+            edge(closing, writer);
+            writer.text("}");
+            Ok(())
+        };
+        match self {
+            Self::Inline => braces(writer),
+            Self::Breakable | Self::Expanded => writer.group(self == Self::Expanded, braces),
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -260,17 +304,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     variable,
                     keyword,
                     punctuation.tail_boundary(),
-                    declaration_source.is_following(),
                     operator_tail_destination,
                     writer,
                 )?;
-                let punctuation = output.fence_request.map_or(punctuation, |request| {
-                    declaration_source.after_raw_type(
-                        punctuation,
-                        request.span.end,
-                        request.terminal,
-                    )
-                });
+                let punctuation =
+                    declaration_source
+                        .after_source_tail(punctuation, self.ast, || output.source_tail);
                 self.finish_statement_with_operator_tail(
                     output.end,
                     output.tail,
@@ -942,10 +981,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             key_quoting: PropertyKeyQuoting::Preserve,
             span,
             comments,
-            breakable: !named || !singleton || standalone,
-            expand: !named
+            layout: if named && singleton && !standalone {
+                ModuleListLayout::Inline
+            } else if !named
                 && self.line_breaks(opening.end, first.map_or(closing.start, |span| span.start))
-                    != 0,
+                    != 0
+            {
+                ModuleListLayout::Expanded
+            } else {
+                ModuleListLayout::Breakable
+            },
             kind,
             terminal: None,
             relocated_tail: &[],
@@ -1196,13 +1241,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ast.get_utf8(name.name(ast)) == "type"
                 }
                 ModuleExportNameData::StringLiteral(literal) => {
-                    let raw = ast.get_utf8(literal.raw(ast));
-                    &raw[1..raw.len() - 1] == "type"
+                    self.string_literal_raw_content(literal) == "type"
                 }
             };
             if attributes.len() == 1 && type_key && self.comments.in_range(list.span).is_empty() {
-                list.breakable = false;
-                list.expand = false;
+                list.layout = ModuleListLayout::Inline;
             }
         }
         if let Some(list) = attribute_list.as_ref()
@@ -1487,7 +1530,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     fn format_module_list(
         &mut self,
         mut items: std::iter::Peekable<impl Iterator<Item = ModuleItem>>,
-        mut list: ModuleList<'ast>,
+        list: ModuleList<'ast>,
         mut incoming: ContentMode,
         last_mode: ContentMode,
         leading: Option<&'ast [Comment]>,
@@ -1509,201 +1552,162 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             writer.text("}");
             return Ok(());
         };
-        list.breakable |= list.comments.len() > source_head_len
+        let has_comments = list.comments.len() > source_head_len
             || !list.relocated_tail.is_empty()
             || leading.is_some_and(|comments| !comments.is_empty());
+        let layout = if list.layout == ModuleListLayout::Inline && has_comments {
+            ModuleListLayout::Breakable
+        } else {
+            list.layout
+        };
         let named = list.kind != ModuleListKind::Attributes;
-        let trailing_comma = list.breakable && self.options.trailing_commas != TrailingCommas::None;
-        let mut write = |writer: &mut Writer<'ast>| {
-            writer.text("{");
-            let (end, terminal_close) = writer.indent(|writer| {
-                if list.breakable {
-                    self.opening_line_constraint(content).write(
-                        writer,
-                        if self.options.bracket_spacing {
-                            FlatSeparator::Space
-                        } else {
-                            FlatSeparator::Empty
-                        },
-                        |writer| {
-                            if self.options.bracket_spacing {
-                                writer.line()
-                            } else {
-                                writer.soft_line()
-                            }
-                        },
+        let trailing_comma = layout != ModuleListLayout::Inline
+            && self.options.trailing_commas != TrailingCommas::None;
+        let opening = if layout == ModuleListLayout::Inline {
+            LineConstraint::SameLine
+        } else {
+            self.opening_line_constraint(content)
+        };
+        layout.write(opening, self.options.bracket_spacing, writer, |writer| {
+            if let Some(comments) = leading {
+                self.comments.claim(comments)?;
+                self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
+                if let Some(last) = comments.last() {
+                    self.comment_gap_after(*last, first.span(self).start, writer);
+                }
+            }
+            let mut transition = None;
+            let mut current = Some((first, self.prepare_module_item(first, list.key_quoting)?));
+            let mut end = content.start;
+            let mut terminal_close = None;
+            while let Some((item, prepared_content)) = current {
+                let next = items.next();
+                let span = item.span(self);
+                let following = match next {
+                    Some(next) if named => FollowingItem::ModuleSpecifier(next.span(self)),
+                    Some(next) => FollowingItem::Node(next.span(self)),
+                    None => list.terminal.map_or(FollowingItem::End, |boundary| {
+                        FollowingItem::ResolvedTerminal(boundary.suppression)
+                    }),
+                };
+                let mut prepared = self.prepare_delimited_item(
+                    span,
+                    following,
+                    content,
+                    trailing_comma,
+                    transition,
+                    writer,
+                )?;
+                if next.is_none() && last_mode == ContentMode::Verbatim {
+                    incoming = last_mode;
+                }
+                if incoming == ContentMode::Verbatim {
+                    prepared.set_leading_mode(incoming);
+                }
+                let prepared_close = if next.is_none() && prepared.mode == ContentMode::Verbatim {
+                    self.module_terminal_close(&list, span.end, trailing_comma)
+                } else {
+                    None
+                };
+                self.format_module_item(span, prepared_content, prepared.mode, writer)?;
+                if next.is_none() && !list.relocated_tail.is_empty() {
+                    self.comments.claim(list.relocated_tail)?;
+                    let line_count = usize::from(
+                        list.relocated_tail
+                            .last()
+                            .is_some_and(|comment| comment.kind == CommentKind::Line),
                     );
-                } else if self.options.bracket_spacing {
-                    writer.space();
-                }
-                if let Some(comments) = leading {
-                    self.comments.claim(comments)?;
-                    self.format_comment_run(comments, CommentRunLayout::Source, writer)?;
-                    if let Some(last) = comments.last() {
-                        self.comment_gap_after(*last, first.span(self).start, writer);
+                    let (blocks, line) = list
+                        .relocated_tail
+                        .split_at(list.relocated_tail.len() - line_count);
+                    self.format_inline_trailing_comments(blocks, writer)?;
+                    if trailing_comma {
+                        writer.if_break(",");
                     }
+                    self.format_inline_trailing_comments(line, writer)?;
+                    end = content.end;
+                    break;
                 }
-                let mut transition = None;
-                let mut current = Some((first, self.prepare_module_item(first, list.key_quoting)?));
-                let mut end = content.start;
-                let mut terminal_close = None;
-                while let Some((item, prepared_content)) = current {
-                    let next = items.next();
-                    let span = item.span(self);
-                    let following = match next {
-                        Some(next) if named => FollowingItem::ModuleSpecifier(next.span(self)),
-                        Some(next) => FollowingItem::Node(next.span(self)),
-                        None => list.terminal.map_or(FollowingItem::End, |boundary| {
-                            FollowingItem::ResolvedTerminal(boundary.suppression)
-                        }),
-                    };
-                    let mut prepared = self.prepare_delimited_item(
-                        span,
-                        following,
-                        content,
+                if next.is_none()
+                    && let Some(terminal) = list.terminal
+                {
+                    end = self.format_module_source_specifier_tail(
+                        Span::new(span.end, content.end),
+                        terminal,
                         trailing_comma,
-                        transition,
                         writer,
                     )?;
-                    if next.is_none() && last_mode == ContentMode::Verbatim {
-                        incoming = last_mode;
-                    }
-                    if incoming == ContentMode::Verbatim {
-                        prepared.set_leading_mode(incoming);
-                    }
-                    let prepared_close = if next.is_none() && prepared.mode == ContentMode::Verbatim
-                    {
-                        self.module_terminal_close(&list, span.end, trailing_comma)
-                    } else {
-                        None
-                    };
-                    self.format_module_item(span, prepared_content, prepared.mode, writer)?;
-                    if next.is_none() && !list.relocated_tail.is_empty() {
-                        self.comments.claim(list.relocated_tail)?;
-                        let line_count = usize::from(
-                            list.relocated_tail
-                                .last()
-                                .is_some_and(|comment| comment.kind == CommentKind::Line),
-                        );
-                        let (blocks, line) = list
-                            .relocated_tail
-                            .split_at(list.relocated_tail.len() - line_count);
-                        self.format_inline_trailing_comments(blocks, writer)?;
-                        if trailing_comma {
-                            writer.if_break(",");
-                        }
-                        self.format_inline_trailing_comments(line, writer)?;
-                        end = content.end;
-                        break;
-                    }
-                    if next.is_none()
-                        && let Some(terminal) = list.terminal
-                    {
-                        end = self.format_module_source_specifier_tail(
-                            Span::new(span.end, content.end),
-                            terminal,
-                            trailing_comma,
-                            writer,
-                        )?;
-                        break;
-                    }
-                    let closing = if next.is_some() {
-                        Some(DelimitedClose::Source)
-                    } else if let Some(close) = prepared_close {
-                        Some(DelimitedClose::Fixed(close))
-                    } else if prepared.mode == ContentMode::Verbatim && {
-                        let gap = Span::new(span.end, content.end);
-                        self.find_comma(gap, self.comments.in_range(gap)).is_none()
-                    } {
-                        None
-                    } else {
-                        Some(DelimitedClose::Terminal(
-                            self.terminal_close_boundary(content, || Some((span, end))),
-                        ))
-                    };
-                    let boundary = if let Some(closing) = closing {
-                        self.finish_delimited_item_with_closing(prepared, None, closing, writer)?
-                    } else {
-                        self.finish_delimited_item(prepared, None, writer)?
-                    };
-                    end = boundary.end;
-                    terminal_close = prepared_close.or(boundary.terminal_close);
-                    transition = boundary.transition;
-                    let next = next
-                        .map(|item| {
-                            self.prepare_module_item(item, list.key_quoting)
-                                .map(|content| (item, content))
-                        })
-                        .transpose()?;
-                    if let Some((next, next_content)) = next.as_ref() {
-                        let next_start = next.span(self).start;
-                        let gap_end = self
-                            .comments
-                            .in_range(Span::new(end, next_start))
-                            .first()
-                            .map_or(next_start, |comment| comment.span.start);
-                        let constraint = self.source_separator_constraint(
-                            end,
-                            gap_end,
-                            boundary.transition.as_ref(),
-                        );
-                        let promoted = matches!(
-                            &next_content.content,
-                            ModuleItemContent::Alias {
-                                promoted: Some(_),
-                                ..
-                            }
-                        );
-                        let separator = if named
-                            && promoted
-                            && boundary.following_mode == ContentMode::Formatted
-                            && matches!(boundary.separator, Separator::EmptyLine)
-                        {
-                            Separator::Line
-                        } else {
-                            boundary.separator
-                        };
-                        ArgumentLayout::Lines.separator(separator, constraint, writer);
-                        incoming = boundary.following_mode;
-                    }
-                    current = next;
+                    break;
                 }
-                Ok::<_, FormatError>((end, terminal_close))
-            })?;
-            let closing = terminal_close.unwrap_or_else(|| {
+                let closing = if next.is_some() {
+                    Some(DelimitedClose::Source)
+                } else if let Some(close) = prepared_close {
+                    Some(DelimitedClose::Fixed(close))
+                } else if prepared.mode == ContentMode::Verbatim && {
+                    let gap = Span::new(span.end, content.end);
+                    self.find_comma(gap, self.comments.in_range(gap)).is_none()
+                } {
+                    None
+                } else {
+                    Some(DelimitedClose::Terminal(
+                        self.terminal_close_boundary(content, || Some((span, end))),
+                    ))
+                };
+                let boundary = if let Some(closing) = closing {
+                    self.finish_delimited_item_with_closing(prepared, None, closing, writer)?
+                } else {
+                    self.finish_delimited_item(prepared, None, writer)?
+                };
+                end = boundary.end;
+                terminal_close = prepared_close.or(boundary.terminal_close);
+                transition = boundary.transition;
+                let next = next
+                    .map(|item| {
+                        self.prepare_module_item(item, list.key_quoting)
+                            .map(|content| (item, content))
+                    })
+                    .transpose()?;
+                if let Some((next, next_content)) = next.as_ref() {
+                    let next_start = next.span(self).start;
+                    let gap_end = self
+                        .comments
+                        .in_range(Span::new(end, next_start))
+                        .first()
+                        .map_or(next_start, |comment| comment.span.start);
+                    let constraint = self.source_separator_constraint(
+                        end,
+                        gap_end,
+                        boundary.transition.as_ref(),
+                    );
+                    let promoted = matches!(
+                        &next_content.content,
+                        ModuleItemContent::Alias {
+                            promoted: Some(_),
+                            ..
+                        }
+                    );
+                    let separator = if named
+                        && promoted
+                        && boundary.following_mode == ContentMode::Formatted
+                        && matches!(boundary.separator, Separator::EmptyLine)
+                    {
+                        Separator::Line
+                    } else {
+                        boundary.separator
+                    };
+                    ArgumentLayout::Lines.separator(separator, constraint, writer);
+                    incoming = boundary.following_mode;
+                }
+                current = next;
+            }
+            Ok(terminal_close.unwrap_or_else(|| {
                 if list.terminal.is_some() && source_head_len == 0 {
                     self.source_line_constraint(end, content.end)
                 } else {
                     self.line_constraint(end, content.end)
                 }
-            });
-            closing.write(
-                writer,
-                if self.options.bracket_spacing {
-                    FlatSeparator::Space
-                } else {
-                    FlatSeparator::Empty
-                },
-                |writer| {
-                    if list.breakable {
-                        if self.options.bracket_spacing {
-                            writer.line()
-                        } else {
-                            writer.soft_line()
-                        }
-                    } else if self.options.bracket_spacing {
-                        writer.space()
-                    }
-                },
-            );
-            writer.text("}");
-            Ok(())
-        };
-        if list.breakable {
-            writer.group(list.expand, write)
-        } else {
-            write(writer)
-        }
+            }))
+        })
     }
 
     fn module_terminal_close(

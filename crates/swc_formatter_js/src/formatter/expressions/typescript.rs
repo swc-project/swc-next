@@ -6,7 +6,10 @@ use swc_next_ecma_ast::{
     TsTypeNameData, TsTypeParameterInstantiation,
 };
 
-use super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
+mod instantiation;
+
+use self::instantiation::is_left_shift_right_operand;
+use super::binary::{BinaryOperatorKind, OperandSide};
 use super::chains::PreparedChain;
 use super::parentheses::{ExpressionContent, ResolvedExpressionHead};
 use super::{
@@ -505,177 +508,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         self.format_expression_type_arguments(arguments, tail, writer)?;
         Ok(None)
-    }
-
-    #[inline]
-    pub(super) fn ts_binary_operand_needs_parentheses(
-        &self,
-        data: ExprData,
-        operator: BinaryOperatorKind,
-        side: OperandSide,
-        mode: ContentMode,
-    ) -> bool {
-        self.ast.is_ts() && self.instantiation_operand_needs_parentheses(data, operator, side, mode)
-    }
-
-    fn instantiation_operand_needs_parentheses(
-        &self,
-        data: ExprData,
-        operator: BinaryOperatorKind,
-        side: OperandSide,
-        mode: ContentMode,
-    ) -> bool {
-        let BinaryOperatorKind::Binary(operator) = operator else {
-            return false;
-        };
-        if side == OperandSide::Right && operator == BinaryOperator::LeftShift {
-            // TypeScript can read `x << (f<T>)` as the start of a type argument list.
-            return false;
-        }
-        // Group the operand that owns the type arguments before flattening its parent chain.
-        if mode == ContentMode::Formatted && self.is_instantiation_operand(data) {
-            let bare_rhs = side == OperandSide::Right
-                && matches!(operator, BinaryOperator::In | BinaryOperator::Instanceof)
-                && matches!(data, ExprData::TsInstantiationExpression(_));
-            return !bare_rhs;
-        }
-        side == OperandSide::Left
-            && instantiation_tail_conflicts(operator)
-            && self.binary_left_exposes_type_arguments(data, operator, mode)
-    }
-
-    fn binary_left_exposes_type_arguments(
-        &self,
-        mut data: ExprData,
-        operator: BinaryOperator,
-        mut mode: ContentMode,
-    ) -> bool {
-        // A line break after `>` can make TypeScript read `a < b >` as `a<b>`.
-        if operator == BinaryOperator::GreaterThan
-            && matches!(data, ExprData::BinaryExpression(left)
-                if left.operator(self.ast) == BinaryOperator::LessThan)
-        {
-            return true;
-        }
-        // Follow the emitted right edge. Once a subtree is copied, only its
-        // source pairs can protect the generic suffix from the next operator.
-        loop {
-            let check_suppression = mode == ContentMode::Formatted && self.has_suppression;
-            let mut child_mode = mode;
-            let (operand, position) = match data {
-                ExprData::TsInstantiationExpression(_) => return true,
-                ExprData::UnaryExpression(node) => {
-                    if mode == ContentMode::Formatted
-                        && !self.comments.in_range(node.span(self.ast)).is_empty()
-                    {
-                        let Some(operand_mode) = self.unary_tail_operand_mode(node) else {
-                            return false;
-                        };
-                        child_mode = operand_mode;
-                    }
-                    (
-                        node.argument(self.ast),
-                        ExpressionPosition::UnaryArgument(node.operator(self.ast)),
-                    )
-                }
-                ExprData::AwaitExpression(node) => {
-                    let argument = node.argument(self.ast);
-                    if check_suppression {
-                        let gap =
-                            Span::new(node.span(self.ast).start + 5, argument.span(self.ast).start);
-                        child_mode = self.content_mode(self.comments.in_range(gap));
-                    }
-                    (argument, ExpressionPosition::AwaitArgument)
-                }
-                ExprData::TsTypeAssertion(node) => {
-                    if check_suppression {
-                        let Ok(closing) = self.type_assertion_closing(node) else {
-                            return true;
-                        };
-                        child_mode = self.content_mode(closing.operand_head);
-                    }
-                    (
-                        node.expression(self.ast),
-                        ExpressionPosition::TypeAssertionOperand,
-                    )
-                }
-                ExprData::ChainExpression(node) => {
-                    (node.expression(self.ast), ExpressionPosition::Nested)
-                }
-                _ => {
-                    let Some(binary) = BinaryLike::from_data(data, self.ast) else {
-                        return false;
-                    };
-                    if check_suppression {
-                        let Ok(operand_mode) = self.binary_right_mode(binary) else {
-                            return true;
-                        };
-                        child_mode = operand_mode;
-                    }
-                    (
-                        binary.right,
-                        ExpressionPosition::BinaryOperand {
-                            operator: binary.operator,
-                            side: OperandSide::Right,
-                        },
-                    )
-                }
-            };
-            if mode == ContentMode::Verbatim {
-                data = self.ast.expr_data(operand);
-                continue;
-            }
-            let child = match child_mode {
-                ContentMode::Formatted => self.expression_data(operand),
-                ContentMode::Verbatim => self.ast.expr_data(operand),
-            };
-            let content = self.source_parentheses_head_content(
-                child,
-                ExpressionContext::at(position).with_content_mode(child_mode),
-            );
-            data = content.data;
-            mode = content.mode;
-            if self.expression_needs_parentheses(data, position, mode) != Some(false) {
-                return false;
-            }
-        }
-    }
-
-    fn is_instantiation_operand(&self, mut data: ExprData) -> bool {
-        loop {
-            let operand = match data {
-                ExprData::TsInstantiationExpression(_) => return true,
-                ExprData::UnaryExpression(node) => node.argument(self.ast),
-                ExprData::AwaitExpression(node) => node.argument(self.ast),
-                ExprData::YieldExpression(node) => {
-                    let Some(argument) = node.argument(self.ast) else {
-                        return false;
-                    };
-                    argument
-                }
-                ExprData::TsTypeAssertion(node) => node.expression(self.ast),
-                _ => return false,
-            };
-            data = self.ast.expr_data(operand);
-            while let ExprData::ParenthesizedExpression(pair) = data {
-                data = self.ast.expr_data(pair.expression(self.ast));
-            }
-        }
-    }
-
-    pub(super) fn shift_suspension_needs_grammar_barrier(
-        &self,
-        data: ExprData,
-        position: ExpressionPosition,
-    ) -> bool {
-        // The ordinary suspension pair alone lets TypeScript misread `x << (yield f<T>)`.
-        is_left_shift_right_operand(position)
-            && matches!(
-                data,
-                ExprData::AwaitExpression(_) | ExprData::YieldExpression(_)
-            )
-            && self.ast.is_ts()
-            && self.is_instantiation_operand(data)
     }
 
     pub(super) fn format_binary_type_expression_output(
@@ -1296,7 +1128,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             node.type_annotation(self.ast).span(self.ast).end,
             node.expression(self.ast).span(self.ast).start,
         );
-        let comments = self.comments.in_range(gap);
+        let comments = self.source_comments_in_range(gap);
         let closing = self
             .find_token(gap, comments, ">")
             .ok_or_else(|| self.unsupported("type assertion closing token", node))?;
@@ -1900,16 +1732,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     }
 }
 
-fn is_left_shift_right_operand(position: ExpressionPosition) -> bool {
-    matches!(
-        position,
-        ExpressionPosition::BinaryOperand {
-            operator: BinaryOperatorKind::Binary(BinaryOperator::LeftShift),
-            side: OperandSide::Right,
-        }
-    )
-}
-
 pub(super) fn type_expression_needs_parentheses(
     data: ExprData,
     position: ExpressionPosition,
@@ -1971,49 +1793,9 @@ pub(super) fn type_expression_needs_parentheses(
                     side: OperandSide::Left,
                 }
         )),
-        ExprData::TsInstantiationExpression(node) => Some(match position {
-            ExpressionPosition::MemberObject(_)
-            | ExpressionPosition::MemberAssignmentObject
-            | ExpressionPosition::TemplateTag
-            | ExpressionPosition::NonNullOperand
-            | ExpressionPosition::InstantiationOperand => true,
-            ExpressionPosition::CallCallee {
-                access: AccessKind::Ordinary,
-                has_type_arguments,
-                ..
-            }
-            | ExpressionPosition::NewCallee { has_type_arguments }
-            | ExpressionPosition::Superclass { has_type_arguments } => {
-                has_type_arguments || has_nested_instantiation(node.expression(ast), ast)
-            }
-            _ => false,
-        }),
+        ExprData::TsInstantiationExpression(node) => {
+            Some(instantiation::needs_parentheses(node, position, ast))
+        }
         _ => None,
     }
-}
-
-// An outer call, new, or heritage may absorb the last angle list. For
-// nested instantiations that would turn two separate instantiations into one.
-fn has_nested_instantiation(mut expression: Expr, ast: &Ast<'_>) -> bool {
-    loop {
-        match ast.expr_data(expression) {
-            ExprData::ParenthesizedExpression(pair) => expression = pair.expression(ast),
-            ExprData::ChainExpression(chain) => expression = chain.expression(ast),
-            ExprData::TsInstantiationExpression(_) => return true,
-            _ => return false,
-        }
-    }
-}
-
-fn instantiation_tail_conflicts(operator: BinaryOperator) -> bool {
-    matches!(
-        operator,
-        BinaryOperator::Add
-            | BinaryOperator::Subtract
-            | BinaryOperator::LessThan
-            | BinaryOperator::GreaterThan
-            | BinaryOperator::GreaterThanOrEqual
-            | BinaryOperator::RightShift
-            | BinaryOperator::UnsignedRightShift
-    )
 }
