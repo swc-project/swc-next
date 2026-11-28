@@ -6,4 +6,4 @@ const value = (fn<T>) * other;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const value = fn<T> * other;
+const value = (fn<T>) * other;

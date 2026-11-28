@@ -2,10 +2,19 @@
 source: crates/swc_formatter/tests/fixtures/mod.rs
 ---
 ---------- Input ----------
-result = (fn<number>) + other;---------- Options ----------
+result = (fn<number>) + other;
+
+async function difference() {
+  return (offset + <T>await fn<U>) - other;
+}
+---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
 result = (fn<number>) + other;
+
+async function difference() {
+  return offset + (<T>await fn<U>) - other;
+}
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
@@ -14,6 +23,16 @@ result =
   (fn<number>) +
   other;
 
+async function difference() {
+  return (
+    offset +
+    (<T>(
+      await fn<U>
+    )) -
+    other
+  );
+}
+
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
 ---------- Output ----------
@@ -21,9 +40,29 @@ result =
   (fn<number>) +
   other
 
+async function difference() {
+  return (
+    offset +
+    (<
+      T
+    >await fn<U>) -
+    other
+  )
+}
+
 ---------- Options ----------
 {"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
 ---------- Output ----------
 result =
 	(fn<number>) +
 	other;
+
+async function difference() {
+	return (
+		offset +
+		(<T>(
+			await fn<U>
+		)) -
+		other
+	);
+}

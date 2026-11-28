@@ -109,6 +109,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(Some(self.allocator.alloc(prepared)))
     }
 
+    /// The comment frame owns both delimiters around the operand. Otherwise
+    /// the operand exposes its own formatted or copied right edge.
+    pub(super) fn unary_tail_operand_mode(&self, unary: UnaryExpression) -> Option<ContentMode> {
+        let source = self.prepare_unary_operand_source(unary);
+        if !self.diagnostic_range_is_sensitive(unary.span(self.ast))
+            && self
+                .prepare_unary_operand_head(&source)
+                .is_ok_and(|head| head.is_some())
+        {
+            return None;
+        }
+        Some(source.context.content_mode)
+    }
+
     fn prepare_unary_operand_source(&self, unary: UnaryExpression) -> UnaryOperandSource<'ast> {
         let operator = unary.operator(self.ast);
         let source_argument = unary.argument(self.ast);

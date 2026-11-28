@@ -17,7 +17,7 @@ use crate::formatter::literals::StringContext;
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition, TrailingSuppression};
 use crate::{
-    FormatError, Semicolons,
+    FormatError,
     document::{BodyOpening, Writer},
 };
 
@@ -668,7 +668,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             self.format_verbatim(content_span, writer)?;
         } else {
             let position =
-                self.type_assertion_parentheses_position(source.content, None, context.position);
+                self.left_shift_parentheses_position(source.content, None, context.position);
             let mut inner_context = context.inside_parentheses();
             inner_context.position = position;
             if let Some(tail) = self.format_expression(source.content, inner_context, writer)? {
@@ -2648,7 +2648,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 context.content_mode,
             ) == ContentMode::Verbatim
             && self
-                .source_type_assertion_needs_grammar_barrier(self.ast.expr_data(child), context)
+                .source_shift_operand_needs_grammar_barrier(self.ast.expr_data(child), context)
                 .unwrap_or(true)
         {
             // Keep the actual grammar enclosure around an opaque cast child.
@@ -3486,9 +3486,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     array_comments.as_deref_mut(),
                     writer,
                 )?;
-                if context.expression_start.needs_asi_guard()
-                    && self.options.semicolons == Semicolons::AsNeeded
-                {
+                if context.expression_start.needs_asi_guard() {
                     writer.text(";");
                     context.expression_start = ExpressionStart::StatementGuarded;
                 }
@@ -3687,24 +3685,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
 
         let binary = super::binary::BinaryLike::from_data(data, self.ast);
-        if context.expression_start == ExpressionStart::StatementPending
-            && self.options.semicolons == Semicolons::AsNeeded
-        {
-            let mut asi_guard = parenthesize
-                || match data {
-                    ExprData::ArrayExpression(_)
-                    | ExprData::TemplateLiteral(_)
-                    | ExprData::RegExpLiteral(_)
-                    | ExprData::TsTypeAssertion(_)
-                    | ExprData::JsxElement(_)
-                    | ExprData::JsxFragment(_) => true,
-                    ExprData::UnaryExpression(unary) => matches!(
-                        unary.operator(self.ast),
-                        swc_next_ecma_ast::UnaryOperator::Positive
-                            | swc_next_ecma_ast::UnaryOperator::Negate
-                    ),
-                    _ => false,
-                };
+        if context.expression_start == ExpressionStart::StatementPending {
+            let mut asi_guard = parenthesize || self.formatted_head_needs_asi_guard(data);
             if let Some(binary) = binary {
                 asi_guard |= self.expression_needs_parentheses(
                     self.expression_data(binary.left),
@@ -3893,9 +3875,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionStart, FormatError> {
         let binding = context.resolve_emitted_head_binding(&head, binding);
         let prefix_gap_end = head.gap_end;
-        if context
-            .expression_start
-            .needs_statement_guard(self.options.semicolons)
+        if context.expression_start.needs_statement_guard()
             && context.content_mode == ContentMode::Verbatim
             && head.layout.is_source()
             && head.comments.last().is_some_and(|comment| {
@@ -3910,9 +3890,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             // The guard hugs the final annotation. A split prefix still needs its gap.
             head.gap_end = None;
         }
-        if context
-            .expression_start
-            .needs_statement_guard(self.options.semicolons)
+        if context.expression_start.needs_statement_guard()
             && self.has_target_annotations
             && let Some(index) = head
                 .comments
@@ -4143,7 +4121,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if head.comments.is_empty() {
             return Ok(start);
         }
-        if start.needs_statement_guard(self.options.semicolons)
+        if start.needs_statement_guard()
             && (self.parenthesis_has_type_cast(head.content_start)
                 || self.parenthesis_has_jsdoc_enclosure(head.content_start))
         {
@@ -4966,9 +4944,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             CommentRunLayout::GroupedLeading(head_end)
         };
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
-        {
+        if context.expression_start.needs_asi_guard() {
             writer.text(";");
         }
         let hug = hug
@@ -4993,7 +4969,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             )?;
             let position = match boundary.inner_target {
                 ParenthesisInner::Expression(expression) => {
-                    self.type_assertion_parentheses_position(expression, None, context.position)
+                    self.left_shift_parentheses_position(expression, None, context.position)
                 }
                 ParenthesisInner::SourcePair | ParenthesisInner::Unresolved => {
                     ExpressionPosition::Nested
@@ -5855,16 +5831,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Ok(output);
             }
         }
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
-        {
+        if context.expression_start.needs_asi_guard() {
             writer.text(";");
         }
-        let position = self.type_assertion_parentheses_position(
-            expression,
-            prepared.as_ref(),
-            context.position,
-        );
+        let position =
+            self.left_shift_parentheses_position(expression, prepared.as_ref(), context.position);
         let operand_indent = if self.is_nullish_conditional_operand(
             prepared
                 .get_or_insert_with(|| self.expression_content(expression))

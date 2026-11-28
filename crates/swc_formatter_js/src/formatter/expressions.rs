@@ -50,7 +50,7 @@ use super::comments::{
 };
 use super::suppression::ContentMode;
 use crate::{
-    FormatError, Semicolons,
+    FormatError,
     document::{BodyOpening, Writer},
 };
 
@@ -156,9 +156,8 @@ impl ExpressionStart {
         )
     }
 
-    fn needs_statement_guard(self, semicolons: Semicolons) -> bool {
-        matches!(self, Self::StatementBarrier { .. })
-            || semicolons == Semicolons::AsNeeded && self.needs_asi_guard()
+    fn needs_statement_guard(self) -> bool {
+        matches!(self, Self::StatementBarrier { .. }) || self.needs_asi_guard()
     }
 
     /// Terminating a prior directive does not itself create an empty statement.
@@ -177,10 +176,7 @@ impl ExpressionStart {
     }
 
     fn needs_asi_guard(self) -> bool {
-        matches!(
-            self,
-            Self::StatementPending | Self::StatementGuard | Self::StatementBarrier { .. }
-        )
+        matches!(self, Self::StatementPending | Self::StatementGuard)
     }
 }
 
@@ -451,7 +447,8 @@ impl<'ast> ExpressionContext<'ast> {
                 _ => arrows::ArrowLayout::Ordinary,
             },
             expression_start: match position {
-                ExpressionPosition::Statement(_) => ExpressionStart::StatementPending,
+                // The statement boundary enables a guard for the emitted head when needed.
+                ExpressionPosition::Statement(_) => ExpressionStart::StatementGuarded,
                 ExpressionPosition::ArrowBody => ExpressionStart::ArrowBody,
                 ExpressionPosition::ForInitializer { .. }
                 | ExpressionPosition::ForInInitializer => ExpressionStart::ForInitializer,
@@ -976,6 +973,41 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         matches!(position, ExpressionPosition::ConditionalTest)
     }
 
+    fn formatted_head_needs_asi_guard(&self, data: ExprData) -> bool {
+        matches!(
+            data,
+            ExprData::ArrayExpression(_)
+                | ExprData::TemplateLiteral(_)
+                | ExprData::RegExpLiteral(_)
+                | ExprData::TsTypeAssertion(_)
+                | ExprData::JsxElement(_)
+                | ExprData::JsxFragment(_)
+        ) || matches!(data, ExprData::UnaryExpression(node)
+            if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
+    }
+
+    fn verbatim_head_needs_asi_guard(
+        &self,
+        expression: Expr,
+        context: ExpressionContext<'ast>,
+        parenthesized: bool,
+    ) -> bool {
+        let data = self.ast.expr_data(expression);
+        if parenthesized
+            || context.is_verbatim_statement_string(data)
+            || matches!(
+                data,
+                ExprData::TsTypeAssertion(_) | ExprData::JsxElement(_) | ExprData::JsxFragment(_)
+            )
+        {
+            return true;
+        }
+        let source = self.source(expression.span(self.ast));
+        let prefix_update = matches!(data, ExprData::UpdateExpression(node) if node.prefix(self.ast))
+            && (source.starts_with("++") || source.starts_with("--"));
+        !prefix_update && source.starts_with(['(', '[', '/', '+', '-', '`'])
+    }
+
     pub(super) fn expression_needs_asi_guard(
         &self,
         mut expression: Expr,
@@ -984,33 +1016,19 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         loop {
             if context.content_mode == ContentMode::Verbatim {
                 let data = self.ast.expr_data(expression);
-                let source = self.source(expression.span(self.ast));
-                let update = matches!(data, ExprData::UpdateExpression(node) if node.prefix(self.ast))
-                    && (source.starts_with("++") || source.starts_with("--"));
-                return Ok(context.is_verbatim_statement_string(data)
-                    || self.expression_is_parenthesized(data, context)
-                    || matches!(
-                        data,
-                        ExprData::TsTypeAssertion(_)
-                            | ExprData::JsxElement(_)
-                            | ExprData::JsxFragment(_)
-                    )
-                    || !update && source.starts_with(['(', '[', '/', '+', '-', '`']));
+                return Ok(self.verbatim_head_needs_asi_guard(
+                    expression,
+                    context,
+                    self.expression_is_parenthesized(data, context),
+                ));
             }
             let data = self.expression_data_for_position(expression, context.position);
             if self.expression_is_parenthesized(data, context)
                 || matches!(
                     data,
-                    ExprData::ParenthesizedExpression(_)
-                        | ExprData::SequenceExpression(_)
-                        | ExprData::ArrayExpression(_)
-                        | ExprData::TemplateLiteral(_)
-                        | ExprData::RegExpLiteral(_)
-                        | ExprData::TsTypeAssertion(_)
-                        | ExprData::JsxElement(_)
-                        | ExprData::JsxFragment(_)
+                    ExprData::ParenthesizedExpression(_) | ExprData::SequenceExpression(_)
                 )
-                || matches!(data, ExprData::UnaryExpression(node) if matches!(node.operator(self.ast), UnaryOperator::Positive | UnaryOperator::Negate))
+                || self.formatted_head_needs_asi_guard(data)
             {
                 return Ok(true);
             }
@@ -1268,6 +1286,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExpressionPosition::BinaryOperand { operator, side: OperandSide::Left }
                     if BinaryOperatorKind::from_data(data, self.ast)
                         .is_some_and(|left| operator.flattens(left))
+                        && !self.ts_binary_operand_needs_parentheses(data, operator, OperandSide::Left, mode)
             );
             if !flattened && self.expression_needs_parentheses(data, position, mode) == Some(true) {
                 return false;
@@ -1291,6 +1310,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         position: ExpressionPosition,
         mode: ContentMode,
     ) -> Option<bool> {
+        if let ExpressionPosition::BinaryOperand { operator, side } = position
+            && self.ts_binary_operand_needs_parentheses(data, operator, side, mode)
+        {
+            return Some(true);
+        }
         if self.comparison_list_parentheses(data) {
             return Some(true);
         }
@@ -1426,22 +1450,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return Some(
                 needed
-                    || match (data, position) {
-                        (
-                            ExprData::TsTypeAssertion(_),
-                            ExpressionPosition::BinaryOperand {
-                                operator,
-                                side: OperandSide::Left,
-                            },
-                        ) if self.ast.is_ts() => {
-                            self.instantiation_tail_needs_parentheses(data, operator, mode)
-                        }
+                    || matches!(
+                        (data, position),
                         (
                             ExprData::TsInstantiationExpression(_),
-                            ExpressionPosition::NewCallee { .. },
-                        ) => self.new_callee_spine_needs_parentheses(data, mode),
-                        _ => false,
-                    },
+                            ExpressionPosition::NewCallee { .. }
+                        )
+                    ) && self.new_callee_spine_needs_parentheses(data, mode),
             );
         }
         // Both TypeScript suffixes attach to left-hand-side expressions.
@@ -1527,23 +1542,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 return Some(low_precedence_parent || awaited_yield);
             }
             ExprData::ChainExpression(_) => {
-                return Some(match position {
+                return Some(matches!(
+                    position,
                     ExpressionPosition::MemberObject(AccessKind::Ordinary)
-                    | ExpressionPosition::CallCallee {
-                        access: AccessKind::Ordinary,
-                        ..
-                    }
-                    | ExpressionPosition::MemberAssignmentObject
-                    | ExpressionPosition::NewCallee { .. }
-                    | ExpressionPosition::NonNullOperand => true,
-                    ExpressionPosition::BinaryOperand {
-                        operator,
-                        side: OperandSide::Left,
-                    } if self.ast.is_ts() => {
-                        self.instantiation_tail_needs_parentheses(data, operator, mode)
-                    }
-                    _ => false,
-                });
+                        | ExpressionPosition::CallCallee {
+                            access: AccessKind::Ordinary,
+                            ..
+                        }
+                        | ExpressionPosition::MemberAssignmentObject
+                        | ExpressionPosition::NewCallee { .. }
+                        | ExpressionPosition::NonNullOperand
+                ));
             }
             ExprData::NewExpression(constructor) => {
                 if matches!(position, ExpressionPosition::Superclass { .. }) {
@@ -1698,12 +1707,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) => true,
             (position, _) if self.is_nullish_conditional_operand(data, position) => true,
             (ExpressionPosition::BinaryOperand { operator, side }, _) => {
-                let required = match BinaryOperatorKind::from_data(data, self.ast) {
-                    Some(child) => {
-                        operator.needs_parentheses(child, side)
-                            || matches!(side, OperandSide::Left)
-                                && self.ts_relational_left_needs_parentheses(operator, child)
-                    }
+                match BinaryOperatorKind::from_data(data, self.ast) {
+                    Some(child) => operator.needs_parentheses(child, side),
                     None => matches!(
                         (side, operator, data),
                         (
@@ -1719,16 +1724,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             ExprData::UnaryExpression(_)
                         )
                     ),
-                };
-                required
-                    || matches!(
-                        data,
-                        ExprData::UnaryExpression(_)
-                            | ExprData::BinaryExpression(_)
-                            | ExprData::LogicalExpression(_)
-                    ) && matches!(side, OperandSide::Left)
-                        && self.ast.is_ts()
-                        && self.instantiation_tail_needs_parentheses(data, operator, mode)
+                }
             }
             (
                 ExpressionPosition::Statement(StringStatement::Parenthesized),
@@ -1769,7 +1765,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<PreparedVerbatimExpression, FormatError> {
         let data = self.ast.expr_data(expression);
         let span = expression.span(self.ast);
-        let source = self.source(span);
         let parenthesize = self.expression_is_parenthesized(data, context)
             || context.parentheses_owner == ParenthesesOwner::Expression
                 && context.expression_start.is_statement()
@@ -1779,28 +1774,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             || matches!(context.expression_head, ExpressionHead::Iteration(_));
         let grammar_barrier = if matches!(
             data,
-            ExprData::TsTypeAssertion(_) | ExprData::ParenthesizedExpression(_)
+            ExprData::TsTypeAssertion(_)
+                | ExprData::ParenthesizedExpression(_)
+                | ExprData::AwaitExpression(_)
+                | ExprData::YieldExpression(_)
         ) {
-            self.source_type_assertion_needs_grammar_barrier(data, context)?
+            self.source_shift_operand_needs_grammar_barrier(data, context)?
         } else {
             false
         };
-        let starts_update = matches!(data, ExprData::UpdateExpression(update) if update.prefix(self.ast))
-            && (source.starts_with("++") || source.starts_with("--"));
         let statement_guard = matches!(
             context.expression_start,
             ExpressionStart::StatementBarrier { .. }
-        ) || self.options.semicolons == Semicolons::AsNeeded
-            && context.expression_start.needs_asi_guard()
-            && (parenthesize
-                || context.is_verbatim_statement_string(data)
-                || matches!(
-                    data,
-                    ExprData::TsTypeAssertion(_)
-                        | ExprData::JsxElement(_)
-                        | ExprData::JsxFragment(_)
-                )
-                || !starts_update && source.starts_with(['(', '[', '/', '+', '-', '`']));
+        ) || context.expression_start.needs_asi_guard()
+            && self.verbatim_head_needs_asi_guard(expression, context, parenthesize);
         Ok(PreparedVerbatimExpression {
             expression,
             span,
@@ -1937,10 +1924,20 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             ExprData::AwaitExpression(node) => {
-                return self.format_await_output(node, context, writer);
+                return self.format_suspension_output(
+                    data,
+                    context.position,
+                    writer,
+                    |fmt, writer| fmt.format_await_output(node, context, writer),
+                );
             }
             ExprData::YieldExpression(node) => {
-                return self.format_yield_output(node, writer);
+                return self.format_suspension_output(
+                    data,
+                    context.position,
+                    writer,
+                    |fmt, writer| fmt.format_yield_output(node, writer),
+                );
             }
             ExprData::ImportExpression(import) => {
                 return self

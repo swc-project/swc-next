@@ -13,6 +13,22 @@ use crate::formatter::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
+    pub(super) fn format_suspension_output(
+        &mut self,
+        data: ExprData,
+        position: ExpressionPosition,
+        writer: &mut Writer<'ast>,
+        write: impl FnOnce(&mut Self, &mut Writer<'ast>) -> Result<ExpressionOutput<'ast>, FormatError>,
+    ) -> Result<ExpressionOutput<'ast>, FormatError> {
+        if !self.shift_suspension_needs_grammar_barrier(data, position) {
+            return write(self, writer);
+        }
+        writer.text("(");
+        let output = write(self, writer)?;
+        writer.text(")");
+        Ok(ExpressionOutput::closed(output.pending))
+    }
+
     pub(super) fn format_await_output(
         &mut self,
         expression: AwaitExpression,

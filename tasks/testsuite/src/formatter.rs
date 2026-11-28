@@ -323,8 +323,10 @@ pub fn run_conformance(config: ConformanceConfig) -> ConformanceOutput {
     let mut structural_errors = results
         .iter()
         .filter_map(|result| {
-            let CaseStatus::StructuralError(error) = &result.status else {
-                return None;
+            let error = match &result.status {
+                CaseStatus::StructuralError(error) => error.as_str(),
+                CaseStatus::UnparsableOutput(reason) => reason,
+                _ => return None,
             };
             Some(format!("{}: {error}", result.path))
         })
@@ -653,7 +655,12 @@ fn run_case(case: &FormatCase, debug: bool) -> CaseResult {
     let status = match output_invariants {
         Ok(()) if matched => CaseStatus::Matched,
         Ok(()) => CaseStatus::Mismatched,
-        Err(error) => classify_output_invariant_error(case, error),
+        Err(OutputInvariantError::Unparsable) => {
+            CaseStatus::UnparsableOutput("formatted output does not parse")
+        }
+        Err(OutputInvariantError::CommentCount { input, output }) => CaseStatus::StructuralError(
+            format!("formatting changed comment count from {input} to {output}"),
+        ),
     };
     let debug_diff = (debug && (!matched || invariant_failed))
         .then(|| (expected.unwrap_or("Parser rejection").to_string(), actual));
@@ -678,24 +685,6 @@ fn classify_format_error(error: FormatError, expected_parser_error: bool) -> Cas
         FormatError::Parse(_) => CaseStatus::ParseError(message),
         FormatError::Unsupported { .. } => CaseStatus::FormatError(message),
     }
-}
-
-fn classify_output_invariant_error(case: &FormatCase, error: OutputInvariantError) -> CaseStatus {
-    let message = match error {
-        OutputInvariantError::Unparsable
-            if case.relative_path == "typescript/instantiation-expression/before-operator.ts"
-                && case.spec.options.is_empty() =>
-        {
-            return CaseStatus::UnparsableOutput(
-                "the formatter drops required parentheses around instantiation expressions before binary operators",
-            );
-        }
-        OutputInvariantError::Unparsable => "formatted output does not parse".to_string(),
-        OutputInvariantError::CommentCount { input, output } => {
-            format!("formatting changed comment count from {input} to {output}")
-        }
-    };
-    CaseStatus::StructuralError(message)
 }
 
 fn run_case_catching_panic(case: &FormatCase, debug: bool) -> CaseResult {

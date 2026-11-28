@@ -1,0 +1,17 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function* shifts(bits: number) {
+  const direct = bits << count<number>;
+  const awaited = direct << await count<number>;
+  return awaited << ((/* prettier-ignore */ yield count  < number >));
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+async function* shifts(bits: number) {
+  const direct = bits << count<number>;
+  const awaited = direct << ((await count<number>));
+  return awaited << /* prettier-ignore */ ((yield count  < number >));
+}

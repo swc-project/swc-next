@@ -3,18 +3,18 @@ formatter * prettier 3.10.1 * typescript
 Fixture revision: deda65fd47c285b974e2a4397f26a33cfc1746b8
 Fixture files: 688
 Scope: supported physical fixtures (inline snapshot snippets excluded)
-Passed: 750/782 (95.91%)
-Snapshot matched: 750/782
+Passed: 752/782 (96.16%)
+Snapshot matched: 752/782
 AST parity: 782/782
 AST mismatched: 0/782
 AST format errors: 0/782
-Mismatched: 31/782
+Mismatched: 30/782
 Known mismatches: 15/782
-Unclassified mismatches: 16/782
+Unclassified mismatches: 15/782
 Format errors: 0/782
-Unparsable output: 1/782
+Unparsable output: 0/782
 Panicked: 0/782
-Not idempotent: 1/782
+Not idempotent: 0/782
 Ignored files: 79
 Parse errors: 0/782
 Expected parser errors: 3
@@ -25,10 +25,6 @@ Unsupported option sets: 4
 - typescript/conformance/types/functions/functionOverloadErrorsSyntax.ts: 1 expected parser error(s)
 - typescript/filtered-namespaces/filtered-namespaces.ts: 1 expected parser error(s)
 - typescript/filtered-namespaces/typescript-type-modifier.ts: 1 expected parser error(s)
-
-# Unparsable output
-
-- typescript/instantiation-expression/before-operator.ts: the formatter drops required parentheses around instantiation expressions before binary operators
 
 # Known divergences
 
@@ -77,7 +73,6 @@ Unsupported option sets: 4
 - typescript/class-comment/declare.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/class-comment/issue-16228.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/comments/before-body/before-body.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
-- typescript/instantiation-expression/operand.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/instantiation-expression/super-class.ts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
 - typescript/prettier-ignore/no-semi/class-property.ts: 2/2 mismatched, 0/2 format errors, 0/2 panicked, 0/2 not idempotent
 - typescript/top-level-await/test.cts: 1/1 mismatched, 0/1 format errors, 0/1 panicked, 0/1 not idempotent
