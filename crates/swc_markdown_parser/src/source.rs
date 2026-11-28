@@ -101,7 +101,8 @@ impl SourceLine {
             .copied()
             .find(|b| !matches!(b, b' ' | b'\t'))
     }
-    pub(crate) fn indent(self, source: &str) -> usize {
+    /// Leading indentation in columns after removing enclosing container prefixes.
+    pub fn indent(self, source: &str) -> usize {
         let mut col = self.column + usize::from(self.virtual_spaces);
         for b in self.content.bytes(source) {
             match b {

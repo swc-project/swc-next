@@ -21,18 +21,19 @@ impl<'a> Formatter<'a, '_, '_> {
             return Ok(());
         };
         writer.space();
-        if let BlockKind::Paragraph(nodes) = &first.kind
-            && children.next().is_none()
-            && (self.options.prose_wrap == ProseWrap::Never
-                || self.options.prose_wrap == ProseWrap::Preserve && first.lines.len() == 1)
-        {
-            self.inlines(first, nodes, self.options.prose_wrap, writer);
-        } else {
-            self.aligned("    ", writer, |formatter, writer| {
-                formatter.blocks(blocks, Container::Footnote, writer)
-            })?;
-        }
-        Ok(())
+        let wrap = self.options.prose_wrap;
+        self.aligned("    ", writer, |formatter, writer| {
+            if let BlockKind::Paragraph(nodes) = &first.kind
+                && children.next().is_none()
+                && (wrap == ProseWrap::Never
+                    || wrap == ProseWrap::Preserve && first.lines.len() == 1)
+            {
+                formatter.inlines(first, nodes, wrap, writer);
+            } else {
+                formatter.blocks(blocks, Container::Footnote, writer)?;
+            }
+            Ok(())
+        })
     }
 
     pub(super) fn display_math(

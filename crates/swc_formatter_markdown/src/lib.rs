@@ -122,6 +122,7 @@ fn format_document<'a, 'doc>(
         slots,
         prefix_columns: 0,
         lists_aligned: true,
+        original_item_widths: true,
     };
     formatter.document()
 }
@@ -133,6 +134,7 @@ struct Formatter<'a, 'services, 'slots> {
     slots: Option<&'slots mut Vec<EmbeddedBlock>>,
     prefix_columns: usize,
     lists_aligned: bool,
+    original_item_widths: bool,
 }
 
 impl<'a> Formatter<'a, '_, '_> {
