@@ -1,0 +1,43 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+async function difference() {
+  return (offset + /* prettier-ignore */ typeof await fn<U>) - other;
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80}
+---------- Output ----------
+async function difference() {
+  return (offset + /* prettier-ignore */ typeof await fn<U>) - other;
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20}
+---------- Output ----------
+async function difference() {
+  return (
+    (offset + /* prettier-ignore */ typeof await fn<U>) -
+    other
+  );
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":1,"semicolons":"as-needed"}
+---------- Output ----------
+async function difference() {
+  return (
+    (offset + /* prettier-ignore */ typeof await fn<U>) -
+    other
+  )
+}
+
+---------- Options ----------
+{"indentStyle":"tab","lineEnding":"crlf","lineWidth":20}
+---------- Output ----------
+async function difference() {
+	return (
+		(offset + /* prettier-ignore */ typeof await fn<U>) -
+		other
+	);
+}

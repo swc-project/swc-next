@@ -6,22 +6,22 @@ const result = (factor * callee<Type>) + suffix;
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80}
 ---------- Output ----------
-const result = (factor * callee<Type>) + suffix;
+const result = factor * (callee<Type>) + suffix;
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
 ---------- Output ----------
-const result = (factor * callee<Type>) + suffix
+const result = factor * (callee<Type>) + suffix
 
 ---------- Options ----------
 {"indentStyle":"space","lineWidth":20}
 ---------- Output ----------
 const result =
-  (factor *
-    callee<Type>) +
+  factor *
+    (callee<Type>) +
   suffix;
 
 ---------- Options ----------
 {"indentStyle":"tab","lineWidth":80}
 ---------- Output ----------
-const result = (factor * callee<Type>) + suffix;
+const result = factor * (callee<Type>) + suffix;

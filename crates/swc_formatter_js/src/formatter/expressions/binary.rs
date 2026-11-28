@@ -327,11 +327,6 @@ impl OperandBoundary<'_> {
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    fn binary_content(&self, expression: Expr) -> Option<(BinaryLike, Option<SourceParentheses>)> {
-        let content = self.expression_content(expression);
-        self.binary_content_from_prepared(&content)
-    }
-
     fn binary_content_from_prepared(
         &self,
         content: &ExpressionContent,
@@ -355,6 +350,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         self.prepare_binary_entry(binary, binary.left.span(self.ast).end)
             .is_ok_and(|entry| entry.left_mode() == ContentMode::Verbatim)
+    }
+
+    pub(super) fn binary_right_mode(&self, binary: BinaryLike) -> Result<ContentMode, FormatError> {
+        self.prepare_binary_entry(binary, binary.left.span(self.ast).end)
+            .map(ChainParent::right_mode)
     }
 
     fn prepare_binary_entry(
@@ -418,11 +418,17 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut first = self.prepare_binary_entry(first, first.left.span(self.ast).end)?;
         let mut ancestors = Vec::new();
         while first.left_mode() != ContentMode::Verbatim {
-            let Some((left, left_parentheses)) = self.binary_content(first.binary.left) else {
+            let content = self.expression_content(first.binary.left);
+            let Some((left, left_parentheses)) = self.binary_content_from_prepared(&content) else {
                 break;
             };
             if !first.binary.operator.flattens(left.operator)
-                || self.ts_relational_left_needs_parentheses(first.binary.operator, left.operator)
+                || self.ts_binary_operand_needs_parentheses(
+                    content.data,
+                    first.binary.operator,
+                    OperandSide::Left,
+                    ContentMode::Formatted,
+                )
                 || self.for_initializer_in_needs_parentheses(left.operator, first.binary.left)
             {
                 break;
@@ -615,7 +621,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let comments = self.comments.take(comments.len());
         let start = if self.has_target_annotations
             && context.expression_start.needs_asi_guard()
-            && self.options.semicolons == crate::Semicolons::AsNeeded
             && !comments.is_empty()
         {
             self.format_expression_head(
@@ -934,10 +939,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             context.head_scope = head.head_scope;
             context.body_opening = head.opening;
             if jsx {
-                if context
-                    .expression_start
-                    .needs_statement_guard(self.options.semicolons)
-                {
+                if context.expression_start.needs_statement_guard() {
                     context.expression_start.write_statement_guard(writer);
                     context.expression_start = ExpressionStart::StatementGuarded;
                 }
@@ -1066,14 +1068,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let Some((binary, _)) = self.logical_right_content(operator, &content) else {
                 return false;
             };
-            if self.has_suppression {
-                let Ok(entry) = self.prepare_binary_entry(binary, binary.left.span(self.ast).end)
-                else {
-                    return false;
-                };
-                if entry.right_mode() == ContentMode::Verbatim {
-                    return false;
-                }
+            if self.has_suppression
+                && !self
+                    .binary_right_mode(binary)
+                    .is_ok_and(|mode| mode == ContentMode::Formatted)
+            {
+                return false;
             }
             content = self.expression_content(binary.right);
         }

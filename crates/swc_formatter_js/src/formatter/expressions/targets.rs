@@ -17,7 +17,7 @@ use crate::formatter::bindings::BindingGroup;
 use crate::formatter::comments::{CommentRunLayout, ExpressionTail, NodeHead};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, SuppressionPosition};
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{FormatError, document::Writer};
 
 #[derive(Clone, Copy)]
 enum TargetOperator {
@@ -714,7 +714,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let verbatim = context.content_mode == ContentMode::Verbatim && !target.layers.is_empty();
         if (matches!(target.target, TargetNode::Pattern { .. }) || verbatim)
             && context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
         {
             writer.text(";");
             context.expression_start = ExpressionStart::None;
@@ -724,7 +723,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
             && target
                 .layers
                 .iter()
@@ -790,10 +788,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             };
             let boundary = layer.parentheses;
-            if layer.mode != TargetLayerMode::Remove
-                && context.expression_start.needs_asi_guard()
-                && self.options.semicolons == Semicolons::AsNeeded
-            {
+            if layer.mode != TargetLayerMode::Remove && context.expression_start.needs_asi_guard() {
                 writer.text(";");
                 context.expression_start = ExpressionStart::None;
             }

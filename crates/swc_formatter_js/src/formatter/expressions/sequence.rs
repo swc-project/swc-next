@@ -13,7 +13,7 @@ use crate::formatter::comments::{CommentBinding, CommentRunLayout, ExpressionTai
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint};
 use crate::formatter::source::is_source_whitespace;
 use crate::formatter::suppression::{ContentMode, DelimitedFollowing, DelimitedSuppression};
-use crate::{FormatError, Semicolons, document::Writer};
+use crate::{FormatError, document::Writer};
 
 struct SequenceBoundary<'ast> {
     next: Expr,
@@ -404,7 +404,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.format_node_head(head, context.expression_start, None, writer)?
         };
-        if self.options.semicolons == Semicolons::AsNeeded && start.needs_asi_guard() {
+        if start.needs_asi_guard() {
             writer.text(";");
         }
         if parenthesize {

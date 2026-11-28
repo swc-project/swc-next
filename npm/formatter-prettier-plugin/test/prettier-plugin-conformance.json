@@ -41445,6 +41445,42 @@
         "prettierNative": "result =\r\n\tFactory.first// prettier-ignore\r\n\t< string | number >;\r\n"
       }
     ],
+    "ts/instantiation-expression/binary-left-ignored.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "async function difference() {\n  return (offset + /* prettier-ignore */ typeof await fn<U>) - other;\n}\n",
+        "prettierNative": "async function difference() {\n  return offset + /* prettier-ignore */ (typeof await fn<U>) - other;\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space"
+        },
+        "swcPlugin": "async function difference() {\n  return (\n    (offset + /* prettier-ignore */ typeof await fn<U>) -\n    other\n  );\n}\n",
+        "prettierNative": "async function difference() {\n  return (\n    offset +\n    /* prettier-ignore */ (typeof await fn<U>) -\n    other\n  );\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 1,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function difference() {\n  return (\n    (offset + /* prettier-ignore */ typeof await fn<U>) -\n    other\n  )\n}\n",
+        "prettierNative": "async function difference() {\n  return (\n    offset +\n    /* prettier-ignore */ (typeof await fn<U>) -\n    other\n  )\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "tab",
+          "lineEnding": "crlf"
+        },
+        "swcPlugin": "async function difference() {\r\n\treturn (\r\n\t\t(offset + /* prettier-ignore */ typeof await fn<U>) -\r\n\t\tother\r\n\t);\r\n}\r\n",
+        "prettierNative": "async function difference() {\r\n\treturn (\r\n\t\toffset +\r\n\t\t/* prettier-ignore */ (typeof await fn<U>) -\r\n\t\tother\r\n\t);\r\n}\r\n"
+      }
+    ],
     "ts/instantiation-expression/callee-type-argument-ignore.ts": [
       {
         "options": {
@@ -41537,14 +41573,14 @@
         "prettierNative": "new (Ctor<T>)();\n"
       }
     ],
-    "ts/instantiation-expression/canonical/product.ts": [
+    "ts/instantiation-expression/canonical/shift-count.ts": [
       {
         "options": {
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const value = fn<T> * other;\n",
-        "prettierNative": "const value = (fn<T>) * other;\n"
+        "swcPlugin": "async function* shifts(bits: number) {\n  const direct = bits << count<number>;\n  const awaited = direct << ((await count<number>));\n  return awaited << /* prettier-ignore */ ((yield count  < number >));\n}\n",
+        "prettierNative": "async function* shifts(bits: number) {\n  const direct = bits << (count<number>);\n  const awaited = direct << (await count<number>);\n  return awaited << /* prettier-ignore */ (yield count  < number >);\n}\n"
       }
     ],
     "ts/instantiation-expression/protected-call-head.ts": [
@@ -46358,41 +46394,6 @@
         "prettierNative": "const x: /* note */\nnumber[] = [];\n"
       }
     ],
-    "ts/type-argument-expression-boundaries/binary-tail.ts": [
-      {
-        "options": {
-          "lineWidth": 80,
-          "indentStyle": "space"
-        },
-        "swcPlugin": "const result = (factor * callee<Type>) + suffix;\n",
-        "prettierNative": "const result = factor * (callee<Type>) + suffix;\n"
-      },
-      {
-        "options": {
-          "lineWidth": 80,
-          "indentStyle": "space",
-          "semicolons": "as-needed"
-        },
-        "swcPlugin": "const result = (factor * callee<Type>) + suffix\n",
-        "prettierNative": "const result = factor * (callee<Type>) + suffix\n"
-      },
-      {
-        "options": {
-          "lineWidth": 20,
-          "indentStyle": "space"
-        },
-        "swcPlugin": "const result =\n  (factor *\n    callee<Type>) +\n  suffix;\n",
-        "prettierNative": "const result =\n  factor *\n    (callee<Type>) +\n  suffix;\n"
-      },
-      {
-        "options": {
-          "lineWidth": 80,
-          "indentStyle": "tab"
-        },
-        "swcPlugin": "const result = (factor * callee<Type>) + suffix;\n",
-        "prettierNative": "const result = factor * (callee<Type>) + suffix;\n"
-      }
-    ],
     "ts/type-argument-expression-boundaries/comparison-lists/array.ts": [
       {
         "options": {
@@ -46619,7 +46620,7 @@
           "lineWidth": 80,
           "indentStyle": "space"
         },
-        "swcPlugin": "const remainder = !callee<Type> % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = !callee<Type> << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = callee<Type>() + suffix;\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix;\nconst enclosedTail = !(/* prettier-ignore */ callee  < Type >) + suffix;\n",
+        "swcPlugin": "const remainder = (!callee<Type>) % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = (!callee<Type>) << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = callee<Type>() + suffix;\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix;\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix;\n",
         "prettierNative": "const remainder = (!callee<Type>) % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = (!callee<Type>) << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = (callee<Type>)() + suffix;\nconst ignoredTail = factor * /* prettier-ignore */ (callee  < Type >) + suffix;\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix;\n"
       },
       {
@@ -46628,7 +46629,7 @@
           "indentStyle": "space",
           "semicolons": "as-needed"
         },
-        "swcPlugin": "const remainder = !callee<Type> % suffix\nconst less = (!callee<Type>) < suffix\nconst greaterEqual = (!callee<Type>) >= suffix\nconst shift = (!callee<Type>) >> suffix\nconst unsignedShift = (!callee<Type>) >>> suffix\nconst leftShift = !callee<Type> << suffix\nconst nonNull = (callee<Type>)! + suffix\nconst asserted = (callee<Type> as Function) + suffix\nconst called = callee<Type>() + suffix\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix\nconst enclosedTail = !(/* prettier-ignore */ callee  < Type >) + suffix\n",
+        "swcPlugin": "const remainder = (!callee<Type>) % suffix\nconst less = (!callee<Type>) < suffix\nconst greaterEqual = (!callee<Type>) >= suffix\nconst shift = (!callee<Type>) >> suffix\nconst unsignedShift = (!callee<Type>) >>> suffix\nconst leftShift = (!callee<Type>) << suffix\nconst nonNull = (callee<Type>)! + suffix\nconst asserted = (callee<Type> as Function) + suffix\nconst called = callee<Type>() + suffix\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix\n",
         "prettierNative": "const remainder = (!callee<Type>) % suffix\nconst less = (!callee<Type>) < suffix\nconst greaterEqual = (!callee<Type>) >= suffix\nconst shift = (!callee<Type>) >> suffix\nconst unsignedShift = (!callee<Type>) >>> suffix\nconst leftShift = (!callee<Type>) << suffix\nconst nonNull = (callee<Type>)! + suffix\nconst asserted = (callee<Type> as Function) + suffix\nconst called = (callee<Type>)() + suffix\nconst ignoredTail = factor * /* prettier-ignore */ (callee  < Type >) + suffix\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix\n"
       },
       {
@@ -46636,7 +46637,7 @@
           "lineWidth": 20,
           "indentStyle": "space"
         },
-        "swcPlugin": "const remainder =\n  !callee<Type> %\n  suffix;\nconst less =\n  (!callee<Type>) <\n  suffix;\nconst greaterEqual =\n  (!callee<Type>) >=\n  suffix;\nconst shift =\n  (!callee<Type>) >>\n  suffix;\nconst unsignedShift =\n  (!callee<Type>) >>>\n  suffix;\nconst leftShift =\n  !callee<Type> <<\n  suffix;\nconst nonNull =\n  (callee<Type>)! +\n  suffix;\nconst asserted =\n  (callee<Type> as Function) +\n  suffix;\nconst called =\n  callee<Type>() +\n  suffix;\nconst ignoredTail =\n  (factor *\n    /* prettier-ignore */ callee  < Type >) +\n  suffix;\nconst enclosedTail =\n  !(/* prettier-ignore */ callee  < Type >\n  ) + suffix;\n",
+        "swcPlugin": "const remainder =\n  (!callee<Type>) %\n  suffix;\nconst less =\n  (!callee<Type>) <\n  suffix;\nconst greaterEqual =\n  (!callee<Type>) >=\n  suffix;\nconst shift =\n  (!callee<Type>) >>\n  suffix;\nconst unsignedShift =\n  (!callee<Type>) >>>\n  suffix;\nconst leftShift =\n  (!callee<Type>) <<\n  suffix;\nconst nonNull =\n  (callee<Type>)! +\n  suffix;\nconst asserted =\n  (callee<Type> as Function) +\n  suffix;\nconst called =\n  callee<Type>() +\n  suffix;\nconst ignoredTail =\n  (factor *\n    /* prettier-ignore */ callee  < Type >) +\n  suffix;\nconst enclosedTail =\n  (!(/* prettier-ignore */ callee  < Type >\n  )) + suffix;\n",
         "prettierNative": "const remainder =\n  (!callee<Type>) %\n  suffix;\nconst less =\n  (!callee<Type>) <\n  suffix;\nconst greaterEqual =\n  (!callee<Type>) >=\n  suffix;\nconst shift =\n  (!callee<Type>) >>\n  suffix;\nconst unsignedShift =\n  (!callee<Type>) >>>\n  suffix;\nconst leftShift =\n  (!callee<Type>) <<\n  suffix;\nconst nonNull =\n  (callee<Type>)! +\n  suffix;\nconst asserted =\n  (callee<Type> as Function) +\n  suffix;\nconst called =\n  (callee<Type>)() +\n  suffix;\nconst ignoredTail =\n  factor *\n    /* prettier-ignore */ (callee  < Type >) +\n  suffix;\nconst enclosedTail =\n  (!(\n    /* prettier-ignore */ callee  < Type >\n  )) + suffix;\n"
       },
       {
@@ -46644,7 +46645,7 @@
           "lineWidth": 80,
           "indentStyle": "tab"
         },
-        "swcPlugin": "const remainder = !callee<Type> % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = !callee<Type> << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = callee<Type>() + suffix;\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix;\nconst enclosedTail = !(/* prettier-ignore */ callee  < Type >) + suffix;\n",
+        "swcPlugin": "const remainder = (!callee<Type>) % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = (!callee<Type>) << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = callee<Type>() + suffix;\nconst ignoredTail = (factor * /* prettier-ignore */ callee  < Type >) + suffix;\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix;\n",
         "prettierNative": "const remainder = (!callee<Type>) % suffix;\nconst less = (!callee<Type>) < suffix;\nconst greaterEqual = (!callee<Type>) >= suffix;\nconst shift = (!callee<Type>) >> suffix;\nconst unsignedShift = (!callee<Type>) >>> suffix;\nconst leftShift = (!callee<Type>) << suffix;\nconst nonNull = (callee<Type>)! + suffix;\nconst asserted = (callee<Type> as Function) + suffix;\nconst called = (callee<Type>)() + suffix;\nconst ignoredTail = factor * /* prettier-ignore */ (callee  < Type >) + suffix;\nconst enclosedTail = (!(/* prettier-ignore */ callee  < Type >)) + suffix;\n"
       }
     ],

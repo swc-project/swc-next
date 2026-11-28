@@ -285,36 +285,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 self.statement_content(statement),
                 StatementContent::Semicolon(_)
             );
-        let punctuation = match (unterminated_body, punctuation) {
-            (true, StatementPunctuation::Canonical(Semicolons::AsNeeded))
-                if following.is_following() =>
-            {
-                let following_needs_guard = match following {
-                    ContinuationBoundary::Following {
-                        kind:
-                            FollowingSyntax::ExpressionStatement {
-                                expression,
-                                string_statement,
-                                mode,
-                            },
-                        ..
-                    } => self.expression_needs_asi_guard(
-                        expression,
-                        ExpressionContext::at(ExpressionPosition::Statement(string_statement))
-                            .with_content_mode(mode),
-                    )?,
-                    _ => false,
-                };
-                if following_needs_guard
-                    || following.needs_generated(statement.raw_type_terminal(self.ast))
-                {
-                    // A leading guard would become part of the copied branch on the next pass.
-                    StatementPunctuation::Canonical(Semicolons::Always)
-                } else {
-                    punctuation
-                }
-            }
-            _ => punctuation,
+        let punctuation = if unterminated_body {
+            following.after_unterminated_body(self, punctuation, statement)?
+        } else {
+            punctuation
         };
         self.format_verbatim(span, writer)?;
         if unterminated_body {

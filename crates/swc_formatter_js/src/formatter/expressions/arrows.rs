@@ -26,7 +26,7 @@ use crate::formatter::types::callable::{
 };
 use crate::formatter::types::generics::TypeParameterContext;
 use crate::{
-    ArrowParentheses, FormatError, Semicolons, TrailingCommas,
+    ArrowParentheses, FormatError, TrailingCommas,
     document::{ConditionTarget, Fragment, RecordedGroup, Writer},
 };
 
@@ -823,10 +823,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
-            && !source.is_async
-        {
+        if context.expression_start.needs_asi_guard() && !source.is_async {
             writer.text(";");
         }
         self.format_verbatim(source.span, writer)
@@ -1207,7 +1204,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ..
         } = source;
         if context.expression_start.needs_asi_guard()
-            && self.options.semicolons == Semicolons::AsNeeded
             && !arrow.r#async(self.ast)
             && (generics.is_some() || parameters.starts_with_parenthesis())
         {

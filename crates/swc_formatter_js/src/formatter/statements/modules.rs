@@ -9,7 +9,6 @@ use swc_next_ecma_ast::{
 };
 
 use super::{Formatter, PrintedStatement, StatementBoundary, StatementPunctuation};
-use crate::Semicolons;
 use crate::formatter::bindings::InitializerLayout;
 use crate::formatter::comments::{CommentCursor, CommentRunLayout, NodeHead};
 use crate::formatter::decorators::{DecoratorLayout, DecoratorPrefix};
@@ -265,27 +264,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     operator_tail_destination,
                     writer,
                 )?;
-                let punctuation = if matches!(
-                    punctuation,
-                    StatementPunctuation::Canonical(Semicolons::AsNeeded)
-                ) {
-                    if let Some(request) = output.fence_request {
-                        if let Some(source) = declaration_source
-                            .source()
-                            .filter(|source| request.span.end <= source.start())
-                        {
-                            StatementPunctuation::Source(source)
-                        } else if declaration_source.needs_generated(request.terminal) {
-                            StatementPunctuation::Canonical(Semicolons::Always)
-                        } else {
-                            punctuation
-                        }
-                    } else {
-                        punctuation
-                    }
-                } else {
-                    punctuation
-                };
+                let punctuation = output.fence_request.map_or(punctuation, |request| {
+                    declaration_source.after_raw_type(
+                        punctuation,
+                        request.span.end,
+                        request.terminal,
+                    )
+                });
                 self.finish_statement_with_operator_tail(
                     output.end,
                     output.tail,
