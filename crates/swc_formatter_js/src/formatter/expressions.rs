@@ -1284,9 +1284,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let flattened = matches!(
                 position,
                 ExpressionPosition::BinaryOperand { operator, side: OperandSide::Left }
-                    if BinaryOperatorKind::from_data(data, self.ast)
-                        .is_some_and(|left| operator.flattens(left))
-                        && !self.ts_binary_operand_needs_parentheses(data, operator, OperandSide::Left, mode)
+                    if self.flattenable_binary_left(operator, expression, data).is_some()
             );
             if !flattened && self.expression_needs_parentheses(data, position, mode) == Some(true) {
                 return false;
@@ -1707,24 +1705,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             ) => true,
             (position, _) if self.is_nullish_conditional_operand(data, position) => true,
             (ExpressionPosition::BinaryOperand { operator, side }, _) => {
-                match BinaryOperatorKind::from_data(data, self.ast) {
-                    Some(child) => operator.needs_parentheses(child, side),
-                    None => matches!(
-                        (side, operator, data),
-                        (
-                            OperandSide::Left,
-                            BinaryOperatorKind::Binary(swc_next_ecma_ast::BinaryOperator::Exponent),
-                            ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
-                        ) | (
-                            OperandSide::Left,
-                            BinaryOperatorKind::Binary(
-                                swc_next_ecma_ast::BinaryOperator::In
-                                    | swc_next_ecma_ast::BinaryOperator::Instanceof
-                            ),
-                            ExprData::UnaryExpression(_)
-                        )
-                    ),
-                }
+                operator.operand_needs_parentheses(data, side, self.ast)
             }
             (
                 ExpressionPosition::Statement(StringStatement::Parenthesized),

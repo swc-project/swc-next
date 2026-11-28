@@ -88,6 +88,7 @@ impl BinaryOperatorKind {
         )
     }
 
+    /// Whether the two operators can share a chain's layout.
     pub(super) fn flattens(self, child: Self) -> bool {
         if self.precedence() != child.precedence() {
             return false;
@@ -99,7 +100,26 @@ impl BinaryOperatorKind {
         }
     }
 
-    pub(super) fn needs_parentheses(self, child: Self, side: OperandSide) -> bool {
+    pub(super) fn operand_needs_parentheses(
+        self,
+        data: ExprData,
+        side: OperandSide,
+        ast: &Ast<'_>,
+    ) -> bool {
+        let Some(child) = Self::from_data(data, ast) else {
+            return matches!(
+                (side, self, data),
+                (
+                    OperandSide::Left,
+                    Self::Binary(BinaryOperator::Exponent),
+                    ExprData::UnaryExpression(_) | ExprData::UpdateExpression(_)
+                ) | (
+                    OperandSide::Left,
+                    Self::Binary(BinaryOperator::In | BinaryOperator::Instanceof),
+                    ExprData::UnaryExpression(_)
+                )
+            );
+        };
         if matches!((self, child), (Self::Logical(_), Self::Logical(_))) && self != child {
             return true;
         }
@@ -326,19 +346,24 @@ impl OperandBoundary<'_> {
     }
 }
 
+fn has_bound_source_head(content: &ExpressionContent) -> bool {
+    content
+        .parentheses
+        .is_some_and(|removed| !matches!(removed.head.binding, CommentBinding::Unbound))
+}
+
 impl<'ast, 'source> Formatter<'ast, 'source> {
-    fn binary_content_from_prepared(
+    fn same_operator_operand(
         &self,
+        operator: BinaryOperatorKind,
         content: &ExpressionContent,
     ) -> Option<(BinaryLike, Option<SourceParentheses>)> {
-        if content
-            .parentheses
-            .is_some_and(|removed| !matches!(removed.head.binding, CommentBinding::Unbound))
-        {
+        if has_bound_source_head(content) {
             return None;
         }
         let binary = BinaryLike::from_data(content.data, self.ast)?;
-        Some((binary, content.parentheses.map(|removed| removed.source)))
+        (binary.operator == operator)
+            .then(|| (binary, content.parentheses.map(|removed| removed.source)))
     }
 
     pub(super) fn binary_has_ignored_left(&self, mut expression: Expr) -> bool {
@@ -413,29 +438,45 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Ok(entry)
     }
 
+    /// The emitted chain and its projected head must stop at the same operator boundary.
+    #[inline]
+    pub(super) fn flattenable_binary_left(
+        &self,
+        parent: BinaryOperatorKind,
+        left: Expr,
+        data: ExprData,
+    ) -> Option<BinaryLike> {
+        let child = BinaryLike::from_data(data, self.ast)?;
+        (parent.flattens(child.operator)
+            && !self.ts_binary_operand_needs_parentheses(
+                data,
+                parent,
+                OperandSide::Left,
+                ContentMode::Formatted,
+            )
+            && !self.for_initializer_in_needs_parentheses(child.operator, left))
+        .then_some(child)
+    }
+
     fn binary_chain(&self, first: BinaryLike) -> Result<BinaryChain, FormatError> {
         let head = first.left;
         let mut first = self.prepare_binary_entry(first, first.left.span(self.ast).end)?;
         let mut ancestors = Vec::new();
         while first.left_mode() != ContentMode::Verbatim {
             let content = self.expression_content(first.binary.left);
-            let Some((left, left_parentheses)) = self.binary_content_from_prepared(&content) else {
-                break;
-            };
-            if !first.binary.operator.flattens(left.operator)
-                || self.ts_binary_operand_needs_parentheses(
-                    content.data,
-                    first.binary.operator,
-                    OperandSide::Left,
-                    ContentMode::Formatted,
-                )
-                || self.for_initializer_in_needs_parentheses(left.operator, first.binary.left)
-            {
+            if has_bound_source_head(&content) {
                 break;
             }
-            first.left_content_end = left_parentheses.map_or_else(
+            let Some(left) = self.flattenable_binary_left(
+                first.binary.operator,
+                first.binary.left,
+                content.data,
+            ) else {
+                break;
+            };
+            first.left_content_end = content.parentheses.map_or_else(
                 || first.binary.left.span(self.ast).end,
-                |boundary| boundary.inner.end,
+                |removed| removed.source.inner.end,
             );
             ancestors.push(first);
             first = self.prepare_binary_entry(left, left.left.span(self.ast).end)?;
@@ -477,13 +518,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         operator: BinaryOperatorKind,
         content: &ExpressionContent,
     ) -> Option<(BinaryLike, Option<SourceParentheses>)> {
-        let (right, parentheses) = self.binary_content_from_prepared(content)?;
+        let (right, parentheses) = self.same_operator_operand(operator, content)?;
         // A diagnostic head can be emitted before its pair. The right
         // operand must keep the same group and layout at that source boundary.
-        (right.operator == operator
-            && !parentheses.is_some_and(|source| {
-                self.diagnostic_directive_immediately_before(source.outer.start)
-            }))
+        (!parentheses
+            .is_some_and(|source| self.diagnostic_directive_immediately_before(source.outer.start)))
         .then_some((right, parentheses))
     }
 
@@ -537,9 +576,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let mut next_content;
         loop {
             if matches!(content.data, ExprData::ParenthesizedExpression(_))
-                || content
-                    .parentheses
-                    .is_some_and(|removed| !matches!(removed.head.binding, CommentBinding::Unbound))
+                || has_bound_source_head(content)
             {
                 return Ok(expression.span(self.ast).start);
             }
@@ -1147,8 +1184,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             if owner.scope == OperandScope::Expression
                 && next.left_mode() != ContentMode::Verbatim
                 && let Some((left, boundary)) =
-                    self.binary_content_from_prepared(&owner.prepare(self).content)
-                && left.operator == entry.binary.operator
+                    self.same_operator_operand(entry.binary.operator, &owner.prepare(self).content)
             {
                 let mut chain = self.binary_chain(left)?;
                 let mut head_owner = OperandOwner::new(chain.first.binary.left);
