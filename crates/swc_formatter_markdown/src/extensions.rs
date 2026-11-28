@@ -28,7 +28,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 && (wrap == ProseWrap::Never
                     || wrap == ProseWrap::Preserve && first.lines.len() == 1)
             {
-                formatter.inlines(first, nodes, wrap, writer);
+                formatter.inlines(first, formatter.document.inlines(*nodes), wrap, writer);
             } else {
                 formatter.blocks(blocks, Container::Footnote, writer)?;
             }

@@ -4,13 +4,14 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use smallvec::{SmallVec, smallvec};
+use smallvec::SmallVec;
 use swc_next_simd::memchr::AsciiByteSet;
 use unicode_properties::{GeneralCategoryGroup, UnicodeGeneralCategory};
 
+use crate::inline_store::{Checkpoint, InlineStore};
 use crate::{
     Dialect, Inline, InlineExtension, InlineKind, InlineNodes, Link, LinkTarget, ParseOptions,
-    RecoveryReason, ReferenceKind, SourceLine, Span, identifier,
+    RecoveryReason, ReferenceKind, SourceLine, Span,
 };
 
 // A page contains at most this many line starts, even in a paragraph of empty lines.
@@ -228,9 +229,12 @@ impl References<'_> {
     }
 }
 
-#[derive(Clone, Copy)]
+pub(super) type PendingNodes = SmallVec<[Inline; 1]>;
+
 pub(crate) struct Options<'a> {
     pub parse: ParseOptions,
+    pub store: &'a mut InlineStore,
+    pub scratch: &'a mut PendingNodes,
     pub references: References<'a>,
 }
 
@@ -254,15 +258,15 @@ pub(crate) fn parse_with_original_lines(
     {
         let text = line.content.text(source);
         if text.is_empty() {
-            return InlineNodes::new();
+            return InlineNodes::default();
         }
         // All literal autolinks need a dot in their domain. A line with no
         // inline markers or dot has just one source-backed text node.
         if INLINE_MARKERS_AND_DOT.find(text.as_bytes()).is_none() {
-            return smallvec![Inline {
+            return options.store.append(&[Inline {
                 span: line.content,
                 kind: InlineKind::Text,
-            }];
+            }]);
         }
     }
     if lines.len() > 1
@@ -277,7 +281,9 @@ pub(crate) fn parse_with_original_lines(
     {
         // These physical spans already contain every token. A synthetic paragraph
         // and its index would only be used to translate them back to source offsets.
-        let mut nodes = InlineNodes::with_capacity(lines.len() * 2 - 1);
+        let nodes = options.scratch;
+        nodes.clear();
+        nodes.reserve(lines.len() * 2 - 1);
         for (index, line) in lines.iter().enumerate() {
             let text = line.content.text(source);
             let last = index + 1 == lines.len();
@@ -302,11 +308,11 @@ pub(crate) fn parse_with_original_lines(
                 nodes.push(Inline { span, kind });
             }
         }
-        return nodes;
+        return options.store.append(nodes);
     }
     let input = Input::for_inlines(source, lines);
     if input.text.is_empty() {
-        return InlineNodes::new();
+        return InlineNodes::default();
     }
     let bytes = input.text.as_bytes();
     let has_email = memchr::memchr(b'@', bytes).is_some();
@@ -319,6 +325,7 @@ pub(crate) fn parse_with_original_lines(
     };
     let mut parser = Parser {
         input: &input,
+        store: options.store,
         source,
         original_lines,
         ticks: TickClosers::default(),
@@ -336,7 +343,9 @@ pub(crate) fn parse_with_original_lines(
             .saturating_add(128)
             .min(options.parse.max_inline_steps.unwrap_or(usize::MAX)),
     };
-    parser.nodes(0, bytes.len(), 0, None)
+    let nodes = options.scratch;
+    parser.nodes(0, bytes.len(), 0, None, nodes);
+    parser.store.append(merged_text(nodes))
 }
 
 /// Consecutive equal-width runs pair directly. Index the whole inline input once
@@ -387,6 +396,7 @@ impl TickClosers {
 }
 
 struct Parser<'a> {
+    store: &'a mut InlineStore,
     input: &'a Input<'a>,
     source: &'a str,
     original_lines: &'a [SourceLine],
@@ -415,36 +425,39 @@ const INLINE_STARTS_WITH_EMAIL: AsciiByteSet = INLINE_MARKERS
     .with_range(b'A', b'Z')
     .with_range(b'0', b'9');
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
     fn nodes(
         &mut self,
         start: usize,
         end: usize,
         depth: usize,
         link_opener: Option<usize>,
-    ) -> InlineNodes {
+        nodes: &mut PendingNodes,
+    ) {
+        nodes.clear();
         if start == end {
-            return InlineNodes::new();
+            return;
         }
         if depth >= self.options.max_nesting || self.work == 0 {
-            return smallvec![Inline {
+            nodes.push(Inline {
                 span: self.input.span(start, end),
                 kind: InlineKind::Recovery(if self.work == 0 {
                     RecoveryReason::InlineWork
                 } else {
                     RecoveryReason::Nesting
                 }),
-            }];
+            });
+            return;
         }
         let bytes = self.input.text.as_bytes();
         let starts = self.starts;
-        let mut nodes = InlineNodes::new();
         let mut openings = SmallVec::new();
         let mut text_start = start;
         let mut p = start;
         while p < end {
             if link_opener.is_some() && self.link_openers.last().copied() != link_opener {
-                return InlineNodes::new();
+                nodes.clear();
+                return;
             }
             if self.work == 0 {
                 if text_start < p {
@@ -457,8 +470,7 @@ impl Parser<'_> {
                     span: self.input.span(p, end),
                     kind: InlineKind::Recovery(RecoveryReason::InlineWork),
                 });
-                nodes.dedup_by(merge_text);
-                return nodes;
+                return;
             }
             if !starts.contains(bytes[p]) {
                 // A literal character consumes one step, including a multibyte scalar.
@@ -505,10 +517,11 @@ impl Parser<'_> {
                             && raw.ends_with(' ')
                             && raw.bytes().any(|b| b != b' ')
                         {
-                            raw[1..raw.len() - 1].to_owned()
+                            &raw[1..raw.len() - 1]
                         } else {
-                            raw
+                            &raw
                         };
+                        let value = self.store.push_text(value);
                         Some((p, close + size, InlineKind::CodeSpan { width: size, value }))
                     } else {
                         p += size;
@@ -524,7 +537,7 @@ impl Parser<'_> {
                                 kind: InlineKind::Text,
                             });
                         }
-                        self.delimiter(p, size, depth, &mut openings, &mut nodes);
+                        self.delimiter(p, size, depth, &mut openings, nodes);
                         text_start = p + size;
                     }
                     p += size;
@@ -619,17 +632,15 @@ impl Parser<'_> {
                 kind: InlineKind::Text,
             });
         }
-        nodes.dedup_by(merge_text);
-        nodes
     }
 
-    fn code_span_content(&self, start: usize, end: usize) -> String {
+    fn code_span_content(&self, start: usize, end: usize) -> Cow<'a, str> {
         let text = &self.input.text[start..end];
         if !text.as_bytes().contains(&b'\n') {
-            return text.to_owned();
+            return Cow::Borrowed(text);
         }
         if matches!(self.input.text, Cow::Borrowed(_)) {
-            return text.replace('\n', " ");
+            return Cow::Owned(text.replace('\n', " "));
         }
         let mut fragments = text.split('\n');
         let mut result = fragments.next().unwrap_or_default().to_owned();
@@ -646,7 +657,7 @@ impl Parser<'_> {
             result.push_str(&self.source[original.content.start..trimmed.content.start]);
             result.push_str(fragment);
         }
-        result
+        Cow::Owned(result)
     }
 
     fn find(&mut self, start: usize, end: usize, needle: &str) -> Option<usize> {
@@ -813,7 +824,7 @@ impl Parser<'_> {
         width: usize,
         depth: usize,
         openings: &mut SmallVec<[Opening; 2]>,
-        nodes: &mut InlineNodes,
+        nodes: &mut PendingNodes,
     ) {
         let mark = self.input.text.as_bytes()[start];
         let (can_open, can_close) = self.delimiter_flanks(start, width, mark);
@@ -831,7 +842,24 @@ impl Parser<'_> {
             opening.remaining -= count;
             right += count;
             let span = self.input.span(opening.start + opening.remaining, right);
-            let mut children: Vec<_> = nodes.drain(opening.node + 1..).collect();
+            let first_child = opening.node + 1;
+            let too_deep = nodes[first_child..]
+                .iter()
+                .any(|node| inline_depth(self.store, node) + depth >= self.options.max_nesting);
+            let kind = if too_deep {
+                self.store.rewind(opening.checkpoint);
+                InlineKind::Recovery(RecoveryReason::Nesting)
+            } else {
+                let children = self.store.append(merged_text(&mut nodes[first_child..]));
+                if mark == b'~' {
+                    InlineKind::Delete(children)
+                } else if count == 2 {
+                    InlineKind::Strong(children)
+                } else {
+                    InlineKind::Emphasis(children)
+                }
+            };
+            nodes.truncate(first_child);
             if opening.remaining == 0 {
                 nodes.pop();
                 openings.truncate(index);
@@ -841,19 +869,6 @@ impl Parser<'_> {
                     .span(opening.start, opening.start + opening.remaining);
                 openings.truncate(index + 1);
             }
-            children.dedup_by(merge_text);
-            let kind = if children
-                .iter()
-                .any(|n| inline_depth(n) + depth >= self.options.max_nesting)
-            {
-                InlineKind::Recovery(RecoveryReason::Nesting)
-            } else if mark == b'~' {
-                InlineKind::Delete(children)
-            } else if count == 2 {
-                InlineKind::Strong(children)
-            } else {
-                InlineKind::Emphasis(children)
-            };
             nodes.push(Inline { span, kind });
         }
         if right != start + width {
@@ -865,6 +880,7 @@ impl Parser<'_> {
                     remaining: start + width - right,
                     can_close,
                     node: nodes.len(),
+                    checkpoint: self.store.checkpoint(),
                 });
             }
             nodes.push(Inline {
@@ -1005,6 +1021,7 @@ impl Parser<'_> {
         let label = self.input.span(open + 1, pos);
         let after = pos + 1;
         let mut next = after;
+        let checkpoint = self.store.checkpoint();
         let target = if bytes.get(after) == Some(&b'(') && after < end {
             let begin = after + 1;
             let limit = end.min(begin.saturating_add(self.work));
@@ -1024,7 +1041,7 @@ impl Parser<'_> {
                 }
                 Err(_) if self.options.dialect == Dialect::Extended => LinkTarget::Reference {
                     label: None,
-                    identifier: identifier(&self.input.text[open + 1..pos]),
+                    identifier: self.store.push_identifier(&self.input.text[open + 1..pos]),
                     kind: ReferenceKind::Shortcut,
                 },
                 Err(_) => return None,
@@ -1041,7 +1058,15 @@ impl Parser<'_> {
                         }
                         b'[' => return None,
                         b']' => break,
-                        _ => close += 1,
+                        _ => {
+                            let start = close + 1;
+                            let limit = end.min(start.saturating_add(self.work));
+                            let rest = &bytes[start..limit];
+                            let plain =
+                                memchr::memchr3(b'\\', b'[', b']', rest).unwrap_or(rest.len());
+                            close = start + plain;
+                            self.work -= plain;
+                        }
                     }
                 }
                 if close >= end || bytes[close] != b']' {
@@ -1073,7 +1098,7 @@ impl Parser<'_> {
             }
             LinkTarget::Reference {
                 label: reference,
-                identifier: identifier(raw_label),
+                identifier: self.store.push_identifier(raw_label),
                 kind,
             }
         };
@@ -1081,29 +1106,54 @@ impl Parser<'_> {
         if let Some(open) = opener {
             self.link_openers.push(open);
         }
-        let children = self.nodes(open + 1, pos, depth + 1, opener);
+        let mut children = PendingNodes::new();
+        let raw = &self.input.text[open + 1..pos];
+        if !raw.is_empty()
+            && depth + 1 < self.options.max_nesting
+            && self.work >= raw.len()
+            && self.starts.find(raw.as_bytes()).is_none()
+        {
+            // The label scan already mapped the source span. Plain text charges
+            // the same scalar budget as the ordinary inline traversal.
+            self.work -= if self.ascii {
+                raw.len()
+            } else {
+                raw.chars().count()
+            };
+            children.push(Inline {
+                span: label,
+                kind: InlineKind::Text,
+            });
+        } else {
+            self.nodes(open + 1, pos, depth + 1, opener, &mut children);
+        }
         if let Some(open) = opener {
             if self.link_openers.last() != Some(&open) {
+                self.store.rewind(checkpoint);
                 return None;
             }
             self.link_openers.pop();
         }
         if let LinkTarget::Reference { identifier, .. } = &target
             && has_text_delimiter(&children, &closing_delimiters)
-            && !self.references.may_resolve(identifier)
+            && !self.references.may_resolve(self.store.text(*identifier))
         {
+            self.store.rewind(checkpoint);
             return None;
         }
         if !image && !self.link_openers.is_empty() {
             let resolved = match &target {
                 LinkTarget::Inline { .. } => true,
-                LinkTarget::Reference { identifier, .. } => self.references.may_resolve(identifier),
+                LinkTarget::Reference { identifier, .. } => {
+                    self.references.may_resolve(self.store.text(*identifier))
+                }
             };
             if resolved {
                 self.inactive_links.extend(self.link_openers.drain(..));
             }
         }
-        let link = Box::new(Link {
+        let children = self.store.append(merged_text(&mut children));
+        let link = self.store.push_link(Link {
             brackets: [
                 self.input.span(open, open + 1),
                 self.input.span(pos, pos + 1),
@@ -1163,29 +1213,44 @@ struct Opening {
     remaining: usize,
     can_close: bool,
     node: usize,
+    checkpoint: Checkpoint,
 }
 
-fn inline_depth(node: &Inline) -> usize {
-    let children: &[Inline] = match &node.kind {
+fn inline_depth(store: &InlineStore, node: &Inline) -> usize {
+    let group = match node.kind {
         InlineKind::Emphasis(nodes) | InlineKind::Strong(nodes) | InlineKind::Delete(nodes) => {
             nodes
         }
-        InlineKind::Link(link) | InlineKind::Image(link) => &link.children,
+        InlineKind::Link(id) | InlineKind::Image(id) => store.link(id).children,
         _ => return 0,
     };
-    1 + children.iter().map(inline_depth).max().unwrap_or_default()
+    1 + store
+        .nodes(group)
+        .iter()
+        .map(|child| inline_depth(store, child))
+        .max()
+        .unwrap_or_default()
 }
 
-fn merge_text(next: &mut Inline, prev: &mut Inline) -> bool {
-    if matches!(prev.kind, InlineKind::Text)
-        && matches!(next.kind, InlineKind::Text)
-        && prev.span.end == next.span.start
-    {
-        prev.span.end = next.span.end;
-        true
-    } else {
-        false
+/// Coalesce adjacent physical text runs before publishing a sibling group.
+fn merged_text(nodes: &mut [Inline]) -> &[Inline] {
+    let joins = |left: &Inline, right: &Inline| {
+        matches!(left.kind, InlineKind::Text)
+            && matches!(right.kind, InlineKind::Text)
+            && left.span.end == right.span.start
+    };
+    let Some(mut last) = nodes.windows(2).position(|pair| joins(&pair[0], &pair[1])) else {
+        return nodes;
+    };
+    for index in last + 1..nodes.len() {
+        if joins(&nodes[last], &nodes[index]) {
+            nodes[last].span.end = nodes[index].span.end;
+        } else {
+            last += 1;
+            nodes[last] = nodes[index];
+        }
     }
+    &nodes[..=last]
 }
 
 pub(crate) fn link_label_has_text(label: &str) -> bool {

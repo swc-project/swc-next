@@ -6,9 +6,9 @@ use std::{
 
 use swc_next_formatter_core::Writer;
 use swc_next_markdown_parser::{
-    Block, BlockKind, Definition, Inline, InlineKind, Link, LinkTarget, ReferenceKind, SourceLine,
-    Span, can_continue_link_definition, is_table_delimiter_row, liquid_block_delimiter, parse,
-    starts_display_math, starts_footnote_definition,
+    Block, BlockKind, Definition, Document, Inline, InlineKind, Link, LinkTarget, ReferenceKind,
+    SourceLine, Span, can_continue_link_definition, is_table_delimiter_row, liquid_block_delimiter,
+    parse, starts_display_math, starts_footnote_definition,
 };
 use swc_next_simd::{cmp::SimdPartialEq, u8x16};
 
@@ -96,7 +96,7 @@ struct Prose<'a> {
 }
 
 struct InlineSource<'a> {
-    source: &'a str,
+    document: &'a Document<'a>,
     nodes: &'a [Inline],
     lines: &'a [SourceLine],
     line_index: Cell<usize>,
@@ -104,9 +104,9 @@ struct InlineSource<'a> {
 }
 
 impl<'a> InlineSource<'a> {
-    fn new(source: &'a str, block: &'a Block, nodes: &'a [Inline]) -> Self {
+    fn new(document: &'a Document<'a>, block: &'a Block, nodes: &'a [Inline]) -> Self {
         Self {
-            source,
+            document,
             nodes,
             lines: &block.lines,
             line_index: Cell::new(0),
@@ -121,7 +121,7 @@ impl<'a> InlineSource<'a> {
             if previous.ending.end >= end {
                 self.line_index.set(index);
                 return previous.ending.end == end
-                    && next.indent_protects_paragraph(self.source, *previous);
+                    && next.indent_protects_paragraph(self.document.source, *previous);
             }
             index += 1;
         }
@@ -134,17 +134,17 @@ impl<'a> InlineSource<'a> {
     fn literal_tick_precedes(&self, width: usize, offset: usize) -> bool {
         let first = self.first_ticks.get_or_init(|| {
             let mut first = HashMap::new();
-            Self::collect_ticks(self.source, self.nodes, &mut first);
+            Self::collect_ticks(self.document, self.nodes, &mut first);
             first
         });
         first.get(&width).is_some_and(|&start| start < offset)
     }
 
-    fn collect_ticks(source: &str, nodes: &[Inline], first: &mut HashMap<usize, usize>) {
+    fn collect_ticks(document: &Document<'_>, nodes: &[Inline], first: &mut HashMap<usize, usize>) {
         for node in nodes {
             match &node.kind {
                 InlineKind::Text => {
-                    let mut text = node.span.text(source);
+                    let mut text = node.span.text(document.source);
                     while let Some(start) = text.find('`') {
                         let run = &text[start..];
                         text = run.trim_start_matches('`');
@@ -156,11 +156,13 @@ impl<'a> InlineSource<'a> {
                 InlineKind::Emphasis(children)
                 | InlineKind::Strong(children)
                 | InlineKind::Delete(children) => {
-                    Self::collect_ticks(source, children, first);
+                    Self::collect_ticks(document, document.inlines(*children), first);
                 }
-                InlineKind::Link(link) | InlineKind::Image(link) => {
-                    Self::collect_ticks(source, &link.children, first)
-                }
+                InlineKind::Link(link) | InlineKind::Image(link) => Self::collect_ticks(
+                    document,
+                    document.inlines(document.link(*link).children),
+                    first,
+                ),
                 _ => {}
             }
         }
@@ -254,13 +256,24 @@ impl<'a> Prose<'a> {
     }
 
     fn finish_word(&mut self) {
-        self.words.push(Word {
+        let word = Word {
             before: std::mem::take(&mut self.before),
             start: self.start,
             end: self.buffer.len(),
             html_only: std::mem::take(&mut self.html_only),
             prefix: std::mem::take(&mut self.prefix),
-        });
+        };
+        // Preserved prose never breaks at an ordinary space. Keep the whole
+        // run together while recording source and forced breaks separately.
+        if self.wrap == ProseWrap::Preserve
+            && word.before == Separation::Space
+            && let Some(previous) = self.words.last_mut()
+        {
+            previous.end = word.end;
+            previous.html_only &= word.html_only;
+        } else {
+            self.words.push(word);
+        }
     }
 
     fn starts_table_delimiter(&self, index: usize) -> bool {
@@ -418,7 +431,7 @@ impl<'a> Formatter<'a, '_, '_> {
         } else {
             wrap
         };
-        let source = InlineSource::new(self.document.source, block, nodes);
+        let source = InlineSource::new(self.document, block, nodes);
         let capacity = nodes.first().zip(nodes.last()).map_or(0, |(first, last)| {
             last.span.end.saturating_sub(first.span.start)
         });
@@ -471,14 +484,15 @@ impl<'a> Formatter<'a, '_, '_> {
             };
             match &node.kind {
                 InlineKind::Text | InlineKind::Escape => is_opening(),
-                InlineKind::Link(link) => {
+                InlineKind::Link(id) => {
+                    let link = self.document.link(*id);
                     matches!(&link.target, LinkTarget::Reference { identifier, .. }
-                        if self.document.definition(identifier).is_none() && is_opening())
-                        || self.has_literal_wiki_opening(&link.children)
+                        if self.document.reference_definition(*identifier).is_none() && is_opening())
+                        || self.has_literal_wiki_opening(self.document.inlines(link.children))
                 }
                 InlineKind::Emphasis(children)
                 | InlineKind::Strong(children)
-                | InlineKind::Delete(children) => self.has_literal_wiki_opening(children),
+                | InlineKind::Delete(children) => self.has_literal_wiki_opening(self.document.inlines(*children)),
                 _ => false,
             }
         })
@@ -507,7 +521,7 @@ impl<'a> Formatter<'a, '_, '_> {
             nodes,
             ProseWrap::Never,
             Emphasis::default(),
-            &InlineSource::new(self.document.source, block, nodes),
+            &InlineSource::new(self.document, block, nodes),
         ))
     }
 
@@ -522,6 +536,13 @@ impl<'a> Formatter<'a, '_, '_> {
         let mut prose = Prose::new(source, wrap, ProseBuffers::default(), 0);
         self.collect_inlines(block, nodes, wrap, context, &mut prose);
         prose.finish();
+        if let [word] = prose.words.as_slice()
+            && word.start == 0
+            && word.prefix == LinePrefix::None
+        {
+            prose.buffer.truncate(word.end);
+            return prose.buffer;
+        }
         let mut result = String::with_capacity(prose.buffer.len());
         for part in prose.words {
             match part.before {
@@ -542,7 +563,7 @@ impl<'a> Formatter<'a, '_, '_> {
         context: Emphasis,
         prose: &mut Prose<'_>,
     ) {
-        let emphasis = EmphasisScope::new(self.document.source, nodes);
+        let emphasis = EmphasisScope::new(self.document, nodes);
         for (index, node) in nodes.iter().enumerate() {
             match &node.kind {
                 InlineKind::Text => prose.text(self.text(node.span)),
@@ -572,14 +593,22 @@ impl<'a> Formatter<'a, '_, '_> {
                     {
                         self.raw_inline(block, node.span, prose);
                     } else {
-                        write_code_span(value, *width, node.span.start, raw, prose);
+                        write_code_span(
+                            self.document.inline_text(*value),
+                            *width,
+                            node.span.start,
+                            raw,
+                            prose,
+                        );
                     }
                 }
                 InlineKind::Emphasis(children) | InlineKind::Strong(children) => {
+                    let children = self.document.inlines(*children);
                     let (marker, context) = emphasis.pair(index, children, context);
                     self.inline_container(block, children, wrap, marker, context, prose);
                 }
                 InlineKind::Delete(children) => {
+                    let children = self.document.inlines(*children);
                     let context = context.inside_inline();
                     let marker = if self.text(node.span).starts_with("~~") {
                         "~~"
@@ -590,7 +619,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 }
                 InlineKind::Link(link) | InlineKind::Image(link) => {
                     let context = context.inside_link();
-                    self.link(block, node, link, wrap, context, prose);
+                    self.link(block, node, self.document.link(*link), wrap, context, prose);
                 }
             }
         }
@@ -619,7 +648,17 @@ impl<'a> Formatter<'a, '_, '_> {
         prose: &mut Prose<'_>,
     ) {
         prose.atom(marker);
-        self.collect_inlines(block, children, wrap, context, prose);
+        if let [
+            Inline {
+                kind: InlineKind::Text,
+                span,
+            },
+        ] = children
+        {
+            prose.text(self.text(*span));
+        } else {
+            self.collect_inlines(block, children, wrap, context, prose);
+        }
         prose.atom(marker);
     }
 
@@ -632,6 +671,7 @@ impl<'a> Formatter<'a, '_, '_> {
         context: Emphasis,
         prose: &mut Prose<'_>,
     ) {
+        let children = self.document.inlines(link.children);
         let image = matches!(node.kind, InlineKind::Image(_));
         let brackets = if image { "![" } else { "[" };
         if let LinkTarget::Reference {
@@ -642,8 +682,8 @@ impl<'a> Formatter<'a, '_, '_> {
         {
             // The visible label supplies the definition lookup key. Keep its
             // syntax and normalize only its whitespace when it is resolved.
-            let resolved = self.document.definition(identifier).is_some();
-            if resolved && self.reference_label_can_fold(&link.children) {
+            let resolved = self.document.reference_definition(*identifier).is_some();
+            if resolved && self.reference_label_can_fold(children) {
                 let label = self.inline_source(block, link.label);
                 let preserve_break = !image
                     && self.reference_label_would_form_wiki_link(
@@ -661,7 +701,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 if !preserve_break
                     && !image
                     && wrap == ProseWrap::Always
-                    && link.children.iter().all(|child| {
+                    && children.iter().all(|child| {
                         matches!(
                             child.kind,
                             InlineKind::Text | InlineKind::SoftBreak | InlineKind::Escape
@@ -685,7 +725,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 // Unresolved brackets are prose. With no definitions, reflow
                 // and inline formatting cannot make them into a reference.
                 prose.atom(brackets);
-                self.collect_inlines(block, &link.children, wrap, context, prose);
+                self.collect_inlines(block, children, wrap, context, prose);
                 prose.atom(if kind == ReferenceKind::Collapsed {
                     "][]"
                 } else {
@@ -706,11 +746,11 @@ impl<'a> Formatter<'a, '_, '_> {
             } else {
                 ProseWrap::Never
             };
-            let label = match self.plain_inline_text(&link.children) {
+            let label = match self.plain_inline_text(children) {
                 Some(text) => Cow::Borrowed(text),
                 None => Cow::Owned(self.collect_inline_text(
                     block,
-                    &link.children,
+                    children,
                     label_wrap,
                     context,
                     prose.source,
@@ -792,7 +832,9 @@ impl<'a> Formatter<'a, '_, '_> {
             }
             InlineKind::Emphasis(children)
             | InlineKind::Strong(children)
-            | InlineKind::Delete(children) => self.reference_label_can_fold(children),
+            | InlineKind::Delete(children) => {
+                self.reference_label_can_fold(self.document.inlines(*children))
+            }
             _ => true,
         })
     }

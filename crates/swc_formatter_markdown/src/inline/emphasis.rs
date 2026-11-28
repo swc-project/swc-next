@@ -1,6 +1,8 @@
 use std::cell::OnceCell;
 
-use swc_next_markdown_parser::{Inline, InlineKind, delimiter_flanking, emphasis_runs_match};
+use swc_next_markdown_parser::{
+    Document, Inline, InlineKind, delimiter_flanking, emphasis_runs_match,
+};
 
 use super::is_word_char;
 
@@ -37,7 +39,7 @@ impl Emphasis {
 }
 
 pub(super) struct EmphasisScope<'a> {
-    source: &'a str,
+    document: &'a Document<'a>,
     nodes: &'a [Inline],
     literals: OnceCell<LiteralRuns>,
 }
@@ -49,9 +51,9 @@ struct Pair<'a> {
 }
 
 impl<'a> EmphasisScope<'a> {
-    pub(super) fn new(source: &'a str, nodes: &'a [Inline]) -> Self {
+    pub(super) fn new(document: &'a Document<'a>, nodes: &'a [Inline]) -> Self {
         Self {
-            source,
+            document,
             nodes,
             literals: OnceCell::new(),
         }
@@ -67,14 +69,14 @@ impl<'a> EmphasisScope<'a> {
     fn preferred(&self, index: usize, children: &[Inline], context: Emphasis) -> Pair<'a> {
         let node = &self.nodes[index];
         let strong = matches!(node.kind, InlineKind::Strong(_));
-        let original = &node.span.text(self.source)[..if strong { 2 } else { 1 }];
+        let original = &node.span.text(self.document.source)[..if strong { 2 } else { 1 }];
         let adjoins_word = || {
             let (before, after) = self.neighbors(index);
             before
-                .and_then(|n| n.span.text(self.source).chars().next_back())
+                .and_then(|n| n.span.text(self.document.source).chars().next_back())
                 .is_some_and(is_word_char)
                 || after
-                    .and_then(|n| n.span.text(self.source).chars().next())
+                    .and_then(|n| n.span.text(self.document.source).chars().next())
                     .is_some_and(is_word_char)
         };
         let preferred = if strong {
@@ -144,11 +146,11 @@ impl<'a> EmphasisScope<'a> {
         if !nested && pair.original == pair.preferred {
             return true;
         }
-        let left = before.and_then(|n| n.span.text(self.source).chars().next_back());
-        let right = after.and_then(|n| n.span.text(self.source).chars().next());
+        let left = before.and_then(|n| n.span.text(self.document.source).chars().next_back());
+        let right = after.and_then(|n| n.span.text(self.document.source).chars().next());
         let literals = || {
             self.literals
-                .get_or_init(|| LiteralRuns::in_scope(self.source, self.nodes))
+                .get_or_init(|| LiteralRuns::in_scope(self.document.source, self.nodes))
         };
         if nested {
             if literals().count != 0 {
@@ -156,11 +158,11 @@ impl<'a> EmphasisScope<'a> {
             }
             let mut parts = Vec::new();
             return self.delimiters(index, children, pair, &mut parts)
-                && nested_pairs_match(self.source, &parts, left, right);
+                && nested_pairs_match(self.document.source, &parts, left, right);
         }
 
         let mark = pair.marker();
-        let text = self.nodes[index].span.text(self.source);
+        let text = self.nodes[index].span.text(self.document.source);
         let body = &text[pair.original.len()..text.len() - pair.original.len()];
         let (opens, also_closes) = delimiter_flanking(mark, left, body.chars().next());
         if !opens
@@ -187,14 +189,15 @@ impl<'a> EmphasisScope<'a> {
             .iter()
             .filter(|n| matches!(n.kind, InlineKind::Text))
             .any(|node| {
-                marker_runs(self.source, node).any(|(literal, left, right)| {
+                marker_runs(self.document.source, node).any(|(literal, left, right)| {
                     literal == mark && delimiter_flanking(mark, left, right) != (false, false)
                 })
             })
     }
 
     fn is_literal_text(&self, node: &Inline) -> bool {
-        matches!(node.kind, InlineKind::Text) && node.span.text(self.source).contains(['*', '_'])
+        matches!(node.kind, InlineKind::Text)
+            && node.span.text(self.document.source).contains(['*', '_'])
     }
 
     fn delimiters(
@@ -212,10 +215,11 @@ impl<'a> EmphasisScope<'a> {
             opens: true,
         };
         parts.push(opening);
-        let scope = EmphasisScope::new(self.source, children);
+        let scope = EmphasisScope::new(self.document, children);
         for (i, child) in children.iter().enumerate() {
             match &child.kind {
                 InlineKind::Emphasis(inner) | InlineKind::Strong(inner) => {
+                    let inner = self.document.inlines(*inner);
                     let pair = scope.preferred(i, inner, pair.context);
                     if !scope.delimiters(i, inner, &pair, parts) {
                         return false;
