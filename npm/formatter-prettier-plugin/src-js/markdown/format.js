@@ -1,11 +1,9 @@
-import { readDocument } from "@swc-next/protocol/document";
-
 const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 const proseWrapModes = ["preserve", "always", "never"];
 const lineEndings = ["lf", "crlf", "cr"];
 const invalidBlock = () => new Error("Invalid Markdown embedded block");
 
-export function formatMarkdownDoc(formatBuffer, source, options = {}) {
+export function formatMarkdownDocBuffer(formatBuffer, source, options = {}) {
   if (typeof source !== "string")
     throw new TypeError("source must be a string");
   const {
@@ -36,7 +34,7 @@ export function formatMarkdownDoc(formatBuffer, source, options = {}) {
   if (indentStyle !== "space" && indentStyle !== "tab") {
     throw new TypeError("invalid Markdown indentStyle");
   }
-  const doc = formatBuffer(
+  return formatBuffer(
     source,
     mode,
     singleQuote,
@@ -46,13 +44,9 @@ export function formatMarkdownDoc(formatBuffer, source, options = {}) {
     ending,
     includeEmbeds,
   );
-  const embeds = includeEmbeds
-    ? decodeBlocks(readDocument(doc).labelData, source)
-    : [];
-  return { doc, embeds };
 }
 
-function decodeBlocks(records, source) {
+export function decodeEmbeddedBlocks(records, source) {
   // Blocks arrive in source order. Convert their UTF-8 ranges in one pass.
   let sourceByte = 0;
   let sourceOffset = 0;

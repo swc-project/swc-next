@@ -373,7 +373,9 @@ fn with_first_statement(
         lang: swc_next_ecma_ast::Lang::Ts,
         ..Default::default()
     };
-    let parsed = crate::parse_source(&allocator, source, parser).unwrap();
+    let parsed = crate::EcmaDocumentProducer::new(parser)
+        .parse(&allocator, source)
+        .unwrap();
     // SAFETY: The formatter only reads handles from this unmodified AST.
     let ast = unsafe { parsed.ast() };
     let first = ast.root_program().body(ast).iter().next().unwrap();

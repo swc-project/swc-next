@@ -14,7 +14,7 @@ use swc_next_formatter_js::{self as formatter, EcmaDocumentProducer, InvalidInde
 
 pub use swc_next_formatter_js::{FormatError, FormatOptions};
 
-use crate::{IndentStyle, LineEnding, restore_bom};
+use crate::{IndentStyle, LineEnding, PrintConfig, print_source_document};
 
 /// Parse and format source text.
 ///
@@ -28,7 +28,11 @@ pub fn format(
     let session = FormatSession::new(options.into());
     let producer = EcmaDocumentProducer::new(parser_options);
     let document = session.produce(&producer, source, &options.into())?;
-    Ok(restore_bom(source, document.print(session.print_options())))
+    Ok(print_source_document(
+        source,
+        document,
+        session.print_options(),
+    ))
 }
 
 /// Format an already parsed program AST.
@@ -50,9 +54,10 @@ pub fn format(
 pub fn format_ast(ast: &AstCtx<'_>, options: FormatOptions) -> Result<String, FormatError> {
     let session = FormatSession::new(options.into());
     let document = formatter::ast_to_doc(ast, session.context(), options.into())?;
-    Ok(restore_bom(
+    Ok(print_source_document(
         ast.source(),
-        document.print(session.print_options()),
+        document,
+        session.print_options(),
     ))
 }
 
@@ -126,21 +131,14 @@ impl TryFrom<JsFormatterConfig> for FormatOptions {
 
     fn try_from(options: JsFormatterConfig) -> Result<Self, Self::Error> {
         let defaults = Self::default();
-        Ok(Self {
-            line_width: options.line_width.unwrap_or(defaults.line_width),
-            indent_style: options
-                .indent_style
-                .map(Into::into)
-                .unwrap_or(defaults.indent_style),
-            indent_width: options
-                .indent_width
-                .map(TryInto::try_into)
-                .transpose()?
-                .unwrap_or(defaults.indent_width),
-            line_ending: options
-                .line_ending
-                .map(Into::into)
-                .unwrap_or(defaults.line_ending),
+        let layout = PrintConfig {
+            line_width: options.line_width,
+            indent_style: options.indent_style,
+            indent_width: options.indent_width,
+            line_ending: options.line_ending,
+        }
+        .resolve(defaults.into())?;
+        let syntax = formatter::SyntaxOptions {
             semicolons: options
                 .semicolons
                 .map(Into::into)
@@ -172,7 +170,8 @@ impl TryFrom<JsFormatterConfig> for FormatOptions {
             single_attribute_per_line: options
                 .single_attribute_per_line
                 .unwrap_or(defaults.single_attribute_per_line),
-        })
+        };
+        Ok(Self::from_parts(layout, syntax))
     }
 }
 

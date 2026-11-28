@@ -3,10 +3,20 @@ import test from "node:test";
 import { printDocBufferSync } from "@swc-next/formatter";
 import { readDocument } from "@swc-next/protocol/document";
 import { formatMarkdownDocBufferSync } from "../dist/binding.js";
-import { formatMarkdownDoc } from "../src-js/markdown/format.js";
+import {
+  decodeEmbeddedBlocks,
+  formatMarkdownDocBuffer,
+} from "../src-js/markdown/format.js";
 
-const formatDocSync = (source, options) =>
-  formatMarkdownDoc(formatMarkdownDocBufferSync, source, options);
+function formatDocSync(source, options) {
+  const doc = formatMarkdownDocBuffer(
+    formatMarkdownDocBufferSync,
+    source,
+    options,
+  );
+  const embeds = decodeEmbeddedBlocks(readDocument(doc).labelData, source);
+  return { doc, embeds };
+}
 
 test("returns labeled documents and UTF-16 fence spans", () => {
   const source =

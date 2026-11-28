@@ -61,7 +61,12 @@ test("reads SWCD label records and retains external label identities", () => {
     builders.label(symbol, "other"),
   ]);
   assert.deepEqual(readDocument(buffer).labelData, []);
-  const decoded = decodeDoc(buffer, undefined, labels);
+  const { doc: decoded, labelData: external } = decodeDoc(
+    buffer,
+    undefined,
+    labels,
+  );
+  assert.deepEqual(external, []);
   assert.equal(decoded[0].label, opaque);
   assert.equal(decoded[0], decoded[1]);
   assert.equal(decoded[2].label, symbol);
@@ -69,12 +74,12 @@ test("reads SWCD label records and retains external label identities", () => {
   const record = Uint8Array.of(255, 0);
   const empty = new Uint8Array();
   const framed = appendLabelData(buffer, record, empty);
-  const { labelData } = readDocument(framed);
+  const { doc, labelData } = decodeDoc(framed);
   assert.deepEqual(labelData, [record, empty]);
   assert.equal(labelData[0].buffer, framed.buffer);
   assert.equal(labelData[0].byteOffset, framed.byteOffset + buffer.length + 12);
   assert.deepEqual(
-    decodeDoc(framed).map(({ label }) => label),
+    doc.map(({ label }) => label),
     [0, 0, 1],
   );
 });

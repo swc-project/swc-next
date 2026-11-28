@@ -1,6 +1,6 @@
 import { utils } from "prettier/doc";
 import { decodeDoc } from "../decode.js";
-import { formatMarkdownDoc } from "./format.js";
+import { decodeEmbeddedBlocks, formatMarkdownDocBuffer } from "./format.js";
 import { embedBlock } from "./fences.js";
 
 const astFormat = "SWCFMT_MARKDOWN";
@@ -44,7 +44,7 @@ export const parsers = {
         throw new Error("SWC Markdown does not yet support pragma options");
       }
       const { formatMarkdownDocBufferSync } = await import("../binding.js");
-      const { doc, embeds } = formatMarkdownDoc(
+      const buffer = formatMarkdownDocBuffer(
         formatMarkdownDocBufferSync,
         source,
         {
@@ -59,12 +59,13 @@ export const parsers = {
             (options.__swcMarkdownEmbedDepth ?? 0) < maxEmbedDepth,
         },
       );
+      const { doc, labelData } = decodeDoc(buffer, options);
       return {
         type: astFormat,
         start: 0,
         end: source.length,
-        doc: decodeDoc(doc, options),
-        embeds,
+        doc,
+        embeds: decodeEmbeddedBlocks(labelData, source),
       };
     },
   },

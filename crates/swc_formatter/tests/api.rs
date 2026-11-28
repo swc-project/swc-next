@@ -23,6 +23,49 @@ fn indentation_width_bounds() {
 }
 
 #[test]
+fn layout_configuration() {
+    use swc_next_formatter::{LineEnding as ConfigLineEnding, PrintConfig, js::JsFormatterConfig};
+
+    let print = PrintConfig {
+        line_ending: Some(ConfigLineEnding::CrLf),
+        ..PrintConfig::default()
+    };
+    let layout = PrintOptions::try_from(print).unwrap();
+    assert_eq!(
+        layout,
+        PrintOptions {
+            line_ending: LineEnding::CrLf,
+            ..PrintOptions::default()
+        }
+    );
+
+    let js = JsFormatterConfig {
+        line_ending: Some(ConfigLineEnding::CrLf),
+        ..JsFormatterConfig::default()
+    };
+    let options = FormatOptions::try_from(js).unwrap();
+    assert_eq!(
+        options,
+        FormatOptions {
+            line_ending: LineEnding::CrLf,
+            ..FormatOptions::default()
+        }
+    );
+
+    let invalid = PrintConfig {
+        indent_width: Some(65),
+        ..print
+    };
+    assert!(PrintOptions::try_from(invalid).is_err());
+
+    let invalid = JsFormatterConfig {
+        indent_width: Some(65),
+        ..js
+    };
+    assert!(FormatOptions::try_from(invalid).is_err());
+}
+
+#[test]
 fn parser_options() {
     let options = FormatOptions::prettier();
     let invalid = format("const = ;", ParserOptions::default(), options);
