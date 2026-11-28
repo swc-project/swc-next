@@ -617,3 +617,61 @@ fn markdown_embedded_host() {
     let output = markdown::format_ast_with_dispatcher(&ast, options, &dispatcher).unwrap();
     assert_eq!(output, input);
 }
+
+#[test]
+fn markdown_front_matter_dispatch() {
+    use swc_next_formatter::markdown;
+    use swc_next_markdown_parser::{BlockKind, parse};
+
+    struct Guest<'a>(&'a str);
+
+    impl EmbeddedDispatcher for Guest<'_> {
+        fn dispatch<'a>(
+            &self,
+            context: FormatContext<'a, '_>,
+            request: EmbeddedRequest<'a, '_>,
+        ) -> Result<EmbeddedOutcome<'a>, EmbeddedError> {
+            assert!(matches!(request.language, "yaml" | "toml"));
+            let mut writer = Writer::new(context.allocator());
+            writer.text_copied(self.0);
+            Ok(EmbeddedOutcome::Formatted(writer.finish()))
+        }
+    }
+
+    fn body_after_formatting(source: &str, guest: &str) -> String {
+        let options = markdown::FormatOptions::default();
+        let dispatcher = Guest(guest);
+        let formatted = markdown::format_with_dispatcher(source, options, &dispatcher).unwrap();
+        let parsed = parse(&formatted);
+        let [block] = parsed.blocks.as_slice() else {
+            panic!("expected one front matter block");
+        };
+        let BlockKind::FrontMatter(matter) = &block.kind else {
+            panic!("expected front matter");
+        };
+        assert_eq!(
+            markdown::format_with_dispatcher(&formatted, options, &dispatcher).unwrap(),
+            formatted
+        );
+        block.logical_text(&formatted, matter.body)
+    }
+
+    let source = "---\nkey:  value\n---\n";
+    let original = "key:  value\n";
+    assert_eq!(body_after_formatting(source, "---\nkey: value\n"), original);
+
+    assert_eq!(body_after_formatting(source, "key: value\n...\n"), original);
+
+    assert_eq!(
+        body_after_formatting(source, "--- \t\rkey: value"),
+        original
+    );
+
+    let body = "key: |\n  ---\n  ...\n";
+    assert_eq!(body_after_formatting(source, body), body);
+
+    assert_eq!(body_after_formatting(source, "key: value"), "key: value\n");
+
+    let source = "+++\nkey = 1\n+++\n";
+    assert_eq!(body_after_formatting(source, "+++\nkey = 2\n"), "key = 1\n");
+}

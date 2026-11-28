@@ -268,6 +268,24 @@ test("chooses delimiters from the guest Doc and the fence info", async () => {
   );
 });
 
+test("separates a tilde opener from tilde-prefixed info", async () => {
+  const source = "~~~ ~foo `flag`\nbody\n~~~\n\nafter\n";
+  assert.equal(await formatWithPlugin(source), source);
+
+  const child = probe(undefined, () => "formatted");
+  child.languages[0].aliases.push("~foo");
+  const options = { plugins: [markdown, child] };
+  const formatted = await formatWithPlugin(source, options);
+  assert.equal(formatted, "~~~ ~foo `flag`\nformatted\n~~~\n\nafter\n");
+  assert.equal(await formatWithPlugin(formatted, options), formatted);
+
+  const control = "~~~ ~foo flag\nbody\n~~~\n";
+  assert.equal(
+    await formatWithPlugin(control, options),
+    "```~foo flag\nformatted\n```\n",
+  );
+});
+
 test("shares the host's width and indentation with the child formatter", async () => {
   const source =
     "alpha beta gamma delta epsilon zeta\n\n```js\nif (ready) { run() }\n```\n";

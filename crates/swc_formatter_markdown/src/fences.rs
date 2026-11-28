@@ -63,7 +63,7 @@ impl<'a> Formatter<'a, '_, '_> {
         let minimum = maximum_run(code, info.marker) + 1;
 
         if language.is_empty() {
-            write_fence(writer, info, minimum, |writer| {
+            self.write_fence(writer, info, minimum, |writer| {
                 write_code_lines(writer, code, true)
             });
             return Ok(());
@@ -80,7 +80,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 body: code.clone(),
             }));
             writer.label(id, |writer| {
-                write_fence(writer, info, minimum, |writer| {
+                self.write_fence(writer, info, minimum, |writer| {
                     write_code_lines(writer, code, true)
                 });
             });
@@ -95,14 +95,14 @@ impl<'a> Formatter<'a, '_, '_> {
                 let guest = guest.strip_trailing_hardline().replace_end_of_line();
                 let minimum = self.guest_maximum_run(&guest, info.marker) + 1;
                 writer.mark_as_root(|writer| {
-                    write_fence(writer, info, minimum, |writer| {
+                    self.write_fence(writer, info, minimum, |writer| {
                         writer.write_doc(&guest);
                         writer.hard_line();
                     });
                 });
             }
             EmbeddedOutcome::PreserveOriginal(_) => {
-                write_fence(writer, info, minimum, |writer| {
+                self.write_fence(writer, info, minimum, |writer| {
                     write_code_lines(writer, code, true)
                 });
             }
@@ -131,24 +131,44 @@ impl<'a> Formatter<'a, '_, '_> {
         };
         projected(options.line_width).max(projected(u16::MAX))
     }
-}
 
-fn write_fence<'a>(
-    writer: &mut Writer<'a>,
-    info: FenceInfo<'a>,
-    minimum: usize,
-    body: impl FnOnce(&mut Writer<'a>),
-) {
-    let delimiter = char::from(info.marker).to_string().repeat(minimum.max(3));
-    writer.text_copied(&delimiter);
-    writer.text(info.head);
-    if let Some(meta) = info.meta {
-        writer.space();
-        writer.text(meta);
+    pub(super) fn unlabelled_fence(&self, code: &str, writer: &mut Writer<'a>) {
+        let info = FenceInfo::new("", None);
+        self.write_fence(writer, info, maximum_run(code, info.marker) + 1, |writer| {
+            write_code_lines(writer, code, true)
+        });
     }
-    writer.hard_line();
-    body(writer);
-    writer.text(delimiter);
+
+    fn write_fence(
+        &self,
+        writer: &mut Writer<'a>,
+        info: FenceInfo<'a>,
+        minimum: usize,
+        body: impl FnOnce(&mut Writer<'a>),
+    ) {
+        let (marker, short) = if info.marker == b'`' {
+            ("`", "```")
+        } else {
+            ("~", "~~~")
+        };
+        let delimiter = if minimum <= short.len() {
+            short
+        } else {
+            self.context.allocator().alloc_str(&marker.repeat(minimum))
+        };
+        writer.text(delimiter);
+        if info.head.starts_with(marker) {
+            writer.space();
+        }
+        writer.text(info.head);
+        if let Some(meta) = info.meta {
+            writer.space();
+            writer.text(meta);
+        }
+        writer.hard_line();
+        body(writer);
+        writer.text(delimiter);
+    }
 }
 
 // Empty logical lines have no container padding of their own. Preserve
@@ -166,13 +186,6 @@ pub(super) fn write_code_lines(writer: &mut Writer<'_>, code: &str, trailing_lin
             writer.literal_line_with_indent();
         }
     }
-}
-
-pub(super) fn unlabelled_fence(code: &str, writer: &mut Writer<'_>) {
-    let info = FenceInfo::new("", None);
-    write_fence(writer, info, maximum_run(code, info.marker) + 1, |writer| {
-        write_code_lines(writer, code, true)
-    });
 }
 
 fn maximum_run(source: &str, marker: u8) -> usize {

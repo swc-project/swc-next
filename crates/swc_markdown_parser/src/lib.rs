@@ -5,8 +5,8 @@ mod inline;
 mod reference;
 mod source;
 pub use block::{
-    can_continue_link_definition, is_table_delimiter_row, liquid_block_delimiter,
-    starts_display_math, starts_footnote_definition,
+    can_continue_link_definition, is_front_matter_closing_line, is_table_delimiter_row,
+    liquid_block_delimiter, starts_display_math, starts_footnote_definition,
 };
 pub use inline::{delimiter_flanking, emphasis_runs_match};
 pub use reference::character_reference;
@@ -83,6 +83,7 @@ pub fn parse_with_options(source: &str, mut options: ParseOptions) -> Document<'
     };
     Document {
         source,
+        dialect: options.dialect,
         lines,
         blocks,
         definitions: parser.definitions,
@@ -98,11 +99,16 @@ pub struct Document<'a> {
     /// Every occurrence in document order, including duplicate definitions.
     pub definitions: Vec<DefinitionEntry>,
     first_definitions: HashMap<String, usize>,
+    dialect: Dialect,
 }
 
 impl<'a> Document<'a> {
     pub fn source(&self) -> &'a str {
         self.source
+    }
+    /// The dialect used to parse this document.
+    pub fn dialect(&self) -> Dialect {
+        self.dialect
     }
     pub fn text(&self, span: Span) -> &'a str {
         &self.source[span.start..span.end]

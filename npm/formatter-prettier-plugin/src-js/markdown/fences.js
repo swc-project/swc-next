@@ -37,6 +37,7 @@ export function embedBlock(block, options) {
       const delimiter = marker.repeat(Math.max(3, longest + deferred + 1));
       return builders.markAsRoot([
         delimiter,
+        info.startsWith(marker) ? " " : "",
         info,
         builders.hardline,
         guest,
