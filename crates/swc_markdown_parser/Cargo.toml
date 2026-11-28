@@ -11,4 +11,5 @@ version               = "0.8.0"
 html-escape        = { workspace = true }
 memchr             = { workspace = true }
 swc_next_simd      = { workspace = true, features = ["memchr"] }
+unicase            = { workspace = true }
 unicode-properties = { workspace = true, features = ["general-category"] }
