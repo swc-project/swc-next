@@ -383,14 +383,14 @@ struct NumericCastBoundary<'ast> {
     source: SourceCastState,
 }
 
-/// A source operand's opening packet is inspected without extending its operator gap.
+/// The outer pairs retain the comment binding; only the content span can be the raw operand.
 #[derive(Clone, Copy)]
 pub(super) struct SourceOpeningPacket<'ast> {
     outer: Span,
     pub(super) content: Expr,
-    pub(super) content_start: u32,
+    pub(super) content_span: Span,
     pub(super) comments: &'ast [Comment],
-    body_mode: Option<ContentMode>,
+    body_mode: ContentMode,
 }
 
 struct SourceParenthesesComments<'ast> {
@@ -587,20 +587,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if content == expression {
             return None;
         }
-        let content_start = content.span(self.ast).start;
-        let comments = self
-            .comments
-            .in_range(Span::new(outer.start, content_start));
+        let content_span = content.span(self.ast);
+        let comments = self.source_comments_in_range(Span::new(outer.start, content_span.start));
         // Inline packets move with the child's existing prepared head. Only a
         // line-owning packet needs this source envelope to retain its binding.
-        self.suppression_positions(comments, content_start)
+        self.suppression_positions(comments, content_span.start)
             .any(|position| !matches!(position, SuppressionPosition::Inline))
-            .then_some(SourceOpeningPacket {
+            .then(|| SourceOpeningPacket {
                 outer,
                 content,
-                content_start,
+                content_span,
                 comments,
-                body_mode: None,
+                body_mode: self.source_content_mode(Span::new(content_span.end, outer.end)),
             })
     }
 
@@ -640,9 +638,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         Some(SourceOpeningPacket {
             outer,
             content,
-            content_start: inner.start,
+            content_span: inner,
             comments,
-            body_mode: Some(mode),
+            body_mode: mode,
         })
     }
 
@@ -653,18 +651,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         context: ExpressionContext<'ast>,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        let content_span = source.content.span(self.ast);
+        let content_span = source.content_span;
         let closing = Span::new(content_span.end, source.outer.end);
-        let mode = if context.content_mode == ContentMode::Verbatim {
-            ContentMode::Verbatim
-        } else {
-            source
-                .body_mode
-                .unwrap_or_else(|| self.content_mode(self.comments.in_range(closing)))
-        };
         self.format_verbatim(Span::new(source.outer.start, content_span.start), writer)?;
         let mut pending = None;
-        if mode == ContentMode::Verbatim {
+        if context.content_mode == ContentMode::Verbatim
+            || source.body_mode == ContentMode::Verbatim
+        {
             self.format_verbatim(content_span, writer)?;
         } else {
             let position =
@@ -2395,10 +2388,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if mode == ContentMode::Verbatim || !self.has_suppression {
             return mode;
         }
-        let leading = self
-            .comments
-            .in_range(Span::new(boundary.outer.start, boundary.inner.start));
-        if self.content_mode(leading) == ContentMode::Verbatim {
+        let leading = Span::new(boundary.outer.start, boundary.inner.start);
+        if self.source_content_mode(leading) == ContentMode::Verbatim {
             return ContentMode::Verbatim;
         }
         let trailing = Span::new(boundary.inner.end, boundary.outer.end - 1);

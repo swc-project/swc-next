@@ -130,6 +130,27 @@ enum DirectivePrologue {
     Closed,
 }
 
+impl DirectivePrologue {
+    /// The parser distinguishes source directives from ordinary string statements.
+    /// Only omitted empty statements can expose an ordinary string to the prologue.
+    fn before(&mut self, item: StatementItem, retention: StatementRetention) -> Self {
+        let before = *self;
+        if matches!(item, StatementItem::Statement(_)) && retention != StatementRetention::OmitEmpty
+        {
+            *self = Self::Closed;
+        }
+        before
+    }
+
+    fn needs_barrier(self, item: StatementItem, mode: ContentMode, ast: &Ast<'_>) -> bool {
+        mode == ContentMode::Verbatim
+            && self == Self::Open
+            && matches!(item, StatementItem::Statement(node)
+                if matches!(ast.stmt_data(node), StmtData::ExpressionStatement(node)
+                    if matches!(ast.expr_data(node.expression(ast)), ExprData::StringLiteral(_))))
+    }
+}
+
 /// Layout supplied by the real parent without bypassing statement ownership.
 #[derive(Clone, Copy)]
 struct StatementLayout {
@@ -214,6 +235,15 @@ struct StatementPreparation {
     /// Source relationship for the most recently prepared pending item.
     source_line: StatementSourceLine,
     has_lint_lines: bool,
+    header_barrier: Option<Span>,
+    prologue: DirectivePrologue,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum StatementRetention {
+    Keep,
+    BoundEmpty,
+    OmitEmpty,
 }
 
 struct PreparedStatement<'ast> {
@@ -223,7 +253,8 @@ struct PreparedStatement<'ast> {
     mode: ContentMode,
     source_gap: Option<LineConstraint>,
     annotation_tail: Option<StatementAnnotationTail<'ast>>,
-    empty_binding: CommentBinding,
+    retention: StatementRetention,
+    prologue: DirectivePrologue,
 }
 
 impl PreparedStatement<'_> {
@@ -234,18 +265,6 @@ impl PreparedStatement<'_> {
                 .annotation_tail
                 .as_ref()
                 .is_some_and(|tail| tail.suppression.current == ContentMode::Verbatim)
-    }
-
-    fn can_omit(
-        &self,
-        ast: &Ast<'_>,
-        header_barrier: Option<Span>,
-        source_line: &StatementSourceLine,
-    ) -> bool {
-        self.item.empty(ast).is_some()
-            && !source_line.owns()
-            && header_barrier != Some(self.span)
-            && self.empty_binding.allows_relocation(None)
     }
 }
 
@@ -701,7 +720,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             _ => None,
         };
         let string_statement = kind.string_statement();
-        let mut directive_prologue = match kind {
+        let prologue = match kind {
             StatementSequenceKind::Program { .. }
             | StatementSequenceKind::Function { .. }
             | StatementSequenceKind::Module => DirectivePrologue::Open,
@@ -714,6 +733,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             end: hashbang_end.unwrap_or(span.start),
             source_line: StatementSourceLine::default(),
             has_lint_lines,
+            header_barrier,
+            prologue,
         };
         let mut pending = statements.next().map(|item| {
             self.prepare_sequence_statement(
@@ -733,7 +754,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     &mut preparation,
                 )
             });
-            if prepared.can_omit(ast, header_barrier, &source_line) {
+            if prepared.retention == StatementRetention::OmitEmpty {
                 continue;
             }
             let PreparedStatement {
@@ -743,7 +764,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 mode: source_mode,
                 source_gap,
                 ref annotation_tail,
-                empty_binding: _,
+                prologue,
+                ..
             } = prepared;
             let leading_gap = Span::new(
                 previous.map_or(span.start, StatementBoundary::end),
@@ -752,7 +774,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             let leading_mode = self.source_content_mode(leading_gap);
             let mut omitted: Option<Span> = None;
             while let Some(next) = pending.as_ref() {
-                if !next.can_omit(ast, header_barrier, &preparation.source_line) {
+                if next.retention != StatementRetention::OmitEmpty {
                     break;
                 }
                 let empty = next.span;
@@ -795,11 +817,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 None
             };
             if let Some(tail) = suppression_tail.as_ref()
-                && tail.modes.following == ContentMode::Verbatim
                 && let Some(next) = pending.as_mut()
             {
-                next.mode = ContentMode::Verbatim;
-                next.source_gap = tail.following_gap;
+                if tail.modes.following == ContentMode::Verbatim {
+                    next.mode = ContentMode::Verbatim;
+                    next.source_gap = tail.following_gap;
+                }
+                if tail.source_packet.is_some() && source_line.outgoing.is_none() {
+                    // This source gap retains an empty statement between two ignore targets.
+                    next.prologue = DirectivePrologue::Closed;
+                }
             }
             let protected = source_mode == ContentMode::Verbatim
                 || leading_mode == ContentMode::Verbatim
@@ -814,11 +841,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             } else {
                 ContentMode::Formatted
             };
-            let prologue_string = mode == ContentMode::Verbatim
-                && directive_prologue == DirectivePrologue::Open
-                && matches!(statement, StatementItem::Statement(node)
-                    if matches!(ast.stmt_data(node), StmtData::ExpressionStatement(node)
-                        if matches!(ast.expr_data(node.expression(ast)), ExprData::StringLiteral(_))));
+            let prologue_string = prologue.needs_barrier(statement, mode, ast);
             let flat_source = source_line.whole && !protected && !prologue_string;
             let StatementEnding {
                 punctuation,
@@ -986,7 +1009,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
                 gap_end: leading.last().map(|_| statement_span.start),
             };
-            if prologue_string && mode == ContentMode::Verbatim {
+            if prologue_string {
                 // Omitted empty statements no longer protect this verbatim string.
                 expression_start = ExpressionStart::StatementBarrier {
                     terminate_previous: !prior_statement_terminated,
@@ -1126,15 +1149,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     (printed.boundary, printed.pending)
                 };
             first_statement = false;
-            if !matches!(statement, StatementItem::Directive(_)) {
-                directive_prologue = DirectivePrologue::Closed;
-            }
             let trailing_start = if let Some(packet) = source_packet {
                 let start = packet.span.start.max(boundary.end());
                 self.format_verbatim(Span::new(start, packet.span.end), writer)?;
-                if source_line.outgoing.is_none() {
-                    directive_prologue = DirectivePrologue::Closed;
-                }
                 if let Some(next) = pending.as_mut() {
                     next.source_gap = Some(packet.following);
                 }
@@ -1422,13 +1439,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
         }
         let empty = item.empty(self.ast);
-        let empty_binding = if empty.is_some() {
+        let retention = if empty.is_some() {
             // Only direct statement gaps can contain this owner's leading packet.
             // Descendant comments belong to the preceding child's own sequence.
             let leading = self.source_comments_in_range(Span::new(gap_start, span.start));
-            self.empty_statement_binding(leading, span)
+            if !self
+                .empty_statement_binding(leading, span)
+                .allows_relocation(None)
+            {
+                StatementRetention::BoundEmpty
+            } else if !preparation.source_line.owns() && preparation.header_barrier != Some(span) {
+                StatementRetention::OmitEmpty
+            } else {
+                StatementRetention::Keep
+            }
         } else {
-            CommentBinding::Unbound
+            StatementRetention::Keep
         };
         let annotation_tail =
             if (self.has_target_annotations || self.has_suppression) && empty.is_none() {
@@ -1445,7 +1471,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .map_or(ContentMode::Formatted, |target| target.mode),
             source_gap: None,
             annotation_tail,
-            empty_binding,
+            retention,
+            prologue: preparation.prologue.before(item, retention),
         }
     }
 

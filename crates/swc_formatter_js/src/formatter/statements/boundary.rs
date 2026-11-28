@@ -8,7 +8,7 @@ use swc_next_ecma_ast::{
 use super::tails::{StatementSourcePacket, StatementSuppressionTail, StatementTailRelation};
 use super::{
     Formatter, PreparedStatement, StatementBoundary, StatementItem, StatementPunctuation,
-    StatementSequenceKind, StatementSourceLine, StatementSourceTerminator,
+    StatementRetention, StatementSequenceKind, StatementSourceLine, StatementSourceTerminator,
 };
 use crate::formatter::diagnostics::LineConstraint;
 use crate::formatter::expressions::{
@@ -391,7 +391,7 @@ impl<'ast> StatementGap<'_, 'ast> {
         let style = formatter.options.semicolons;
         if self
             .next
-            .is_some_and(|next| !next.empty_binding.allows_relocation(None))
+            .is_some_and(|next| next.retention == StatementRetention::BoundEmpty)
         {
             // The retained empty statement needs a semicolon of its own.
             return Ok(retained.map_or(

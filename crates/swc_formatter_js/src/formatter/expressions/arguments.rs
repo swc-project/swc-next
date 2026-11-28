@@ -165,17 +165,19 @@ impl PreparedItem {
     }
 
     pub(in crate::formatter) fn set_leading_mode(&mut self, mode: ContentMode) {
-        self.mode = if mode == ContentMode::Verbatim
-            || self
-                .suppression
-                .as_ref()
-                .and_then(|source| source.preceding)
-                .is_some_and(|target| target == self.item_span)
-        {
+        self.mode = Self::content_mode(self.item_span, mode, self.suppression);
+    }
+
+    fn content_mode(
+        item: Span,
+        leading: ContentMode,
+        suppression: Option<DelimitedSuppression>,
+    ) -> ContentMode {
+        if suppression.is_some_and(|source| source.preceding == Some(item)) {
             ContentMode::Verbatim
         } else {
-            ContentMode::Formatted
-        };
+            leading
+        }
     }
 }
 
@@ -444,34 +446,22 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 },
             )
         };
-        let leading = self
-            .comments
-            .between(Span::new(span.start, item_span.start))?;
+        let leading_gap = Span::new(span.start, item_span.start);
+        let leading_mode = self.source_content_mode(leading_gap);
+        let leading = self.comments.claim_between(leading_gap)?;
         let has_leading_comments = !leading.is_empty();
         let packet = (has_leading_comments
             && suppression.is_none()
-            && self.content_mode(leading) == ContentMode::Formatted)
+            && leading_mode == ContentMode::Formatted)
             .then(|| {
                 self.source_separator_packet(leading, item_span, comments.separator_transition)
             })
             .flatten();
-        let leading = self.comments.take(leading.len());
-        let leading_mode = self.content_mode(leading);
-        let mode = if leading_mode == ContentMode::Verbatim
-            || suppression
-                .as_ref()
-                .and_then(|source| source.preceding)
-                .is_some_and(|target| target == item_span)
-        {
-            ContentMode::Verbatim
-        } else {
-            ContentMode::Formatted
-        };
         let item = PreparedItem {
             item_span,
             following,
             span,
-            mode,
+            mode: PreparedItem::content_mode(item_span, leading_mode, suppression),
             has_leading_comments,
             omit_source_terminal_comma: false,
             trailing_comma: if trailing_comma {

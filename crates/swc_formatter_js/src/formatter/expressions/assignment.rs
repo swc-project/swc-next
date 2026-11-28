@@ -1050,8 +1050,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         right: Expr,
     ) -> Option<AssignmentSuppression<'ast>> {
         let opening = self.source_opening_packet(right);
-        let inspection_end = opening.map_or(gap.end, |packet| packet.content_start);
-        let comments = self.comments.in_range(gap);
+        let inspection_end = opening.map_or(gap.end, |packet| packet.content_span.start);
+        let comments = self.source_comments_in_range(gap);
         let enclosed = opening.map_or(&[][..], |packet| packet.comments);
         if self.content_mode(comments) != ContentMode::Verbatim && enclosed.is_empty() {
             return None;

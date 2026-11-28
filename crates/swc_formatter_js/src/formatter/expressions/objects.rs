@@ -961,7 +961,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let value_start = value.span(self.ast).start;
         let key_span = property.key(self.ast).span(self.ast);
         let opening = self.source_opening_packet(value);
-        let inspection_end = opening.map_or(value_start, |packet| packet.content_start);
+        let inspection_end = opening.map_or(value_start, |packet| packet.content_span.start);
         let inspected = self
             .comments
             .in_range(Span::new(key_span.end, inspection_end));
