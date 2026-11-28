@@ -1,4 +1,9 @@
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    fmt,
+    ops::{Deref, DerefMut, Range},
+    sync::Arc,
+};
 
 /// Half-open UTF-8 byte offsets into the original input.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -40,6 +45,139 @@ pub struct SourceLine {
     pub lazy: bool,
 }
 
+/// A contiguous view of physical lines or of the logical lines of one container.
+#[derive(Clone)]
+pub struct SourceLines(LineStorage);
+
+#[derive(Clone)]
+enum LineStorage {
+    Empty,
+    Single(SourceLine),
+    Shared {
+        rows: Arc<[SourceLine]>,
+        range: Range<usize>,
+    },
+}
+
+impl SourceLines {
+    #[inline]
+    pub fn as_slice(&self) -> &[SourceLine] {
+        match &self.0 {
+            LineStorage::Empty => &[],
+            LineStorage::Single(line) => std::slice::from_ref(line),
+            LineStorage::Shared { rows, range } => &rows[range.clone()],
+        }
+    }
+
+    #[inline]
+    pub(crate) fn slice(&self, range: Range<usize>) -> Self {
+        match &self[range.clone()] {
+            [] => return Self(LineStorage::Empty),
+            [line] => return (*line).into(),
+            _ => {}
+        }
+        match &self.0 {
+            LineStorage::Shared {
+                rows,
+                range: parent,
+            } => Self(LineStorage::Shared {
+                rows: rows.clone(),
+                range: parent.start + range.start..parent.start + range.end,
+            }),
+            _ => unreachable!("multiple lines share a table"),
+        }
+    }
+
+    pub(crate) fn skip_first(&mut self) {
+        *self = self.slice(1..self.len());
+    }
+
+    fn shared(rows: Arc<[SourceLine]>) -> Self {
+        Self(LineStorage::Shared {
+            range: 0..rows.len(),
+            rows,
+        })
+    }
+}
+
+impl From<SourceLine> for SourceLines {
+    fn from(line: SourceLine) -> Self {
+        Self(LineStorage::Single(line))
+    }
+}
+
+impl From<Vec<SourceLine>> for SourceLines {
+    fn from(rows: Vec<SourceLine>) -> Self {
+        match rows.as_slice() {
+            [] => Self(LineStorage::Empty),
+            [line] => (*line).into(),
+            _ => Self::shared(rows.into()),
+        }
+    }
+}
+
+impl From<&[SourceLine]> for SourceLines {
+    fn from(rows: &[SourceLine]) -> Self {
+        match rows {
+            [] => Self(LineStorage::Empty),
+            [line] => (*line).into(),
+            _ => Self::shared(rows.into()),
+        }
+    }
+}
+
+impl FromIterator<SourceLine> for SourceLines {
+    fn from_iter<T: IntoIterator<Item = SourceLine>>(iter: T) -> Self {
+        let mut iter = iter.into_iter();
+        let Some(first) = iter.next() else {
+            return Self(LineStorage::Empty);
+        };
+        let Some(second) = iter.next() else {
+            return first.into();
+        };
+        Self::shared([first, second].into_iter().chain(iter).collect())
+    }
+}
+
+impl Deref for SourceLines {
+    type Target = [SourceLine];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
+    }
+}
+
+impl DerefMut for SourceLines {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match &mut self.0 {
+            LineStorage::Empty => &mut [],
+            LineStorage::Single(line) => std::slice::from_mut(line),
+            LineStorage::Shared { rows, range } => {
+                if range.len() != rows.len() {
+                    *rows = rows[range.clone()].into();
+                    *range = 0..rows.len();
+                }
+                Arc::make_mut(rows)
+            }
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a SourceLines {
+    type Item = &'a SourceLine;
+    type IntoIter = std::slice::Iter<'a, SourceLine>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl fmt::Debug for SourceLines {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_slice().fmt(f)
+    }
+}
+
 pub(crate) fn lines(source: &str) -> Vec<SourceLine> {
     let bytes = source.as_bytes();
     let mut lines = Vec::new();
@@ -59,6 +197,25 @@ pub(crate) fn lines(source: &str) -> Vec<SourceLine> {
         start = next;
     }
     lines
+}
+
+/// The source already contains these logical lines joined by single line feeds.
+pub(crate) fn contiguous_content(source: &str, lines: &[SourceLine]) -> Option<Span> {
+    let (first, rest) = lines.split_first()?;
+    let mut end = first.content.end;
+    if first.virtual_spaces != 0 {
+        return None;
+    }
+    for line in rest {
+        if line.virtual_spaces != 0
+            || end + 1 != line.content.start
+            || source.as_bytes().get(end) != Some(&b'\n')
+        {
+            return None;
+        }
+        end = line.content.end;
+    }
+    Some(Span::new(first.content.start, end))
 }
 
 impl SourceLine {

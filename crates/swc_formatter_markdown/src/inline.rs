@@ -78,6 +78,12 @@ impl Word {
     }
 }
 
+#[derive(Default)]
+pub(super) struct ProseBuffers {
+    words: Vec<Word>,
+    text: String,
+}
+
 struct Prose<'a> {
     wrap: ProseWrap,
     words: Vec<Word>,
@@ -165,11 +171,19 @@ mod emphasis;
 use emphasis::{Emphasis, EmphasisScope};
 
 impl<'a> Prose<'a> {
-    fn new(source: &'a InlineSource<'a>, wrap: ProseWrap, capacity: usize) -> Self {
+    fn new(
+        source: &'a InlineSource<'a>,
+        wrap: ProseWrap,
+        mut buffers: ProseBuffers,
+        capacity: usize,
+    ) -> Self {
+        buffers.words.clear();
+        buffers.text.clear();
+        buffers.text.reserve(capacity);
         Self {
             wrap,
-            words: Vec::new(),
-            buffer: String::with_capacity(capacity),
+            words: buffers.words,
+            buffer: buffers.text,
             start: 0,
             before: Separation::None,
             prefix: LinePrefix::None,
@@ -196,7 +210,9 @@ impl<'a> Prose<'a> {
             if text.starts_with(' ') {
                 self.separate(Separation::Space);
             }
-            self.atom(text.trim_matches(' '));
+            // A normalized run has at most one space at either edge.
+            let body = text.strip_prefix(' ').unwrap_or(text);
+            self.atom(body.strip_suffix(' ').unwrap_or(body));
             if text.ends_with(' ') {
                 self.separate(Separation::Space);
             }
@@ -226,25 +242,25 @@ impl<'a> Prose<'a> {
     }
 
     fn separate(&mut self, separator: Separation) {
-        self.finish_word();
+        if self.start != self.buffer.len() {
+            self.finish_word();
+            // A later word can join this one by extending the earlier range.
+            self.buffer.push(' ');
+            self.start = self.buffer.len();
+        }
         if !self.words.is_empty() {
             self.before = self.before.max(separator);
         }
     }
 
     fn finish_word(&mut self) {
-        if self.start != self.buffer.len() {
-            self.words.push(Word {
-                before: std::mem::take(&mut self.before),
-                start: self.start,
-                end: self.buffer.len(),
-                html_only: std::mem::take(&mut self.html_only),
-                prefix: std::mem::take(&mut self.prefix),
-            });
-            // Adjacent words can then be joined by extending a range.
-            self.buffer.push(' ');
-            self.start = self.buffer.len();
-        }
+        self.words.push(Word {
+            before: std::mem::take(&mut self.before),
+            start: self.start,
+            end: self.buffer.len(),
+            html_only: std::mem::take(&mut self.html_only),
+            prefix: std::mem::take(&mut self.prefix),
+        });
     }
 
     fn starts_table_delimiter(&self, index: usize) -> bool {
@@ -298,7 +314,9 @@ impl<'a> Prose<'a> {
 
     fn finish(&mut self) {
         let wrap = self.wrap;
-        self.finish_word();
+        if self.start != self.buffer.len() {
+            self.finish_word();
+        }
         if self.words.is_empty() {
             return;
         }
@@ -378,7 +396,7 @@ impl<'a> Prose<'a> {
 
 impl<'a> Formatter<'a, '_, '_> {
     pub(super) fn inlines(
-        &self,
+        &mut self,
         block: &Block,
         nodes: &[Inline],
         wrap: ProseWrap,
@@ -404,7 +422,12 @@ impl<'a> Formatter<'a, '_, '_> {
         let capacity = nodes.first().zip(nodes.last()).map_or(0, |(first, last)| {
             last.span.end.saturating_sub(first.span.start)
         });
-        let mut prose = Prose::new(&source, wrap, capacity);
+        let mut prose = Prose::new(
+            &source,
+            wrap,
+            std::mem::take(&mut self.prose_buffers),
+            capacity,
+        );
         self.collect_inlines(block, nodes, wrap, Emphasis::default(), &mut prose);
         prose.finish();
         if wrap == ProseWrap::Always && prose.words.len() > 1 {
@@ -428,11 +451,15 @@ impl<'a> Formatter<'a, '_, '_> {
                 }
             });
         } else {
-            for part in prose.words {
+            for part in &prose.words {
                 write_separator(writer, part.before);
                 write_source_lines(writer, &part.value(&prose.buffer));
             }
         }
+        self.prose_buffers = ProseBuffers {
+            words: prose.words,
+            text: prose.buffer,
+        };
     }
 
     fn has_literal_wiki_opening(&self, nodes: &[Inline]) -> bool {
@@ -492,7 +519,7 @@ impl<'a> Formatter<'a, '_, '_> {
         context: Emphasis,
         source: &InlineSource<'_>,
     ) -> String {
-        let mut prose = Prose::new(source, wrap, 0);
+        let mut prose = Prose::new(source, wrap, ProseBuffers::default(), 0);
         self.collect_inlines(block, nodes, wrap, context, &mut prose);
         prose.finish();
         let mut result = String::with_capacity(prose.buffer.len());
@@ -568,7 +595,7 @@ impl<'a> Formatter<'a, '_, '_> {
 
     fn inline_source(&self, block: &Block, span: Span) -> Cow<'a, str> {
         let text = self.text(span);
-        if text.contains(['\r', '\n']) {
+        if memchr::memchr2(b'\r', b'\n', text.as_bytes()).is_some() {
             Cow::Owned(block.logical_text(self.document.source, span))
         } else {
             Cow::Borrowed(text)
@@ -796,6 +823,11 @@ impl<'a> Formatter<'a, '_, '_> {
             return;
         }
         let wrap = self.options.prose_wrap == ProseWrap::Always;
+        if !wrap && title.is_none() {
+            writer.space();
+            writer.text(destination);
+            return;
+        }
         let separator = if wrap { Writer::line } else { Writer::space };
         writer.group(false, |writer| {
             writer.indent(|writer| {

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use swc_next_formatter_core::Writer;
 use swc_next_formatter_host::EmbeddedError;
 use swc_next_markdown_parser::{
@@ -120,7 +122,7 @@ impl<'a> Formatter<'a, '_, '_> {
                     .position(|block| matches!(block.kind, BlockKind::Ignore(Ignore::End)))
             {
                 let last = index + 1 + end;
-                write_source_lines(
+                write_borrowed_lines(
                     writer,
                     &self.document.source[block.span.start..blocks[last].span.end],
                 );
@@ -304,7 +306,7 @@ impl<'a> Formatter<'a, '_, '_> {
         Ok(())
     }
 
-    fn heading(&self, block: &Block, heading: &Heading, writer: &mut Writer<'a>) {
+    fn heading(&mut self, block: &Block, heading: &Heading, writer: &mut Writer<'a>) {
         if heading.opening.is_none() {
             self.inlines(block, &heading.children, self.options.prose_wrap, writer);
             if let Some(underline) = heading.closing {
@@ -388,7 +390,7 @@ impl<'a> Formatter<'a, '_, '_> {
 
     fn raw_block(&self, block: &Block, container: Container, writer: &mut Writer<'a>) {
         if matches!(container, Container::Document) {
-            write_source_lines(writer, self.text(block.span));
+            write_borrowed_lines(writer, self.text(block.span));
         } else {
             let content = block.logical_text(self.document.source, block.span);
             if matches!(block.kind, BlockKind::Html)
@@ -461,7 +463,7 @@ impl<'a> Formatter<'a, '_, '_> {
         before_marker: usize,
         writer: &mut Writer<'a>,
     ) -> Result<(), EmbeddedError> {
-        let mut previous = None;
+        let mut previous: Option<(usize, bool)> = None;
         let start = list.start.unwrap_or(1);
         let item_number = |item: &ListItem| {
             self.text(item.marker)
@@ -480,8 +482,8 @@ impl<'a> Formatter<'a, '_, '_> {
                     writer.hard_line();
                 }
             }
-            let mut children = item
-                .blocks
+            let blocks = item.blocks.as_slice();
+            let mut children = blocks
                 .iter()
                 .filter(|block| !matches!(block.kind, BlockKind::Blank));
             let first = children.next();
@@ -562,11 +564,11 @@ impl<'a> Formatter<'a, '_, '_> {
                 } else {
                     0
                 };
-                format!("{number:0digits$}{delimiter}")
+                Cow::Owned(format!("{number:0digits$}{delimiter}"))
             } else if layout.alternate_marker {
-                "*".to_string()
+                Cow::Borrowed("*")
             } else {
-                "-".to_string()
+                Cow::Borrowed("-")
             };
             let aligned_padding = if list.ordered && self.lists_aligned && tab_width != 0 {
                 let extra = (tab_width - (marker.len() + 1) % tab_width) % tab_width;
@@ -619,7 +621,7 @@ impl<'a> Formatter<'a, '_, '_> {
                     if math_starts_on_next_line {
                         writer.hard_line();
                     }
-                    formatter.blocks(&item.blocks, container, writer)
+                    formatter.blocks(blocks, container, writer)
                 });
                 if changed_width {
                     self.original_item_widths = true;
@@ -798,12 +800,24 @@ fn has_blank_line(gap: &str) -> bool {
     false
 }
 
-pub(super) fn write_source_lines(writer: &mut Writer<'_>, mut source: &str) {
+pub(super) fn write_source_lines(writer: &mut Writer<'_>, source: &str) {
+    write_lines(writer, source, |writer, text| writer.text_copied(text));
+}
+
+pub(super) fn write_borrowed_lines<'a>(writer: &mut Writer<'a>, source: &'a str) {
+    write_lines(writer, source, |writer, text| writer.text(text));
+}
+
+fn write_lines<'text, 'doc>(
+    writer: &mut Writer<'doc>,
+    mut source: &'text str,
+    text: impl Fn(&mut Writer<'doc>, &'text str),
+) {
     while let Some(index) = memchr::memchr2(b'\r', b'\n', source.as_bytes()) {
-        writer.text_copied(&source[..index]);
+        text(writer, &source[..index]);
         writer.literal_line_with_indent();
         let rest = &source[index..];
         source = &rest[1 + usize::from(rest.starts_with("\r\n"))..];
     }
-    writer.text_copied(source);
+    text(writer, source);
 }

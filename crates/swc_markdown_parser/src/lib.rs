@@ -13,9 +13,9 @@ pub use reference::character_reference;
 mod syntax;
 pub use syntax::{SyntaxKind, SyntaxNode, SyntaxPart, SyntaxRole};
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-pub use source::{SourceLine, Span};
+pub use source::{SourceLine, SourceLines, Span};
 
 /// Parse a complete document. Malformed and unsupported constructs retain their source text.
 pub fn parse(source: &str) -> Document<'_> {
@@ -59,7 +59,7 @@ pub enum RecoveryReason {
 
 pub fn parse_with_options(source: &str, mut options: ParseOptions) -> Document<'_> {
     options.max_nesting = options.max_nesting.min(MAX_DEPTH);
-    let lines = source::lines(source);
+    let lines = SourceLines::from(source::lines(source));
     let mut parser = block::Parser::new(source, options);
     let blocks = if options
         .max_input_bytes
@@ -71,12 +71,13 @@ pub fn parse_with_options(source: &str, mut options: ParseOptions) -> Document<'
             kind: BlockKind::Recovery(RecoveryReason::InputSize),
         }]
     } else {
-        let blocks = parser.blocks(lines.as_slice().into(), 0, true);
+        let blocks = parser.blocks(lines.clone(), 0, true);
         if parser.needs_reference_lookup.get() {
+            drop(blocks);
             // Forward references can decide which link or emphasis opener wins.
             block::Parser::new(source, options)
                 .with_reference_definitions(&parser.first_definitions)
-                .blocks(lines.as_slice().into(), 0, true)
+                .blocks(lines.clone(), 0, true)
         } else {
             blocks
         }
@@ -94,7 +95,7 @@ pub fn parse_with_options(source: &str, mut options: ParseOptions) -> Document<'
 #[derive(Debug)]
 pub struct Document<'a> {
     pub source: &'a str,
-    pub lines: Vec<SourceLine>,
+    pub lines: SourceLines,
     pub blocks: Vec<Block>,
     /// Every occurrence in document order, including duplicate definitions.
     pub definitions: Vec<DefinitionEntry>,
@@ -142,7 +143,7 @@ fn identifier(label: &str) -> String {
 pub struct Block {
     pub span: Span,
     /// Source lines in order, with enclosing list and quote prefixes removed.
-    pub lines: Vec<SourceLine>,
+    pub lines: SourceLines,
     pub kind: BlockKind,
 }
 
@@ -172,14 +173,14 @@ impl Block {
 
 #[derive(Debug)]
 pub enum BlockKind {
-    Paragraph(Vec<Inline>),
+    Paragraph(InlineNodes),
     Heading(Heading),
     ThematicBreak,
     BlockQuote(Vec<Block>),
     List(List),
-    Fence(Fence),
-    IndentedCode(Code),
-    Definition(Definition),
+    Fence(Box<Fence>),
+    IndentedCode(Box<Code>),
+    Definition(Arc<Definition>),
     Table(Table),
     FrontMatter(FrontMatter),
     Html,
@@ -236,7 +237,7 @@ pub struct Heading {
     pub opening: Option<Span>,
     /// Optional ATX closing run, or the setext underline.
     pub closing: Option<Span>,
-    pub children: Vec<Inline>,
+    pub children: InlineNodes,
 }
 
 #[derive(Debug)]
@@ -251,8 +252,11 @@ pub struct ListItem {
     pub span: Span,
     pub marker: Span,
     pub task: Option<Task>,
-    pub blocks: Vec<Block>,
+    pub blocks: ItemBlocks,
 }
+
+/// A list item commonly contains a single paragraph.
+pub type ItemBlocks = smallvec::SmallVec<[Block; 1]>;
 #[derive(Debug, Clone, Copy)]
 pub struct Task {
     pub marker: Span,
@@ -274,15 +278,27 @@ pub struct Fence {
 pub struct Code {
     /// Logical lines joined by LF, excluding the last physical line terminator.
     pub value: String,
-    pub lines: Vec<SourceLine>,
-    line_starts: Vec<usize>,
+    pub lines: SourceLines,
+    line_starts: smallvec::SmallVec<[usize; 4]>,
     empty_origin: usize,
 }
 
 impl Code {
-    fn from_lines(source: &str, lines: Vec<SourceLine>, empty_origin: usize) -> Self {
+    fn from_lines(source: &str, lines: SourceLines, empty_origin: usize) -> Self {
+        if let Some(span) = source::contiguous_content(source, &lines) {
+            let line_starts = lines
+                .iter()
+                .map(|line| line.content.start - span.start)
+                .collect();
+            return Self {
+                value: span.text(source).to_owned(),
+                lines,
+                line_starts,
+                empty_origin,
+            };
+        }
         let mut value = String::new();
-        let mut line_starts = Vec::with_capacity(lines.len());
+        let mut line_starts = smallvec::SmallVec::with_capacity(lines.len());
         for (index, line) in lines.iter().enumerate() {
             if index != 0 {
                 value.push('\n');
@@ -382,20 +398,20 @@ pub struct Definition {
 #[derive(Debug)]
 pub struct DefinitionEntry {
     pub span: Span,
-    pub definition: Definition,
+    pub definition: Arc<Definition>,
 }
 
 #[derive(Debug)]
 pub struct Table {
     pub header: Vec<TableCell>,
     pub delimiter: Span,
-    pub alignments: Vec<Alignment>,
+    pub alignments: smallvec::SmallVec<[Alignment; 4]>,
     pub rows: Vec<Vec<TableCell>>,
 }
 #[derive(Debug)]
 pub struct TableCell {
     pub span: Span,
-    pub children: Vec<Inline>,
+    pub children: InlineNodes,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Alignment {
@@ -419,6 +435,9 @@ pub enum Ignore {
     End,
 }
 
+/// Inline children of a paragraph, heading, link label or table cell.
+pub type InlineNodes = smallvec::SmallVec<[Inline; 1]>;
+
 #[derive(Debug)]
 pub struct Inline {
     pub span: Span,
@@ -436,8 +455,8 @@ pub enum InlineKind {
     Emphasis(Vec<Inline>),
     Strong(Vec<Inline>),
     Delete(Vec<Inline>),
-    Link(Link),
-    Image(Link),
+    Link(Box<Link>),
+    Image(Box<Link>),
     Autolink,
     Html,
     SoftBreak,
@@ -467,7 +486,7 @@ pub struct Link {
     pub brackets: [Span; 2],
     pub target_delimiters: Option<[Span; 2]>,
     pub label: Span,
-    pub children: Vec<Inline>,
+    pub children: InlineNodes,
     pub target: LinkTarget,
 }
 #[derive(Debug)]
@@ -522,6 +541,11 @@ mod tests {
 
     #[test]
     fn source_lines() {
+        let mut document = parse("one\ntwo\n\nthree");
+        document.blocks[0].lines[1].lazy = true;
+        assert!(!document.lines[1].lazy);
+        assert_eq!(document.blocks[0].lines.len(), 2);
+
         let doc = parse("\u{feff}λ\r\n> one\r> two\n");
         assert_eq!(doc.text(doc.lines[0].raw), "\u{feff}λ");
         assert_eq!(doc.text(doc.blocks[0].span), "λ");

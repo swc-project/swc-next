@@ -3,11 +3,14 @@ mod container;
 use std::{borrow::Cow, cell::Cell, collections::HashMap};
 
 use self::container::ContainerCursor;
+use crate::ItemBlocks;
 use crate::{
     Alignment, Block, BlockExtension, BlockKind, Code, Definition, DefinitionEntry, Description,
     DescriptionEntry, Dialect, Fence, FrontMatter, Heading, Ignore, ParseOptions, RecoveryReason,
-    SourceLine, Span, Table, TableCell, identifier, inline,
+    SourceLine, SourceLines, Span, Table, TableCell, Task, identifier, inline,
 };
+use smallvec::SmallVec;
+use std::sync::Arc;
 
 pub(crate) struct Parser<'a> {
     source: &'a str,
@@ -47,22 +50,24 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn blocks(&mut self, lines: Cow<'_, [SourceLine]>, depth: usize, root: bool) -> Vec<Block> {
-        self.blocks_in(lines, depth, root, None)
+    pub fn blocks(&mut self, lines: SourceLines, depth: usize, root: bool) -> Vec<Block> {
+        self.blocks_in(lines, depth, root, None, None).into_vec()
     }
 
     fn blocks_in(
         &mut self,
-        lines: Cow<'_, [SourceLine]>,
+        lines: SourceLines,
         depth: usize,
         root: bool,
         mut containers: Option<ContainerCursor<'_>>,
-    ) -> Vec<Block> {
+        mut first_task: Option<&mut Option<Task>>,
+    ) -> ItemBlocks {
         let source = self.source;
-        let mut result = Vec::new();
+        let mut result = ItemBlocks::new();
         // Unclosed template tags may appear on many lines. Each delimiter search
         // resumes only after advancing past its previous result.
         let mut next_liquid_end = [None; 2];
+        let mut last_description = None;
         let mut p = 0;
         let mut definition_paragraph = false;
         while p < lines.len() {
@@ -91,7 +96,7 @@ impl<'a> Parser<'a> {
             } else if matches!(first, Some(b'\x60' | b'~'))
                 && let Some(mark) = fence_open(source, line)
             {
-                self.fence(rest, mark)
+                self.fence(&lines, p, mark)
             } else if first == Some(b'#')
                 && let Some(head) = atx(source, line, self.inline_options())
             {
@@ -142,6 +147,12 @@ impl<'a> Parser<'a> {
             {
                 special
             } else if self.options.dialect == Dialect::Extended
+                && p < *last_description.get_or_insert_with(|| {
+                    p + rest
+                        .iter()
+                        .rposition(|line| line.first_content_byte(source) == Some(b':'))
+                        .unwrap_or(0)
+                })
                 && let Some(list) = self.description_list(rest, depth)
             {
                 list
@@ -149,26 +160,43 @@ impl<'a> Parser<'a> {
                 self.paragraph(rest)
             };
             definition_paragraph = matches!(kind, BlockKind::Definition(_));
-            let span = extent(&rest[..n]);
             if p == 0 && n == lines.len() {
-                return vec![Block {
-                    span,
-                    lines: lines.into_owned(),
-                    kind,
-                }];
+                return smallvec::smallvec![self.finish_block(lines, kind, first_task)];
             }
-            result.push(Block {
-                span,
-                lines: rest[..n].to_vec(),
-                kind,
-            });
+            let block_lines = if n == 1 {
+                line.into()
+            } else {
+                lines.slice(p..p + n)
+            };
+            result.push(self.finish_block(block_lines, kind, first_task.take()));
             p += n;
         }
         result
     }
 
+    #[inline(always)]
+    fn finish_block(
+        &self,
+        mut lines: SourceLines,
+        mut kind: BlockKind,
+        first_task: Option<&mut Option<Task>>,
+    ) -> Block {
+        if let BlockKind::Paragraph(children) = &mut kind {
+            if let Some(task) = first_task {
+                *task = container::strip_task(self.source, &mut lines);
+            }
+            *children = paragraph_inline(self.source, &lines, self.inline_options());
+        }
+        Block {
+            span: extent(&lines),
+            lines,
+            kind,
+        }
+    }
+
     fn definition(&mut self, lines: &[SourceLine]) -> Option<(usize, BlockKind)> {
         let (n, definition) = parse_definition(self.source, lines)?;
+        let definition = Arc::new(definition);
         if self.reference_definitions.is_none() {
             self.first_definitions
                 .entry(definition.identifier.clone())
@@ -181,20 +209,28 @@ impl<'a> Parser<'a> {
         Some((n, BlockKind::Definition(definition)))
     }
 
-    fn fence(&self, lines: &[SourceLine], mark: FenceMark) -> (usize, BlockKind) {
+    fn fence(&self, lines: &SourceLines, start: usize, mark: FenceMark) -> (usize, BlockKind) {
         let source = self.source;
-        let mut body = Vec::new();
-        let mut closing = None;
-        let mut n = 1;
-        for &line in &lines[1..] {
-            n += 1;
-            if let Some(marker) = fence_close(source, line, mark.byte, mark.run.len()) {
-                closing = Some(marker);
-                break;
-            }
-            body.push(line.strip(source, mark.indent));
-        }
-        let first = lines[0];
+        let body_start = start + 1;
+        let close = lines[body_start..]
+            .iter()
+            .enumerate()
+            .find_map(|(i, &line)| {
+                fence_close(source, line, mark.byte, mark.run.len())
+                    .map(|span| (body_start + i, span))
+            });
+        let body_end = close.map_or(lines.len(), |(i, _)| i);
+        let body = if mark.indent == 0 {
+            lines.slice(body_start..body_end)
+        } else {
+            lines[body_start..body_end]
+                .iter()
+                .map(|line| line.strip(source, mark.indent))
+                .collect()
+        };
+        let closing = close.map(|(_, span)| span);
+        let n = body_end - start + usize::from(closing.is_some());
+        let first = lines[start];
         let info = trim(source, Span::new(mark.run.end, first.content.end));
         let (lang, meta) = if info.is_empty() {
             (None, None)
@@ -212,14 +248,14 @@ impl<'a> Parser<'a> {
         };
         (
             n,
-            BlockKind::Fence(Fence {
+            BlockKind::Fence(Box::new(Fence {
                 opening: mark.run,
                 closing,
                 info: (!info.is_empty()).then_some(info),
                 lang,
                 meta,
-                code: Code::from_lines(source, body, lines[0].ending.end),
-            }),
+                code: Code::from_lines(source, body, first.ending.end),
+            })),
         )
     }
 
@@ -235,7 +271,11 @@ impl<'a> Parser<'a> {
         let body = lines[..n].iter().map(|l| l.strip(source, 4)).collect();
         (
             n,
-            BlockKind::IndentedCode(Code::from_lines(source, body, lines[0].content.start)),
+            BlockKind::IndentedCode(Box::new(Code::from_lines(
+                source,
+                body,
+                lines[0].content.start,
+            ))),
         )
     }
 
@@ -268,19 +308,17 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        (
-            n,
-            BlockKind::Paragraph(paragraph_inline(source, &lines[..n], self.inline_options())),
-        )
+        // Parse the inlines after removing a task marker in the first paragraph of a list item.
+        (n, BlockKind::Paragraph(crate::InlineNodes::new()))
     }
 
     fn table(
         &self,
         lines: &[SourceLine],
-        header: Vec<Span>,
-        alignments: Vec<Alignment>,
+        header: CellSpans,
+        alignments: Alignments,
     ) -> (usize, BlockKind) {
-        let cells = |line, spans: Vec<Span>| {
+        let cells = |line, spans: CellSpans| {
             spans
                 .into_iter()
                 .map(|span| table_cell(self.source, line, span, self.inline_options()))
@@ -309,23 +347,32 @@ fn extent(lines: &[SourceLine]) -> Span {
 }
 
 fn trim(source: &str, span: Span) -> Span {
-    let text = span.text(source);
-    let left = text.trim_start_matches([' ', '\t']);
-    let start = span.end - left.len();
-    Span::new(start, start + left.trim_end_matches([' ', '\t']).len())
+    let bytes = span.bytes(source);
+    let start = bytes
+        .iter()
+        .take_while(|b| matches!(b, b' ' | b'\t'))
+        .count();
+    let trailing = bytes[start..]
+        .iter()
+        .rev()
+        .take_while(|b| matches!(b, b' ' | b'\t'))
+        .count();
+    Span::new(span.start + start, span.end - trailing)
 }
+#[inline]
 fn visible(source: &str, line: SourceLine) -> Option<SourceLine> {
-    match line.indent(source) {
-        0 => Some(line),
-        indent @ 1..=3 => Some(line.strip(source, indent)),
-        _ => None,
+    if line.virtual_spaces == 0 && !matches!(line.content.bytes(source).first(), Some(b' ' | b'\t'))
+    {
+        return Some(line);
     }
+    let stripped = line.strip(source, 4);
+    (stripped.column - line.column < 4).then_some(stripped)
 }
 fn paragraph_inline(
     source: &str,
     lines: &[SourceLine],
     options: inline::Options<'_>,
-) -> Vec<crate::Inline> {
+) -> crate::InlineNodes {
     let mut body = Cow::Borrowed(lines);
     for (index, &line) in lines.iter().enumerate() {
         let indent = line.indent(source);
@@ -475,23 +522,27 @@ pub(crate) struct Marker {
     number: Option<u64>,
 }
 pub(crate) fn list_marker(source: &str, line: SourceLine) -> Option<Marker> {
-    let i = line.indent(source);
     let start = visible(source, line)?;
-    let s = start.content.text(source);
-    let bytes = s.as_bytes();
+    let i = start.column - line.column;
+    let bytes = start.content.bytes(source);
     let first = *bytes.first()?;
     let (n, number) = match first {
         b'-' | b'+' | b'*' => (1, None),
         b'0'..=b'9' => {
-            let digits = bytes
+            let mut number = 0;
+            let mut digits = 0;
+            for &byte in bytes
                 .iter()
-                .take(10)
-                .take_while(|b| b.is_ascii_digit())
-                .count();
-            if digits == 10 || !matches!(bytes.get(digits), Some(b'.' | b')')) {
+                .take(9)
+                .take_while(|byte| byte.is_ascii_digit())
+            {
+                number = number * 10 + u64::from(byte - b'0');
+                digits += 1;
+            }
+            if !matches!(bytes.get(digits), Some(b'.' | b')')) {
                 return None;
             }
-            (digits + 1, Some(s[..digits].parse().ok()?))
+            (digits + 1, Some(number))
         }
         _ => return None,
     };
@@ -500,15 +551,16 @@ pub(crate) fn list_marker(source: &str, line: SourceLine) -> Option<Marker> {
     }
     let token = Span::new(start.content.start, start.content.start + n);
     let after = start.marker(n);
-    let indent = after.indent(source);
-    let pad = if (1..=4).contains(&indent) && !after.blank(source) {
-        indent
+    let stripped = after.strip(source, 5);
+    let indent = stripped.column - after.column;
+    let (body, pad) = if (1..=4).contains(&indent) && !stripped.content.is_empty() {
+        (stripped, indent)
     } else {
-        1
+        (after.strip(source, 1), 1)
     };
     Some(Marker {
         token,
-        body: after.strip(source, pad),
+        body,
         width: i + n + pad,
         delimiter: bytes[n - 1],
         number,
@@ -518,7 +570,7 @@ enum ParagraphContinuation {
     Text,
     End,
     Heading(u8, Span),
-    Table(Vec<Span>, Vec<Alignment>),
+    Table(CellSpans, Alignments),
 }
 
 fn paragraph_continuation(source: &str, previous: Span, line: SourceLine) -> ParagraphContinuation {
@@ -658,7 +710,7 @@ fn parse_definition(source: &str, lines: &[SourceLine]) -> Option<(usize, Defini
         return None;
     }
     let continuation = |line| definition_continuation(source, line);
-    let mut input = inline::Input::new(source, &lines[..1]);
+    let mut input = inline::Input::for_inlines(source, &lines[..1]);
     let start = input.text.len() - input.text.trim_start_matches([' ', '\t']).len();
     let mut close = start + 1;
     let mut n = 1;
@@ -674,7 +726,7 @@ fn parse_definition(source: &str, lines: &[SourceLine]) -> Option<(usize, Defini
                     .get(n)
                     .copied()
                     .filter(|&line| n < 32 && continuation(line))?;
-                input.push_line(source, line);
+                input.push_line(source, lines[0], line);
                 n += 1;
             }
         }
@@ -711,7 +763,7 @@ fn parse_definition(source: &str, lines: &[SourceLine]) -> Option<(usize, Defini
                     if !continuation(line) {
                         break;
                     }
-                    input.push_line(source, line);
+                    input.push_line(source, lines[0], line);
                     let title =
                         inline::destination_and_title(&input.text, after, input.text.len(), false);
                     if let Ok((_, _, Some(title))) = title {
@@ -731,18 +783,21 @@ fn parse_definition(source: &str, lines: &[SourceLine]) -> Option<(usize, Defini
         if !may_continue {
             return None;
         }
-        input.push_line(source, following);
+        input.push_line(source, lines[0], following);
         n += 1;
     }
 }
 
-fn cell_spans(source: &str, span: Span) -> Vec<Span> {
+type CellSpans = SmallVec<[Span; 4]>;
+type Alignments = SmallVec<[Alignment; 4]>;
+
+fn cell_spans(source: &str, span: Span) -> CellSpans {
     let span = trim(source, span);
     let bytes = span.text(source).as_bytes();
     if bytes.is_empty() {
-        return Vec::new();
+        return CellSpans::new();
     }
-    let mut cells = Vec::new();
+    let mut cells = CellSpans::new();
     let mut begin = usize::from(bytes[0] == b'|');
     let mut p = begin;
     while let Some(offset) = memchr::memchr2(b'\\', b'|', &bytes[p..]) {
@@ -796,7 +851,7 @@ fn table_head(
     source: &str,
     header: Span,
     delimiter: SourceLine,
-) -> Option<(Vec<Span>, Vec<Alignment>)> {
+) -> Option<(CellSpans, Alignments)> {
     let delimiter = visible(source, delimiter)?.content;
     let text = delimiter.text(source);
     if !text.starts_with(['|', ':', '-'])
@@ -804,7 +859,7 @@ fn table_head(
     {
         return None;
     }
-    let alignments: Vec<_> = table_alignments(text).collect::<Option<_>>()?;
+    let alignments: Alignments = table_alignments(text).collect::<Option<_>>()?;
     let header = cell_spans(source, header);
     (!header.is_empty() && header.len() == alignments.len()).then_some((header, alignments))
 }
@@ -1179,7 +1234,7 @@ impl Parser<'_> {
                     let line = std::slice::from_ref(line);
                     Block {
                         span: extent(line),
-                        lines: line.to_vec(),
+                        lines: line.into(),
                         kind: BlockKind::Paragraph(paragraph_inline(
                             source,
                             line,

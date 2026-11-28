@@ -68,10 +68,15 @@ impl<'a> EmphasisScope<'a> {
         let node = &self.nodes[index];
         let strong = matches!(node.kind, InlineKind::Strong(_));
         let original = &node.span.text(self.source)[..if strong { 2 } else { 1 }];
-        let (before, after) = self.neighbors(index);
-        let left = before.and_then(|n| n.span.text(self.source).chars().next_back());
-        let right = after.and_then(|n| n.span.text(self.source).chars().next());
-        let word = [left, right].into_iter().flatten().any(is_word_char);
+        let adjoins_word = || {
+            let (before, after) = self.neighbors(index);
+            before
+                .and_then(|n| n.span.text(self.source).chars().next_back())
+                .is_some_and(is_word_char)
+                || after
+                    .and_then(|n| n.span.text(self.source).chars().next())
+                    .is_some_and(is_word_char)
+        };
         let preferred = if strong {
             "**"
         } else if children
@@ -79,7 +84,7 @@ impl<'a> EmphasisScope<'a> {
             .is_some_and(|n| matches!(n.kind, InlineKind::Autolink))
         {
             original
-        } else if context.italic || context.strong_adjoins_word || word {
+        } else if context.italic || context.strong_adjoins_word || adjoins_word() {
             "*"
         } else {
             "_"
@@ -89,7 +94,12 @@ impl<'a> EmphasisScope<'a> {
             preferred,
             context: Emphasis {
                 italic: !strong || context.italic,
-                strong_adjoins_word: strong && word,
+                // Only directly nested emphasis consults this flag when choosing its marker.
+                strong_adjoins_word: strong
+                    && children
+                        .iter()
+                        .any(|n| matches!(n.kind, InlineKind::Emphasis(_)))
+                    && adjoins_word(),
                 ..context
             },
         }

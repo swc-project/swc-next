@@ -10,6 +10,7 @@ version               = "0.8.0"
 [dependencies]
 html-escape        = { workspace = true }
 memchr             = { workspace = true }
+smallvec           = { workspace = true, features = ["union"] }
 swc_next_simd      = { workspace = true, features = ["memchr"] }
 unicase            = { workspace = true }
 unicode-properties = { workspace = true, features = ["general-category"] }

@@ -2,7 +2,10 @@ use swc_next_formatter_core::{LabelId, LineEnding, PrintOptions, Writer};
 use swc_next_formatter_host::{EmbeddedError, EmbeddedOutcome, InputKind};
 use swc_next_markdown_parser::{Block, FrontMatter, is_front_matter_closing_line};
 
-use crate::{EmbeddedBlock, Formatter, blocks::write_source_lines};
+use crate::{
+    EmbeddedBlock, Formatter,
+    blocks::{write_borrowed_lines, write_source_lines},
+};
 
 impl<'a> Formatter<'a, '_, '_> {
     pub(super) fn front_matter(
@@ -20,7 +23,7 @@ impl<'a> Formatter<'a, '_, '_> {
         };
         let raw = &self.document.source[block.span.start..matter.closing.end];
         if !matches!(language, "yaml" | "toml") {
-            write_source_lines(writer, raw);
+            write_borrowed_lines(writer, raw);
             return Ok(());
         }
         let body = || block.logical_text(self.document.source, matter.body);
@@ -35,7 +38,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 closing: closing.to_owned(),
                 body: body(),
             });
-            writer.label(label, |writer| write_source_lines(writer, raw));
+            writer.label(label, |writer| write_borrowed_lines(writer, raw));
             return Ok(());
         }
         let outcome = self
@@ -57,7 +60,7 @@ impl<'a> Formatter<'a, '_, '_> {
                 .split(['\r', '\n'])
                 .any(|line| is_front_matter_closing_line(line, delimiter, explicit))
         }) else {
-            write_source_lines(writer, raw);
+            write_borrowed_lines(writer, raw);
             return Ok(());
         };
         writer.mark_as_root(|writer| {
