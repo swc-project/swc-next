@@ -1,0 +1,37 @@
+---
+source: crates/swc_formatter/tests/fixtures/mod.rs
+---
+---------- Input ----------
+function* mask() {
+  // prettier-ignore
+  low = value  <<  count;
+  high = bits << typeof (yield read<T>);
+}
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"as-needed"}
+---------- Output ----------
+function* mask() {
+  // prettier-ignore
+  low = value  <<  count;
+  high = bits << typeof (yield read<T>)
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":20,"semicolons":"as-needed"}
+---------- Output ----------
+function* mask() {
+  // prettier-ignore
+  low = value  <<  count;
+  high =
+    bits <<
+    typeof (yield read<T>)
+}
+
+---------- Options ----------
+{"indentStyle":"space","lineWidth":80,"semicolons":"always"}
+---------- Output ----------
+function* mask() {
+  // prettier-ignore
+  low = value  <<  count;
+  high = bits << typeof (yield read<T>);
+}

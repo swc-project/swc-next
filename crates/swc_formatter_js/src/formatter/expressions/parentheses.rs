@@ -3866,48 +3866,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Result<ExpressionStart, FormatError> {
         let binding = context.resolve_emitted_head_binding(&head, binding);
         let prefix_gap_end = head.gap_end;
-        if context.expression_start.needs_statement_guard()
-            && context.content_mode == ContentMode::Verbatim
-            && head.layout.is_source()
-            && head.comments.last().is_some_and(|comment| {
-                comment.kind == CommentKind::Block
-                    && self.line_breaks(comment.span.end, head.content_start) == 0
-            })
-            && (matches!(
-                context.expression_start,
-                ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
-            ) || self.expression_needs_asi_guard(expression, context)?)
+        if let Some(guard) = context
+            .expression_start
+            .guard_at_comments(self, expression, &context, &mut head, binding, released)?
         {
-            // The guard hugs the final annotation. A split prefix still needs its gap.
-            head.gap_end = None;
-        }
-        if context.expression_start.needs_statement_guard()
-            && self.has_target_annotations
-            && let Some(index) = head
-                .comments
-                .iter()
-                .position(|&comment| self.comment_has_target_annotation(comment))
-                .or_else(|| {
-                    // Removing a wrapper joins this source-bound exterior run
-                    // with its released annotation head. Choose the guard owner
-                    // before either renderer claims or prints its own comments.
-                    (!head.comments.is_empty()
-                        && matches!(binding, CommentBinding::SourceBound)
-                        && released
-                            .iter()
-                            .any(|&comment| self.comment_has_target_annotation(comment)))
-                    .then_some(0)
-                })
-            && (matches!(
-                context.expression_start,
-                ExpressionStart::StatementGuard | ExpressionStart::StatementBarrier { .. }
-            ) || self.expression_needs_asi_guard(expression, context)?)
-        {
-            let ignored_head =
-                self.has_suppression && context.content_mode == ContentMode::Verbatim;
-            let source_bound = matches!(binding, CommentBinding::SourceBound);
-            let index = if source_bound { 0 } else { index };
-            let (prefix, protected) = head.comments.split_at(index);
+            let (prefix, protected) = head.comments.split_at(guard.prefix_len);
             self.format_node_head(
                 NodeHead {
                     comments: prefix,
@@ -3919,26 +3882,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 array_comments.as_deref_mut(),
                 writer,
             )?;
-            context.expression_start.write_statement_guard(writer);
-            if source_bound {
-                writer.hard_line();
-            } else if ignored_head && !self.comment_is_type_cast(protected[0]) {
-                // A cast's guard belongs directly before its annotation, as in
-                // format_node_head. Only other ignored heads retain their
-                // original line relationship to the surrounding source.
-                let prefix = if self.source_position_starts_line(protected[0].span.start) {
-                    LineConstraint::NewLine(1)
-                } else {
-                    LineConstraint::SameLine
-                };
-                prefix.write(writer, FlatSeparator::Empty, |_| {});
-            } else if protected
-                .iter()
-                .any(|comment| comment.kind == CommentKind::Line)
-                && !self.comment_is_type_cast(protected[0])
-            {
-                writer.space();
-            }
+            guard.write(context.expression_start, writer);
             context.expression_start = ExpressionStart::StatementGuarded;
             head.comments = protected;
         }

@@ -45669,6 +45669,133 @@
         "prettierNative": "interface I {\n  readonly\n  get b(): number\n}\n"
       }
     ],
+    "ts/statements/shift-asi/assignments.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function* mask() {\n  // prettier-ignore\n  low = value  <<  count;\n  high = bits << typeof (yield read<T>)\n}\n",
+        "prettierNative": "function* mask() {\n  // prettier-ignore\n  low = value  <<  count\n  high = bits << (typeof (yield read<T>))\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "function* mask() {\n  // prettier-ignore\n  low = value  <<  count;\n  high =\n    bits <<\n    typeof (yield read<T>)\n}\n",
+        "prettierNative": "function* mask() {\n  // prettier-ignore\n  low = value  <<  count\n  high =\n    bits <<\n    (typeof (yield read<T>))\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "function* mask() {\n  // prettier-ignore\n  low = value  <<  count;\n  high = bits << typeof (yield read<T>);\n}\n",
+        "prettierNative": "function* mask() {\n  // prettier-ignore\n  low = value  <<  count;\n  high = bits << (typeof (yield read<T>));\n}\n"
+      }
+    ],
+    "ts/statements/shift-asi/comparison.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const same = flag === value << count;\n  const high = bits << typeof (await read<T>().value)\n}\n",
+        "prettierNative": "async function mask() {\n  const same = flag === value << count\n  const high = bits << typeof (await read<T>().value)\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const same =\n    flag ===\n    value << count;\n  const high =\n    bits <<\n    typeof (await read<T>()\n      .value)\n}\n",
+        "prettierNative": "async function mask() {\n  const same =\n    flag ===\n    value << count\n  const high =\n    bits <<\n    typeof (await read<T>()\n      .value)\n}\n"
+      }
+    ],
+    "ts/statements/shift-asi/declarations.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const low = value << count;\n  const high = bits << typeof (await read<T>)\n}\n",
+        "prettierNative": "async function mask() {\n  const low = value << count\n  const high = bits << (typeof (await read<T>))\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const low =\n    value << count;\n  const high =\n    bits <<\n    typeof (await read<T>)\n}\n",
+        "prettierNative": "async function mask() {\n  const low =\n    value << count\n  const high =\n    bits <<\n    (typeof (await read<T>))\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "async function mask() {\n  const low = value << count;\n  const high = bits << typeof (await read<T>);\n}\n",
+        "prettierNative": "async function mask() {\n  const low = value << count;\n  const high = bits << (typeof (await read<T>));\n}\n"
+      }
+    ],
+    "ts/statements/shift-asi/ignored.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const low = value << count;\n  // prettier-ignore\n  const high = bits  <<  typeof (await read<T>)\n}\n",
+        "prettierNative": "async function mask() {\n  const low = value << count\n  // prettier-ignore\n  const high = bits  <<  typeof (await read<T>)\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const low =\n    value << count;\n  // prettier-ignore\n  const high = bits  <<  typeof (await read<T>)\n}\n",
+        "prettierNative": "async function mask() {\n  const low =\n    value << count\n  // prettier-ignore\n  const high = bits  <<  typeof (await read<T>)\n}\n"
+      }
+    ],
+    "ts/statements/shift-asi/intervening.ts": [
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const low = value << count\n  const offset = options.start;\n  const high = bits << typeof (await read<T>)\n}\n",
+        "prettierNative": "async function mask() {\n  const low = value << count\n  const offset = options.start\n  const high = bits << (typeof (await read<T>))\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 20,
+          "indentStyle": "space",
+          "semicolons": "as-needed"
+        },
+        "swcPlugin": "async function mask() {\n  const low =\n    value << count\n  const offset =\n    options.start;\n  const high =\n    bits <<\n    typeof (await read<T>)\n}\n",
+        "prettierNative": "async function mask() {\n  const low =\n    value << count\n  const offset =\n    options.start\n  const high =\n    bits <<\n    (typeof (await read<T>))\n}\n"
+      },
+      {
+        "options": {
+          "lineWidth": 80,
+          "indentStyle": "space",
+          "semicolons": "always"
+        },
+        "swcPlugin": "async function mask() {\n  const low = value << count;\n  const offset = options.start;\n  const high = bits << typeof (await read<T>);\n}\n",
+        "prettierNative": "async function mask() {\n  const low = value << count;\n  const offset = options.start;\n  const high = bits << (typeof (await read<T>));\n}\n"
+      }
+    ],
     "ts/statements/static-header/decorated-first/input.ts": [
       {
         "options": {

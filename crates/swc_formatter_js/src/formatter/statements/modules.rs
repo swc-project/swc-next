@@ -260,17 +260,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     variable,
                     keyword,
                     punctuation.tail_boundary(),
-                    declaration_source.is_following(),
                     operator_tail_destination,
                     writer,
                 )?;
-                let punctuation = output.fence_request.map_or(punctuation, |request| {
-                    declaration_source.after_raw_type(
-                        punctuation,
-                        request.span.end,
-                        request.terminal,
-                    )
-                });
+                let punctuation =
+                    declaration_source
+                        .after_source_tail(punctuation, self.ast, || output.source_tail);
                 self.finish_statement_with_operator_tail(
                     output.end,
                     output.tail,

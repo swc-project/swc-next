@@ -5,7 +5,7 @@ use swc_next_ecma_ast::{
 };
 
 use super::super::binary::{BinaryLike, BinaryOperatorKind, OperandSide};
-use super::super::{AccessKind, ExpressionContext, ExpressionPosition, Formatter};
+use super::super::{AccessKind, ExpressionPosition, Formatter};
 use crate::formatter::suppression::ContentMode;
 
 impl Formatter<'_, '_> {
@@ -137,23 +137,10 @@ impl Formatter<'_, '_> {
                     )
                 }
             };
-            if mode == ContentMode::Verbatim {
-                data = self.ast.expr_data(operand);
-                continue;
-            }
-            let child = match child_mode {
-                ContentMode::Formatted => self.expression_data(operand),
-                ContentMode::Verbatim => self.ast.expr_data(operand),
-            };
-            let content = self.source_parentheses_head_content(
-                child,
-                ExpressionContext::at(position).with_content_mode(child_mode),
-            );
-            data = content.data;
-            mode = content.mode;
-            if self.expression_needs_parentheses(data, position, mode) != Some(false) {
+            let Some(edge) = self.exposed_right_operand(operand, position, mode, child_mode) else {
                 return false;
-            }
+            };
+            (data, mode) = edge;
         }
     }
 

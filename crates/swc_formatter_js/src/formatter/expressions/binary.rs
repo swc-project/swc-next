@@ -1,8 +1,8 @@
 //! Typed operator chains with one continuation indent per precedence group.
 
 use swc_next_ecma_ast::{
-    Ast, BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan, LogicalOperator,
-    Precedence, Span,
+    ArrowFunctionBodyData, Ast, BinaryOperator, Comment, CommentKind, Expr, ExprData, GetSpan,
+    LogicalOperator, Precedence, Span,
 };
 
 use super::comparisons::ComparisonOperatorGap;
@@ -364,6 +364,69 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let binary = BinaryLike::from_data(content.data, self.ast)?;
         (binary.operator == operator)
             .then(|| (binary, content.parentheses.map(|removed| removed.source)))
+    }
+
+    /// An unclosed `<< name` can start a TypeScript type parameter list at a statement boundary.
+    pub(in crate::formatter) fn ends_in_shift_parameter(
+        &self,
+        expression: Expr,
+        mut mode: ContentMode,
+    ) -> bool {
+        let data_for = |expr, mode| match mode {
+            ContentMode::Formatted => self.expression_data(expr),
+            ContentMode::Verbatim => self.ast.expr_data(expr),
+        };
+        let mut data = data_for(expression, mode);
+        loop {
+            if let Some(binary) = BinaryLike::from_data(data, self.ast) {
+                let is_shift =
+                    binary.operator == BinaryOperatorKind::Binary(BinaryOperator::LeftShift);
+                if !is_shift
+                    && !matches!(
+                        self.ast.expr_data(binary.right),
+                        ExprData::BinaryExpression(_)
+                            | ExprData::LogicalExpression(_)
+                            | ExprData::ParenthesizedExpression(_)
+                    )
+                {
+                    return false;
+                }
+                let operand_mode = if mode == ContentMode::Formatted && self.has_suppression {
+                    let Ok(right_mode) = self.binary_right_mode(binary) else {
+                        return true;
+                    };
+                    right_mode
+                } else {
+                    mode
+                };
+                let position = ExpressionPosition::BinaryOperand {
+                    operator: binary.operator,
+                    side: OperandSide::Right,
+                };
+                let Some(edge) =
+                    self.exposed_right_operand(binary.right, position, mode, operand_mode)
+                else {
+                    return false;
+                };
+                (data, mode) = edge;
+                if is_shift {
+                    return matches!(data, ExprData::IdentifierReference(_));
+                }
+                continue;
+            }
+            let child = match data {
+                ExprData::AssignmentExpression(node) => node.right(self.ast),
+                ExprData::ConditionalExpression(node) => node.alternate(self.ast),
+                ExprData::ArrowFunctionExpression(node) => {
+                    match self.ast.arrow_function_body_data(node.body(self.ast)) {
+                        ArrowFunctionBodyData::Expr(body) => body,
+                        ArrowFunctionBodyData::FunctionBody(_) => return false,
+                    }
+                }
+                _ => return false,
+            };
+            data = data_for(child, mode);
+        }
     }
 
     pub(super) fn binary_has_ignored_left(&self, mut expression: Expr) -> bool {

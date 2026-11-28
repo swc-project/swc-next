@@ -155,29 +155,6 @@ impl ExpressionStart {
                 | Self::StatementBody
         )
     }
-
-    fn needs_statement_guard(self) -> bool {
-        matches!(self, Self::StatementBarrier { .. }) || self.needs_asi_guard()
-    }
-
-    /// Terminating a prior directive does not itself create an empty statement.
-    fn write_statement_guard(self, writer: &mut Writer<'_>) {
-        let guard = if matches!(
-            self,
-            Self::StatementBarrier {
-                terminate_previous: true
-            }
-        ) {
-            ";;"
-        } else {
-            ";"
-        };
-        writer.text(guard);
-    }
-
-    fn needs_asi_guard(self) -> bool {
-        matches!(self, Self::StatementPending | Self::StatementGuard)
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -750,8 +727,7 @@ struct PreparedVerbatimExpression {
     span: Span,
     parenthesize: bool,
     grammar_barrier: bool,
-    statement_guard: bool,
-    expression_start: ExpressionStart,
+    statement_guard: Option<ExpressionStart>,
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -1130,6 +1106,29 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         Ok(Some(operand))
+    }
+
+    /// Return the child's visible right edge after source and generated parentheses.
+    fn exposed_right_operand(
+        &self,
+        operand: Expr,
+        position: ExpressionPosition,
+        parent_mode: ContentMode,
+        operand_mode: ContentMode,
+    ) -> Option<(ExprData, ContentMode)> {
+        if parent_mode == ContentMode::Verbatim {
+            return Some((self.ast.expr_data(operand), ContentMode::Verbatim));
+        }
+        let data = match operand_mode {
+            ContentMode::Formatted => self.expression_data(operand),
+            ContentMode::Verbatim => self.ast.expr_data(operand),
+        };
+        let content = self.source_parentheses_head_content(
+            data,
+            ExpressionContext::at(position).with_content_mode(operand_mode),
+        );
+        (self.expression_needs_parentheses(content.data, position, content.mode) == Some(false))
+            .then_some((content.data, content.mode))
     }
 
     pub(in crate::formatter) fn expression_is_parenthesized(
@@ -1764,18 +1763,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             false
         };
-        let statement_guard = matches!(
-            context.expression_start,
-            ExpressionStart::StatementBarrier { .. }
-        ) || context.expression_start.needs_asi_guard()
-            && self.verbatim_head_needs_asi_guard(expression, context, parenthesize);
+        let statement_guard = context.expression_start.guard_for_head(|| {
+            Ok(self.verbatim_head_needs_asi_guard(expression, context, parenthesize))
+        })?;
         Ok(PreparedVerbatimExpression {
             expression,
             span,
             parenthesize,
             grammar_barrier,
             statement_guard,
-            expression_start: context.expression_start,
         })
     }
 
@@ -1786,8 +1782,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         writer: &mut Writer<'ast>,
     ) -> Result<Option<CopiedRawExpression>, FormatError> {
         let plan = self.prepare_verbatim_expression(expression, context)?;
-        if plan.statement_guard {
-            plan.expression_start.write_statement_guard(writer);
+        if let Some(start) = plan.statement_guard {
+            start.write_statement_guard(writer);
         }
         if plan.parenthesize {
             writer.text("(");

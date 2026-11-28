@@ -3,8 +3,7 @@
 use std::ops::ControlFlow;
 
 use swc_next_ecma_ast::{
-    Ast, BindingPatternData, Expr, GetSpan, Span, VariableDeclaration, VariableDeclarator,
-    VariableKind,
+    BindingPatternData, Expr, GetSpan, Span, VariableDeclaration, VariableDeclarator, VariableKind,
 };
 
 use super::Formatter;
@@ -16,10 +15,9 @@ use super::diagnostics::FlatSeparator;
 use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::expressions::assignment::{DeferredOperatorTail, OperatorTailDestination};
 use super::expressions::{
-    ExpressionContext, ExpressionOutput, ExpressionPosition, ExpressionRightEdge,
-    ForInitializerGrammar, TailBoundary,
+    ExpressionContext, ExpressionOutput, ExpressionPosition, ForInitializerGrammar, TailBoundary,
 };
-use super::statements::DeclarationKeyword;
+use super::statements::{DeclarationKeyword, StatementSourceTail};
 use super::suppression::ContentMode;
 use crate::{FormatError, document::Writer};
 
@@ -31,22 +29,16 @@ pub(super) enum VariableContext {
     Iteration,
 }
 
-pub(super) struct RawFenceRequest {
-    pub(super) span: Span,
-    pub(super) terminal: super::types::RawTypeTerminal,
-}
-
 pub(super) struct VariableDeclarationOutput<'ast> {
     pub(super) end: u32,
     pub(super) tail: Option<ExpressionTail<'ast>>,
-    pub(super) fence_request: Option<RawFenceRequest>,
+    pub(super) source_tail: Option<(Span, StatementSourceTail)>,
     pub(super) operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
 }
 
 pub(super) struct VariableDeclaratorOutput<'ast> {
     tail: Option<ExpressionTail<'ast>>,
-    fence_request: Option<RawFenceRequest>,
-    expression_edge: Option<ExpressionRightEdge>,
+    source_tail: Option<StatementSourceTail>,
     operator_tail: Option<&'ast DeferredOperatorTail<'ast>>,
 }
 
@@ -60,8 +52,7 @@ impl<'ast> VariableDeclaratorOutput<'ast> {
     pub(super) fn formatted(tail: Option<ExpressionTail<'ast>>) -> Self {
         Self {
             tail,
-            fence_request: None,
-            expression_edge: None,
+            source_tail: None,
             operator_tail: None,
         }
     }
@@ -69,25 +60,10 @@ impl<'ast> VariableDeclaratorOutput<'ast> {
     pub(super) fn initializer(output: ExpressionOutput<'ast>) -> Self {
         Self {
             tail: output.pending,
-            fence_request: None,
-            expression_edge: Some(output.right_edge),
+            source_tail: StatementSourceTail::expression(&output.right_edge),
             operator_tail: output.operator_tail,
         }
     }
-}
-
-fn copied_declarator_terminal(
-    declarator: VariableDeclarator,
-    ast: &Ast<'_>,
-) -> super::types::RawTypeTerminal {
-    if let Some(initializer) = declarator.init(ast) {
-        return super::expressions::raw_tail::raw_expression_terminal(initializer, ast);
-    }
-    declarator
-        .type_annotation(ast)
-        .map_or(super::types::RawTypeTerminal::Closed, |annotation| {
-            super::types::raw_type_terminal(annotation.type_annotation(ast), ast)
-        })
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -114,7 +90,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declaration: VariableDeclaration,
         keyword: Option<DeclarationKeyword>,
         tail_boundary: TailBoundary,
-        source_candidate: bool,
         operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclarationOutput<'ast>, FormatError> {
@@ -122,7 +97,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             declaration,
             VariableContext::Statement(tail_boundary),
             keyword,
-            source_candidate,
             operator_tail_destination,
             writer,
         )
@@ -133,7 +107,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         declaration: VariableDeclaration,
         context: VariableContext,
         keyword: Option<DeclarationKeyword>,
-        source_candidate: bool,
         operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclarationOutput<'ast>, FormatError> {
@@ -284,7 +257,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         },
                         context,
                         definition_owner,
-                        source_candidate && matches!(following, FollowingItem::End),
                         if matches!(following, FollowingItem::End) {
                             operator_tail_destination
                         } else {
@@ -306,31 +278,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 };
                 let boundary = match boundary {
                     ControlFlow::Break(output) => {
-                        let fence_request = output.fence_request.or_else(|| {
-                            if !source_candidate {
-                                return None;
-                            }
-                            output.expression_edge.and_then(|edge| {
-                                let ExpressionRightEdge::SourceFenceCandidate(raw) = edge else {
-                                    return None;
-                                };
-                                let raw_span = raw.span(ast);
-                                if span.start > raw_span.start || raw_span.end > span.end {
-                                    return None;
-                                }
-                                let terminal = raw.terminal(ast);
-                                (terminal != super::types::RawTypeTerminal::Closed).then_some(
-                                    RawFenceRequest {
-                                        span: raw_span,
-                                        terminal,
-                                    },
-                                )
-                            })
-                        });
                         return Ok(VariableDeclarationOutput {
                             end,
                             tail: output.tail,
-                            fence_request,
+                            source_tail: output.source_tail.map(|tail| (span, tail)),
                             operator_tail: output.operator_tail,
                         });
                     }
@@ -345,7 +296,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             Ok(VariableDeclarationOutput {
                 end,
                 tail: None,
-                fence_request: None,
+                source_tail: None,
                 operator_tail: None,
             })
         })
@@ -356,7 +307,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         prepared: PreparedVariableDeclarator,
         context: VariableContext,
         definition_owner: Option<VariableDeclarator>,
-        source_candidate: bool,
         operator_tail_destination: OperatorTailDestination,
         writer: &mut Writer<'ast>,
     ) -> Result<VariableDeclaratorOutput<'ast>, FormatError> {
@@ -369,17 +319,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if mode == ContentMode::Verbatim {
             let span = declarator.span(ast);
             self.format_verbatim(span, writer)?;
-            let fence_request = if source_candidate {
-                let terminal = copied_declarator_terminal(declarator, ast);
-                (terminal != super::types::RawTypeTerminal::Closed)
-                    .then_some(RawFenceRequest { span, terminal })
-            } else {
-                None
-            };
             return Ok(VariableDeclaratorOutput {
                 tail: None,
-                fence_request,
-                expression_edge: None,
+                source_tail: Some(StatementSourceTail::Declarator(declarator)),
                 operator_tail: None,
             });
         }
