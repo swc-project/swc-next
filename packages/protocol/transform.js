@@ -99,9 +99,9 @@ function assertObject(value, name) {
   if (!isPlainObject(value)) throw new TypeError(`${name} must be an object`);
 }
 
-function assertKnownKeys(value, allowed, name) {
+function assertKnownKeys(value, allowed, name, ignored) {
   for (const key of Object.keys(value)) {
-    if (!allowed.has(key)) throw new TypeError(`Unknown ${name} option: ${key}`);
+    if (key !== ignored && !allowed.has(key)) throw new TypeError(`Unknown ${name} option: ${key}`);
   }
 }
 
@@ -338,10 +338,10 @@ function writeTransformerConfig(transformer) {
  * The returned buffer is valid until the next call. Option getters and Proxy traps
  * must not reenter this encoder, including via any transformSync entry point.
  */
-export function encodeTransformApiOptions(options) {
+export function encodeTransformApiOptions(options, withPlugins = false) {
   if (options == null) return empty;
   assertObject(options, "options");
-  assertKnownKeys(options, transformApiKeys, "transform");
+  assertKnownKeys(options, transformApiKeys, "transform", withPlugins ? "plugins" : undefined);
   const parser = options.parser;
   if (parser != null) {
     assertObject(parser, "parser");

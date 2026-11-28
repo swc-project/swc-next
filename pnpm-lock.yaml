@@ -442,6 +442,13 @@ importers:
         version: 26.1.1
 
   npm/transformer:
+    dependencies:
+      '@swc-next/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@swc-next/walker':
+        specifier: workspace:*
+        version: link:../../packages/walker
     devDependencies:
       '@napi-rs/cli':
         specifier: 'catalog:'
@@ -466,6 +473,9 @@ importers:
       '@swc-next/types':
         specifier: workspace:*
         version: link:../types
+      '@swc-next/walker':
+        specifier: workspace:*
+        version: link:../walker
 
   packages/types: {}
 

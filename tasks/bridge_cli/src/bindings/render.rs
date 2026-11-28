@@ -130,6 +130,9 @@ impl Usage {
         };
 
         for function in functions {
+            if function.rust_name == "transform_v1_with_hooks" {
+                usage.runtime_imports.insert("withTransformPlugin");
+            }
             for parameter in &function.parameters {
                 match context.decode_kind(&parameter.semantic_type)? {
                     WireKind::String => {
@@ -254,12 +257,16 @@ fn render_function(
     function: &BridgeFunction,
     context: &RenderContext<'_>,
 ) -> Result<()> {
-    let parameter_names = function
+    let mut parameter_names = function
         .parameters
         .iter()
         .map(|parameter| parameter.js_name.as_str())
         .collect::<Vec<_>>()
         .join(", ");
+    let calls_plugin = function.rust_name == "transform_v1_with_hooks";
+    if calls_plugin {
+        parameter_names.push_str(", callback");
+    }
     writeln!(
         source,
         "export function {}({parameter_names}) {{",
@@ -330,7 +337,13 @@ fn render_function(
 
     let call = render_call(&call_arguments, &allocations, 2);
     let result_kind = context.encode_kind(&function.result)?;
-    if function.fallible {
+    if calls_plugin {
+        writeln!(
+            source,
+            "  return withTransformPlugin(callback, () => takeFallibleResult(({call}) >>> 0));"
+        )
+        .unwrap();
+    } else if function.fallible {
         writeln!(source, "  const resultPointer = ({call}) >>> 0;").unwrap();
         source.push_str("  const payload = takeFallibleResult(resultPointer);\n");
         render_payload_result(source, result_kind);

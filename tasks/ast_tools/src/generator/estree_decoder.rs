@@ -82,7 +82,7 @@ fn decoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     output.push_str(DECODE_HELPERS);
     writeln!(
         output,
-        "export const {name} = ({PIFE_START} function {name}(buffer, source) {{"
+        "export const {name} = ({PIFE_START} function {name}(buffer, source, transformedSource) {{"
     )
     .unwrap();
     output.push_str(DECODE_PREAMBLE);
@@ -157,10 +157,6 @@ fn write_node_case(
     is_ts: bool,
 ) {
     writeln!(output, "      case {kind}: {{").unwrap();
-    if ast.name == "RegExpLiteral" {
-        output.push_str("        const separator = source.lastIndexOf(\"/\", end - 1);\n");
-    }
-
     let layout = &ast.layout;
     let mut fields = Vec::new();
 
@@ -173,7 +169,16 @@ fn write_node_case(
             }
             FieldLocation::Extra { index } => (format!("extra + (extraId + {index}) * 4"), true),
         };
-        if skip {
+        if ast.name == "CallExpression" && field.name == "pure" {
+            writeln!(output, "        const pure = transformedSource !== undefined && _dv.getUint8({location}) !== 0;").unwrap();
+            continue;
+        }
+        if skip
+            && !matches!(
+                (ast.name.as_str(), field.name.as_str()),
+                ("RegExpLiteral", "pattern" | "flags")
+            )
+        {
             continue;
         }
         // These fields are source-backed, and node spans use UTF-16 offsets.
@@ -195,7 +200,7 @@ fn write_node_case(
                     "start"
                 };
                 format!(
-                    "{name_start} < sourceLength ? source.slice({span_start}, end) : str({name_start}, {name_end})"
+                    "transformedSource === undefined && {name_start} < sourceLength ? source.slice({span_start}, end) : str({name_start}, {name_end})"
                 )
             }
             ("StringLiteral", "value")
@@ -211,17 +216,36 @@ fn write_node_case(
                     _ => ("start", "end"),
                 };
                 format!(
-                    "{value_start} === {value_end} ? \"\" : {value_start} < sourceLength ? source.slice({slice_start}, {slice_end}) : str({value_start}, {value_end})"
+                    "{value_start} === {value_end} ? \"\" : transformedSource === undefined && {value_start} < sourceLength ? source.slice({slice_start}, {slice_end}) : str({value_start}, {value_end})"
                 )
             }
-            ("TemplateElement", "raw") if !is_ts => {
-                r#"source.slice(start, end).replace(/\r\n?/g, "\n")"#.into()
+            ("StringLiteral" | "NumericLiteral" | "TemplateElement" | "BigIntLiteral", "raw")
+            | ("JsxText", "value")
+            | ("RegExpLiteral", "pattern" | "flags") => {
+                let start_offset = read_i32(&location, aligned_i32);
+                let end_offset = read_i32(&format!("{location} + 4"), aligned_i32);
+                let source_slice = match (ast.name.as_str(), field.name.as_str()) {
+                    ("BigIntLiteral", _) => "source.slice(start, end - 1)",
+                    ("RegExpLiteral", "pattern") => {
+                        "source.slice(start + 1, source.lastIndexOf(\"/\", end - 1))"
+                    }
+                    ("RegExpLiteral", "flags") => {
+                        "source.slice(source.lastIndexOf(\"/\", end - 1) + 1, end)"
+                    }
+                    ("TemplateElement", _) if !is_ts => {
+                        r#"source.slice(start, end).replace(/\r\n?/g, "\n")"#
+                    }
+                    _ => "source.slice(start, end)",
+                };
+                let value = format!(
+                    "transformedSource === undefined ? {source_slice} : str({start_offset}, {end_offset})"
+                );
+                if ast.name == "NumericLiteral" {
+                    format!("{start_offset} === NULL ? undefined : {value}")
+                } else {
+                    value
+                }
             }
-            ("StringLiteral" | "NumericLiteral" | "TemplateElement", "raw")
-            | ("JsxText", "value") => "source.slice(start, end)".into(),
-            ("BigIntLiteral", "raw") => "source.slice(start, end - 1)".into(),
-            ("RegExpLiteral", "pattern") => "source.slice(start + 1, separator)".into(),
-            ("RegExpLiteral", "flags") => "source.slice(separator + 1, end)".into(),
             _ => read_expression(field_ty, schema, &location, aligned_i32),
         };
         let field_name = estree_field_name(&ast.name, &field.name);
@@ -244,6 +268,11 @@ fn write_node_case(
         write_special_node(&mut body, &ast.name, &fields, is_ts);
     } else {
         write_generic_node(&mut body, &ast.name, &fields, is_ts);
+    }
+    if ast.name == "CallExpression" {
+        body.push_str(
+            "        if (pure) Object.defineProperty(result, PURE_CALL, { value: true });\n",
+        );
     }
     if body.contains("extraId") {
         let offset = layout
@@ -595,7 +624,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         ),
         "BigIntLiteral" => output.push_str(
             r#"        const value = BigInt(f_raw.replaceAll("_", ""));
-        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
+        result = { type: "Literal", start, end, value, raw: transformedSource === undefined ? source.slice(start, end) : f_raw + "n", bigint: value.toString() };
 "#,
         ),
         "BooleanLiteral" => output.push_str(
@@ -615,7 +644,7 @@ fn write_special_node(output: &mut String, name: &str, fields: &[DecodedField], 
         } catch {}
         result = {
           type: "Literal", start, end, value,
-          raw: source.slice(start, end),
+          raw: transformedSource === undefined ? source.slice(start, end) : `/${f_pattern}/${f_flags}`,
           regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
         };
 "#,
@@ -882,6 +911,8 @@ __ENUMS__
 "#;
 
 const DECODE_HELPERS: &str = r#"
+const PURE_CALL = Symbol.for("swc-next.pure");
+
 function decodePool(bytes) {
   const length = bytes.length;
   if (length <= 64) {
@@ -972,10 +1003,9 @@ const DECODE_PREAMBLE: &str = r#"
   const strings = extra + extraCount * 4;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  const str = (start, end) => decodePool(bytes.subarray(
-    strings + start - sourceLength,
-    strings + end - sourceLength,
-  ));
+  const str = (start, end) => transformedSource !== undefined && start < sourceLength
+    ? utf8Slice.call(transformedSource, start, end)
+    : decodePool(bytes.subarray(strings + start - sourceLength, strings + end - sourceLength));
   const enumValue = (index, value) => {
     const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;

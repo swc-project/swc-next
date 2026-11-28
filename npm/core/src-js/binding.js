@@ -583,3 +583,5 @@ export { CommentMode }
 export { Lang }
 export { SourceType }
 export { transformSync }
+
+export const { __transformV1WithHooks } = nativeBinding

@@ -1,9 +1,66 @@
 use anyhow::{Result, bail, ensure};
-use wasmparser::{Encoding, Parser, Payload};
+use wasmparser::{BinaryReader, Encoding, Imports, Parser, Payload};
 
 use super::descriptor::BridgeDescriptor;
 
 const METADATA_SECTION: &str = "__wasm_bindgen_unstable";
+
+pub(super) fn bind_plugin_import(bytes: &mut Vec<u8>, runtime: &str) -> Result<()> {
+    if let Some(output) = replace_plugin_import(bytes, runtime)? {
+        *bytes = output;
+    }
+    Ok(())
+}
+
+fn replace_plugin_import(bytes: &[u8], runtime: &str) -> Result<Option<Vec<u8>>> {
+    let mut section_start = 8;
+    for payload in Parser::new(0).parse_all(bytes) {
+        let payload = payload?;
+        let Some((id, range)) = payload.as_section() else {
+            continue;
+        };
+        let range = usize::try_from(range.start)?..usize::try_from(range.end)?;
+        if let Payload::ImportSection(imports) = payload {
+            for entry in imports {
+                let Imports::Single(offset, import) = entry? else {
+                    continue;
+                };
+                if import.module != "swc" || import.name != "run_js_plugins" {
+                    continue;
+                }
+                let offset = usize::try_from(offset)?;
+                let mut reader = BinaryReader::new(&bytes[offset..range.end], offset as u64);
+                reader.read_string()?;
+                let replaced_end = usize::try_from(reader.original_position())?;
+                let mut module = Vec::new();
+                write_leb(&mut module, runtime.len());
+                module.extend_from_slice(runtime.as_bytes());
+                let mut output = Vec::with_capacity(bytes.len() + module.len());
+                output.extend_from_slice(&bytes[..section_start]);
+                output.push(id);
+                write_leb(
+                    &mut output,
+                    range.len() - (replaced_end - offset) + module.len(),
+                );
+                output.extend_from_slice(&bytes[range.start..offset]);
+                output.extend_from_slice(&module);
+                output.extend_from_slice(&bytes[replaced_end..]);
+                return Ok(Some(output));
+            }
+            break;
+        }
+        section_start = range.end;
+    }
+    Ok(None)
+}
+
+fn write_leb(output: &mut Vec<u8>, mut value: usize) {
+    while value >= 0x80 {
+        output.push((value as u8 & 0x7f) | 0x80);
+        value >>= 7;
+    }
+    output.push(value as u8);
+}
 
 pub(super) fn extract_metadata(bytes: &[u8]) -> Result<(Vec<BridgeDescriptor>, Vec<u8>)> {
     let mut descriptors = Vec::new();

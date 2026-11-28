@@ -3,8 +3,41 @@ const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder("utf-8", { ignoreBOM: true });
 let wasm;
 let initialization;
+let transformPlugin;
 
-export function initializeSync(input) {
+export function withTransformPlugin(callback, run) {
+  const previous = transformPlugin;
+  const frame = { callback, failed: false, error: undefined };
+  transformPlugin = frame;
+  try {
+    return run();
+  } catch (error) {
+    throw frame.failed ? frame.error : error;
+  } finally {
+    transformPlugin = previous;
+  }
+}
+
+export function run_js_plugins(stage, pointer, length) {
+  const frame = transformPlugin;
+  if (frame === undefined) return 0;
+  try {
+    const api = initialized();
+    const input = new Uint8Array(api.memory.buffer, pointer >>> 0, length >>> 0).slice();
+    const output = frame.callback(stage, input);
+    if (!(output instanceof Uint8Array)) throw new TypeError("Expected an encoded AST");
+    const result = api.__swc_alloc(output.length) >>> 0;
+    if (result === 0) throw new RangeError("WebAssembly allocation failed");
+    new Uint8Array(api.memory.buffer, result + 4, output.length).set(output);
+    return result;
+  } catch (error) {
+    frame.failed = true;
+    frame.error = error;
+    return 0;
+  }
+}
+
+export function initializeSync(input, imports = {}) {
   if (wasm !== undefined) return wasm;
   if (initialization !== undefined) {
     throw new Error("WebAssembly bridge initialization is already in progress");
@@ -13,7 +46,7 @@ export function initializeSync(input) {
     return finalize(input);
   }
   const module = input instanceof WebAssembly.Module ? input : new WebAssembly.Module(input);
-  return finalize(new WebAssembly.Instance(module, {}));
+  return finalize(new WebAssembly.Instance(module, imports));
 }
 
 export function initializeAsync(initialize) {

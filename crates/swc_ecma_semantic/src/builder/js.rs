@@ -14,7 +14,7 @@ pub(super) fn check_string_literal(builder: &mut SemanticBuilder<'_, '_>, litera
         return;
     }
     let span = builder.ast.span(literal.node_id());
-    let raw = &builder.ast.source().as_bytes()[span.start as usize..span.end as usize];
+    let raw = builder.ast.get_utf8(literal.raw(builder.ast)).as_bytes();
     if let Some(escape) = last_legacy_escape(raw) {
         let message = match escape {
             LegacyEscape::NonOctalDecimal => "\\8 and \\9 are not allowed in strict mode.",
@@ -44,7 +44,10 @@ pub(super) fn check_numeric_literal(
         return;
     }
     let span = builder.ast.span(literal.node_id());
-    let raw = &builder.ast.source().as_bytes()[span.start as usize..span.end as usize];
+    let Some(raw) = literal.raw(builder.ast) else {
+        return;
+    };
+    let raw = builder.ast.get_utf8(raw).as_bytes();
     if !is_legacy_numeric_literal(raw) {
         return;
     }

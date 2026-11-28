@@ -576,3 +576,5 @@ if (!nativeBinding) {
 
 const { transformSync } = nativeBinding
 export { transformSync }
+
+export const { __transformV1WithHooks } = nativeBinding

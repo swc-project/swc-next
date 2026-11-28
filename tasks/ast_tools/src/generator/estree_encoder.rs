@@ -206,7 +206,7 @@ fn encoder_source(schema: &Schema, is_ts: bool, name: &str) -> String {
     for line in helpers.lines() {
         writeln!(output, "{}", line.strip_prefix("  ").unwrap_or(line)).unwrap();
     }
-    output.push_str(&ENCODE_START.replace("encode(program)", &format!("{name}(program)")));
+    output.push_str(&ENCODE_START.replace("function encode(", &format!("function {name}(")));
     output.push_str(&POSTAMBLE.replace("export { encode };", &format!("export {{ {name} }};")));
     // Assign indices from the same table used to emit the enum arrays.
     for (index, (name, _)) in encoder_enums.iter().enumerate() {
@@ -230,6 +230,9 @@ fn write_struct_encoder(
         "FormalParameters" => "n, from = 0, kind = \"formal\"",
         "Function" | "TsFunction" => "n, parameterKind = \"formal\"",
         "TemplateElement" => "n, delimited",
+        "TsQualifiedName" => "n, namespace = false",
+        "ArrayPattern" | "ObjectPattern" | "AssignmentPattern" | "BindingRestElement"
+        | "BindingProperty" => "n, assignment = false",
         _ => "n",
     };
     writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
@@ -249,7 +252,7 @@ fn write_struct_encoder(
         let source = if !dispatch.is_ts && name == "PropertyDefinition" && field.name == "accessor"
         {
             "n.type === \"AccessorProperty\"".into()
-        } else if field.attrs.estree_skip {
+        } else if field.attrs.estree_skip && !(name == "CallExpression" && field.name == "pure") {
             "0".into()
         } else {
             source
@@ -633,6 +636,13 @@ fn child_expression(node: &str, field: &str, encoder: &str, source: &str) -> Str
         ("MemberExpression", "property") => {
             format!("n.computed ? encExpr({source}) : {encoder}({source})")
         }
+        ("TsQualifiedName", "left") => format!(
+            "namespace ? ({source}.type === \"Identifier\" ? encBindingIdentifier({source}) : encTsQualifiedName({source}, true)) : {encoder}({source})"
+        ),
+        ("ArrayPattern" | "ObjectPattern", "rest")
+        | ("AssignmentPattern", "left")
+        | ("BindingRestElement", "argument")
+        | ("BindingProperty", "value") => format!("{encoder}({source}, assignment)"),
         (
             "MethodDefinition"
             | "TsMethodDefinition"
@@ -700,6 +710,7 @@ fn field_source(node: &str, field: &str) -> String {
         ("Directive", "value") => "n.directive".into(),
         ("NumericLiteral", "kind") => "numericKind(_numericRaw)".into(),
         ("NumericLiteral", "raw") => "_numericRaw".into(),
+        ("CallExpression", "pure") => "n[PURE_CALL]".into(),
         ("BigIntLiteral", "raw") => "bigIntRaw(n)".into(),
         ("RegExpLiteral", "pattern") => "n.regex?.pattern ?? n.value?.source ?? \"\"".into(),
         ("RegExpLiteral", "flags") => "n.regex?.flags ?? n.value?.flags ?? \"\"".into(),
@@ -851,7 +862,7 @@ fn write_array_pattern_prelude(output: &mut String) {
     const _itemsStart = _itemCount ? allocExtra(_itemCount) : 0;
     for (let index = 0; index < _itemCount; index++) {
       const value = _values[index];
-      const id = value == null ? NULL : encBindingPattern(value);
+      const id = value == null ? NULL : encBindingPattern(value, assignment);
       setExtraU32(_itemsStart + index, 0, id);
     }
 "#,
@@ -896,7 +907,12 @@ fn write_rest_array_prelude(
     output.push_str(
         "      const value = _values[i];\n      if (value?.type !== \"RestElement\") {\n",
     );
-    writeln!(output, "        const id = {encoder}(value);").unwrap();
+    let arguments = if encoder == "encBindingProperty" {
+        "value, assignment"
+    } else {
+        "value"
+    };
+    writeln!(output, "        const id = {encoder}({arguments});").unwrap();
     output.push_str("        setExtraU32(slot++, 0, id);\n      }\n    }\n");
 }
 
@@ -1011,7 +1027,12 @@ impl EncoderDispatch {
 fn write_enum_encoders(output: &mut String, dispatch: &EncoderDispatch) {
     for current in &dispatch.enums {
         let name = &current.name;
-        writeln!(output, "  function enc{name}(n) {{").unwrap();
+        let parameters = if name == "BindingPattern" {
+            "n, assignment = false"
+        } else {
+            "n"
+        };
+        writeln!(output, "  function enc{name}({parameters}) {{").unwrap();
         if name == "JsxAttributeValue" {
             output.push_str("    if (n.type === \"Literal\" && typeof n.value === \"string\") return encStringLiteral({ ...n, raw: jsxStringRaw(n) });\n");
         }
@@ -1041,7 +1062,22 @@ fn write_enum_encoders(output: &mut String, dispatch: &EncoderDispatch) {
                 writeln!(output, "      case \"{estree}\": return enc{nested}(n);").unwrap();
             } else {
                 writeln!(output, "      case \"{estree}\":").unwrap();
-                write_dispatch(output, estree, &current.direct.groups[estree]);
+                let candidates = &current.direct.groups[estree];
+                match (name.as_str(), candidates.as_slice()) {
+                    ("BindingPattern", [candidate]) if candidate == "BindingIdentifier" => {
+                        output.push_str("        return assignment ? encIdentifierReference(n) : encBindingIdentifier(n);\n");
+                    }
+                    ("BindingPattern", [candidate]) => {
+                        writeln!(output, "        return enc{candidate}(n, assignment);").unwrap();
+                    }
+                    ("AssignmentTarget", [candidate]) => {
+                        writeln!(output, "        return enc{candidate}(n, true);").unwrap();
+                    }
+                    ("TsModuleName", [candidate]) if candidate == "TsQualifiedName" => {
+                        output.push_str("        return encTsQualifiedName(n, true);\n");
+                    }
+                    _ => write_dispatch(output, estree, candidates),
+                }
             }
         }
         if let [(nested, _)] = current.nested.as_slice() {
@@ -1200,6 +1236,7 @@ fn estree_type(name: &str) -> String {
 
 const PREAMBLE: &str = r#"// generated by tasks/ast_tools, do not edit
 
+const PURE_CALL = Symbol.for("swc-next.pure");
 const NULL = 0xffffffff;
 const writeUtf8 = (() => {
   if (typeof Buffer !== "undefined" && typeof Buffer.prototype.write === "function") {
@@ -1576,15 +1613,15 @@ const HELPERS: &str = r#"  function clearState() {
 "#;
 
 const ENCODE_START: &str = r#"
-function encode(program) {
+function encode(program, source) {
   try {
-    return _encode(program);
+    return _encode(program, source);
   } finally {
     clearState();
   }
 }
 
-function _encode(program) {
+function _encode(program, source) {
   const sizeHint = program.end || 0;
   const buffers = reusableBuffers ?? createBuffers(sizeHint);
   reusableBuffers = undefined;
@@ -1592,8 +1629,12 @@ function _encode(program) {
     nodeCapacity, spans, kinds, payloadBuffer, payload,
     extraCapacity, extraBuffer, extra, poolCapacity, pool,
   } = buffers);
-  nodeCount = extraCount = poolLength = 0;
-  hasWtf8 = false;
+  nodeCount = extraCount = 0;
+  const sourceLength = source?.length ?? 0;
+  poolLength = sourceLength;
+  ensurePool(0);
+  if (sourceLength !== 0) pool.set(source);
+  hasWtf8 = source !== undefined;
   isTs = 0;
   firstNonAsciiPos = NULL;
 
@@ -1610,8 +1651,8 @@ const POSTAMBLE: &str = r#"  const root = encProgram(program);
   view.setUint32(4, extraCount, true);
   // A source section must be valid UTF-8. Move strings containing lone
   // surrogates into the extra WTF-8 pool without changing any string offset.
-  view.setUint32(8, hasWtf8 ? poolLength : 0, true);
-  view.setUint32(12, hasWtf8 ? 0 : poolLength, true);
+  view.setUint32(8, hasWtf8 ? poolLength - sourceLength : 0, true);
+  view.setUint32(12, hasWtf8 ? sourceLength : poolLength, true);
   view.setUint32(16, 0, true);
   view.setUint32(20, 0, true);
   view.setUint32(24, 0, true);

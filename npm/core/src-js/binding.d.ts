@@ -288,6 +288,13 @@ export interface TypeScriptConfig {
   jsxPragmaFrag?: string
 }
 /**
+ * # Safety
+ * Source must be valid UTF-8 with the specified UTF-16 length. The callback
+ * must return a matching AST transfer with the original source.
+ */
+export declare function __transformV1WithHooks(source: Uint8Array, sourceUtf16Len: number, options: Uint8Array, stages: number, callback: (stage: number, ast: Uint8Array) => Uint8Array): string | Uint8Array
+
+/**
  * Internal binding API and binary protocol, not covered by semver. Use a matching SWC Next wrapper.
  *
  * # Safety

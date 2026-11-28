@@ -5,4 +5,5 @@
  */
 export declare function encodeTransformApiOptions(
   options: object | null | undefined,
+  withPlugins?: boolean,
 ): Uint8Array;

@@ -46,6 +46,8 @@ const ENUMS = Object.freeze([
 ]);
 const DEEP_AST = {};
 
+const PURE_CALL = Symbol.for("swc-next.pure");
+
 function decodePool(bytes) {
   const length = bytes.length;
   if (length <= 64) {
@@ -103,7 +105,7 @@ function copyLittleEndianI32(view) {
   }
   return i32;
 }
-export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, source) {
+export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, source, transformedSource) {
 
   const arrayBuffer = buffer instanceof ArrayBuffer ? buffer : buffer.buffer;
   const byteOffset = buffer.byteOffset ?? 0;
@@ -135,10 +137,9 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
   const strings = extra + extraCount * 4;
   const comments = strings + ((stringPoolLength + 3) & ~3);
   const diagnostics = comments + commentCount * 16;
-  const str = (start, end) => decodePool(bytes.subarray(
-    strings + start - sourceLength,
-    strings + end - sourceLength,
-  ));
+  const str = (start, end) => transformedSource !== undefined && start < sourceLength
+    ? utf8Slice.call(transformedSource, start, end)
+    : decodePool(bytes.subarray(strings + start - sourceLength, strings + end - sourceLength));
   const enumValue = (index, value) => {
     const values = ENUMS[index];
     return values !== undefined && value < values.length ? values[value] : value;
@@ -242,21 +243,21 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 3: {
-        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = source.slice(start, end);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = transformedSource === undefined ? source.slice(start, end) : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         result = { type: "Literal", start, end, value: f_value, raw: f_raw };
         break;
       }
       case 4: {
         const f_value = _dv.getFloat64(payload + 0, true);
-        const f_raw = source.slice(start, end);
+        const f_raw = _i32[(payload + 8) >> 2] === NULL ? undefined : transformedSource === undefined ? source.slice(start, end) : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         const value = f_value;
         result = { type: "Literal", start, end, value, raw: f_raw };
         break;
       }
       case 11: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -265,7 +266,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 13: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -274,7 +275,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 14: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -404,6 +405,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 69: {
+        const pure = transformedSource !== undefined && _dv.getUint8(payload + 9) !== 0;
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "CallExpression", start, end,
           callee: node(_i32[(payload + 0) >> 2]),
@@ -411,6 +413,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
           arguments: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
           optional: _dv.getUint8(payload + 8) !== 0,
         };
+        if (pure) Object.defineProperty(result, PURE_CALL, { value: true });
         break;
       }
       case 78: {
@@ -471,22 +474,22 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 3: {
-        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = source.slice(start, end);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = transformedSource === undefined ? source.slice(start, end) : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         result = { type: "Literal", start, end, value: f_value, raw: f_raw };
         break;
       }
       case 4: {
         const f_value = _dv.getFloat64(payload + 0, true);
-        const f_raw = source.slice(start, end);
+        const f_raw = _i32[(payload + 8) >> 2] === NULL ? undefined : transformedSource === undefined ? source.slice(start, end) : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         const value = f_value;
         result = { type: "Literal", start, end, value, raw: f_raw };
         break;
       }
       case 5: {
-        const f_raw = source.slice(start, end - 1);
+        const f_raw = transformedSource === undefined ? source.slice(start, end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         const value = BigInt(f_raw.replaceAll("_", ""));
-        result = { type: "Literal", start, end, value, raw: source.slice(start, end), bigint: value.toString() };
+        result = { type: "Literal", start, end, value, raw: transformedSource === undefined ? source.slice(start, end) : f_raw + "n", bigint: value.toString() };
         break;
       }
       case 6: {
@@ -502,16 +505,15 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 8: {
-        const separator = source.lastIndexOf("/", end - 1);
-        const f_pattern = source.slice(start + 1, separator);
-        const f_flags = source.slice(separator + 1, end);
+        const f_pattern = transformedSource === undefined ? source.slice(start + 1, source.lastIndexOf("/", end - 1)) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_flags = transformedSource === undefined ? source.slice(source.lastIndexOf("/", end - 1) + 1, end) : str(_i32[(payload + 8) >> 2], _i32[(payload + 8 + 4) >> 2]);
         let value = null;
         try {
           value = new RegExp(f_pattern, f_flags);
         } catch {}
         result = {
           type: "Literal", start, end, value,
-          raw: source.slice(start, end),
+          raw: transformedSource === undefined ? source.slice(start, end) : `/${f_pattern}/${f_flags}`,
           regex: { pattern: f_pattern, flags: [...f_flags].sort().join("") },
         };
         break;
@@ -524,8 +526,9 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 10: {
-        const f_cooked = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
-        const f_raw = source.slice(start, end);
+        const extraId = _i32[(payload + 12) >> 2];
+        const f_cooked = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_raw = transformedSource === undefined ? source.slice(start, end) : str(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2]);
         const f_tail = _dv.getUint8(payload + 8) !== 0;
         const f_isCookedUndefined = _dv.getUint8(payload + 9) !== 0;
         result = { type: "TemplateElement", start: start - 1, end: f_tail ? end + 1 : end + 2, value: { raw: f_raw, cooked: f_isCookedUndefined ? null : f_cooked }, tail: f_tail };
@@ -533,7 +536,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 11: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -542,13 +545,13 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 12: {
         result = { type: "PrivateIdentifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 1, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
       case 13: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -557,7 +560,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 14: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -566,7 +569,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 15: {
         result = { type: "Identifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
           decorators: [],
           optional: false,
           typeAnnotation: null,
@@ -804,7 +807,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 45: {
         const f_expression = node(_i32[(payload + 8) >> 2]);
-        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(f_expression.start + 1, f_expression.end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
+        const f_value = _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(f_expression.start + 1, f_expression.end - 1) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         result = {
           type: "ExpressionStatement", start, end,
           expression: f_expression, directive: f_value,
@@ -1084,6 +1087,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 69: {
+        const pure = transformedSource !== undefined && _dv.getUint8(payload + 9) !== 0;
         const extraId = _i32[(payload + 12) >> 2];
         result = { type: "CallExpression", start, end,
           callee: node(_i32[(payload + 0) >> 2]),
@@ -1091,6 +1095,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
           arguments: nodeArray(_i32[(extra + (extraId + 0) * 4) >> 2], _i32[(extra + (extraId + 0) * 4 + 4) >> 2], false),
           optional: _dv.getUint8(payload + 8) !== 0,
         };
+        if (pure) Object.defineProperty(result, PURE_CALL, { value: true });
         break;
       }
       case 70: {
@@ -1220,7 +1225,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 86: {
         result = { type: "Hashbang", start, end,
-          value: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 2, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          value: _i32[(payload + 0) >> 2] === _i32[(payload + 0 + 4) >> 2] ? "" : transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start + 2, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
@@ -1873,7 +1878,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
       }
       case 167: {
         result = { type: "JSXIdentifier", start, end,
-          name: _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
+          name: transformedSource === undefined && _i32[(payload + 0) >> 2] < sourceLength ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]),
         };
         break;
       }
@@ -1916,7 +1921,7 @@ export const decodeTs = (/* @swc-next-pife-start */ function decodeTs(buffer, so
         break;
       }
       case 174: {
-        const f_value = source.slice(start, end);
+        const f_value = transformedSource === undefined ? source.slice(start, end) : str(_i32[(payload + 0) >> 2], _i32[(payload + 0 + 4) >> 2]);
         result = { type: "JSXText", start, end, value: f_value, raw: f_value };
         break;
       }
