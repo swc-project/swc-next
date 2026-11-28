@@ -37,6 +37,7 @@
     "@rstest/browser": "catalog:",
     "@rstest/core": "catalog:",
     "cac": "catalog:",
-    "playwright": "catalog:"
+    "playwright": "catalog:",
+    "typescript": "catalog:"
   }
 }

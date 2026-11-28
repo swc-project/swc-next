@@ -14,6 +14,27 @@ const components = {
 
 const pifeHint = "@swc-next-pife-(start|end)";
 const pifeComment = new RegExp(`/\\* ${pifeHint} \\*/`, "g");
+const walkerDirectory = path.join(root, "packages", "walker");
+const walker = {
+  id: "walker",
+  format: "esm",
+  bundle: false,
+  dts: true,
+  syntax: "es2022",
+  source: {
+    tsconfigPath: path.join(walkerDirectory, "tsconfig.json"),
+    entry: Object.fromEntries(
+      ["index", "child-visitors", "visitor-keys"].map((entry) => [
+        entry,
+        path.join(walkerDirectory, "src", `${entry}.ts`),
+      ]),
+    ),
+  },
+  output: {
+    distPath: { root: path.join(walkerDirectory, "dist") },
+    minify: false,
+  },
+};
 
 const baseConfig = defineConfig({
   lib: Object.entries(components).map(([component, entries]) => {
@@ -61,7 +82,7 @@ const baseConfig = defineConfig({
         },
       },
     };
-  }),
+  }).concat(walker),
 });
 
 export default mergeRslibConfig(baseConfig, {

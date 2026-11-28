@@ -28,10 +28,10 @@
   },
   "scripts": {
     "build": "napi build --platform --no-js --dts ../src-js/binding.d.ts --output-dir dist",
-    "build:js": "pnpm -w exec rslib build --lib core",
+    "build:js": "pnpm -w exec rslib build --lib walker --lib core",
     "build:wasm": "cargo run --quiet --locked -p bridge_cli -- build core --output-dir dist",
     "test": "pnpm -w build:js && node --test test/*.test.js && pnpm test:walk",
-    "test:walk": "rstest run --include \"test/walk/*.test.js\"",
+    "test:walk": "pnpm --filter @swc-next/walker build:js && rstest run --include \"test/walk/*.test.js\"",
     "test:wasm": "cross-env NAPI_RS_FORCE_WASI=error pnpm test",
     "test:conformance": "pnpm build --release && pnpm build:js && node ./test/estree-conformance.ts",
     "test:codec": "pnpm build --release && pnpm build:js && node ./test/codec-conformance.ts",
