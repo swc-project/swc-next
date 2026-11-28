@@ -23,22 +23,34 @@ use crate::{
 };
 use swc_next_ecma_ast::{
     Argument, ArgumentData, ArrowFunctionExpression, CallExpression, Comment, CommentKind, Expr,
-    ExprData, GetSpan, Span, SubRange, TemplateElement,
+    ExprData, GetSpan, Span, SubRange,
 };
 
-#[derive(Clone, Copy)]
-pub(super) enum FollowingArgument {
-    End,
-    Argument(Argument),
-    Elision {
-        argument: Option<Argument>,
-        holes: usize,
-    },
+/// Holes preceding the next value, or the remaining holes at the closing bracket.
+/// The AST supplies the slot count even when a source comma has attached comments.
+pub(in crate::formatter) struct ArraySlot<T> {
+    pub(in crate::formatter) holes: usize,
+    pub(in crate::formatter) value: Option<T>,
+}
+
+pub(in crate::formatter) fn array_slots<T>(
+    mut elements: impl Iterator<Item = Option<T>>,
+) -> impl Iterator<Item = ArraySlot<T>> {
+    std::iter::from_fn(move || {
+        let mut holes = 0;
+        for value in elements.by_ref() {
+            if value.is_some() {
+                return Some(ArraySlot { holes, value });
+            }
+            holes += 1;
+        }
+        (holes != 0).then_some(ArraySlot { holes, value: None })
+    })
 }
 
 pub(super) struct ArrayArgumentSlot {
     pub(super) argument: Argument,
-    pub(super) following: FollowingArgument,
+    pub(super) following: FollowingItem,
     pub(super) mode: ContentMode,
     pub(super) layout: ArgumentLayout,
     pub(super) transition: Option<SourceSeparatorTransition>,
@@ -60,6 +72,24 @@ pub(in crate::formatter) enum FollowingItem {
 }
 
 impl FollowingItem {
+    pub(in crate::formatter) fn array_slot<T>(
+        next: Option<&ArraySlot<T>>,
+        span: impl FnOnce(&T) -> Span,
+    ) -> Self {
+        let Some(slot) = next else {
+            return Self::End;
+        };
+        let node = slot.value.as_ref().map(span);
+        if slot.holes == 0 {
+            node.map_or(Self::End, Self::Node)
+        } else {
+            Self::Elision {
+                node,
+                holes: slot.holes,
+            }
+        }
+    }
+
     fn node(self) -> Option<Span> {
         match self {
             Self::End | Self::ResolvedTerminal(_) => None,
@@ -305,14 +335,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             transition,
             closing,
         } = slot;
-        let following = match following {
-            FollowingArgument::Argument(argument) => FollowingItem::Node(argument.span(self.ast)),
-            FollowingArgument::Elision { argument, holes } => FollowingItem::Elision {
-                node: argument.map(|node| node.span(self.ast)),
-                holes,
-            },
-            FollowingArgument::End => FollowingItem::End,
-        };
         let mut item = self.prepare_delimited_item_with_comments(
             argument.span(self.ast),
             following,
@@ -2440,12 +2462,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if self.layout_position_starts_line(prepared.expression.span(ast).start) {
             return false;
         }
-        let multiline = template.quasis(ast).iter().any(|id| {
-            let quasi: TemplateElement = ast.get_node_in_sub_range(id);
-            ast.get_utf8(quasi.raw(ast))
-                .bytes()
-                .any(|byte| matches!(byte, b'\n' | b'\r'))
-        });
+        let multiline = self
+            .template_raw_parts(template)
+            .any(|raw| raw.contains(['\r', '\n']));
         if !multiline || self.diagnostic_range_is_sensitive(content) {
             return false;
         }

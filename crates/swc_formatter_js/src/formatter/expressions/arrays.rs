@@ -7,8 +7,8 @@ use swc_next_ecma_ast::{
 
 use super::Formatter;
 use super::arguments::{
-    ArgumentLayout, ArrayArgumentSlot, ElisionLayout, FollowingArgument, Separator,
-    TrailingCommaPolicy,
+    ArgumentLayout, ArrayArgumentSlot, ElisionLayout, FollowingItem, Separator,
+    TrailingCommaPolicy, array_slots,
 };
 use super::parentheses::NumericContentView;
 use crate::formatter::comments::{ArrayCommentOwner, CommentRunLayout};
@@ -67,32 +67,10 @@ pub(super) enum RecordedArrayArgument<'ast> {
     Selected(RecordedArray<'ast>),
 }
 
-struct ArgumentItem {
-    holes: usize,
-    argument: Option<Argument>,
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ArrayChildKind {
     Array,
     Object,
-}
-
-fn next_item(elements: &mut impl Iterator<Item = Option<Argument>>) -> Option<ArgumentItem> {
-    let mut holes = 0;
-    for element in elements.by_ref() {
-        if let Some(argument) = element {
-            return Some(ArgumentItem {
-                holes,
-                argument: Some(argument),
-            });
-        }
-        holes += 1;
-    }
-    (holes != 0).then_some(ArgumentItem {
-        holes,
-        argument: None,
-    })
 }
 
 impl<'ast, 'source> Formatter<'ast, 'source> {
@@ -523,12 +501,12 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = source.content;
         let layout = source.layout;
-        let mut elements = source
+        let elements = source
             .array
             .elements(ast)
             .iter()
             .map(|id| ast.get_node_in_sub_range(id));
-        let mut items = std::iter::from_fn(|| next_item(&mut elements)).peekable();
+        let mut items = array_slots(elements).peekable();
         let mut previous_end = span.start;
         let mut has_slot = false;
         let mut transition = None;
@@ -546,7 +524,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         while let Some(item) = items.next() {
             // Resolve the initial source prefix before its elisions claim comments.
             // Later real items receive their binding from the preceding source gap.
-            let mode = item.argument.map_or(ContentMode::Formatted, |argument| {
+            let mode = item.value.map_or(ContentMode::Formatted, |argument| {
                 following_mode.unwrap_or_else(|| {
                     if self.has_suppression {
                         self.content_mode(
@@ -563,7 +541,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     item.holes,
                     Span::new(
                         previous_end,
-                        item.argument
+                        item.value
                             .map_or(span.end, |argument| argument.span(ast).start),
                     ),
                     elisions,
@@ -573,7 +551,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 )?;
                 has_slot = true;
             }
-            let Some(argument) = item.argument else {
+            let Some(argument) = item.value else {
                 continue;
             };
             let argument_span = argument.span(ast);
@@ -590,23 +568,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 );
             }
             let boundary = layout.entry(writer, |writer| {
+                let next = items.peek();
                 self.format_argument_item_with_array_comments(
                     ArrayArgumentSlot {
                         argument,
                         mode,
                         layout,
                         transition,
-                        closing: items.peek().is_none().then_some(source.closing),
-                        following: match items.peek() {
-                            Some(item) if item.holes != 0 => FollowingArgument::Elision {
-                                argument: item.argument,
-                                holes: item.holes,
-                            },
-                            Some(item) => item
-                                .argument
-                                .map_or(FollowingArgument::End, FollowingArgument::Argument),
-                            None => FollowingArgument::End,
-                        },
+                        closing: next.is_none().then_some(source.closing),
+                        following: FollowingItem::array_slot(next, |argument| argument.span(ast)),
                     },
                     Span::new(previous_end, span.end),
                     trailing_comma,

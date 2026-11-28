@@ -10,6 +10,11 @@ pub(in crate::formatter) enum StringContext {
     Directive,
 }
 
+/// The spelling between the quotes, including escape sequences.
+pub(super) fn raw_content(raw: &str) -> &str {
+    &raw[1..raw.len() - 1]
+}
+
 pub(super) fn format_string(
     raw: &str,
     preferred: QuoteStyle,
@@ -20,7 +25,7 @@ pub(super) fn format_string(
         [b'\'', .., b'\''] => b'\'',
         _ => panic!("string literal raw must contain matching quote delimiters"),
     };
-    let content = &raw[1..raw.len() - 1];
+    let content = raw_content(raw);
     let preferred = match preferred {
         QuoteStyle::Double => b'"',
         QuoteStyle::Single => b'\'',

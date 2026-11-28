@@ -26,7 +26,7 @@ use crate::{
 use swc_next_ecma_ast::{
     ArgumentData, AssignmentExpression, AssignmentTarget, AssignmentTargetData, CallExpression,
     Comment, CommentKind, Expr, ExprData, GetSpan, PropertyKeyData, SimpleAssignmentTargetData,
-    Span, TemplateElement, UnaryExpression,
+    Span, UnaryExpression,
 };
 
 /// Layout sees the prepared packet even when its source owner stops projection.
@@ -2468,17 +2468,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     let text = self.string_literal_text(literal, StringContext::Expression);
                     rhs_text_is_short(&text, threshold)
                 }
-                ExprData::TemplateLiteral(template) => {
-                    if !template.expressions(ast).is_empty() || template.quasis(ast).len() != 1 {
-                        return false;
-                    }
-                    let Some(first) = template.quasis(ast).first() else {
-                        return false;
-                    };
-                    let quasi: TemplateElement = ast.get_node_in_sub_range(first);
-                    let raw = ast.get_utf8(quasi.raw(ast));
-                    !raw.contains('\n') && rhs_text_is_short(raw, threshold)
-                }
+                ExprData::TemplateLiteral(template) => self
+                    .single_template_raw(template)
+                    .is_some_and(|raw| !raw.contains('\n') && rhs_text_is_short(raw, threshold)),
                 ExprData::CallExpression(call) => {
                     call.arguments(ast).is_empty()
                         && threshold >= 2

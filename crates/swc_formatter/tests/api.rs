@@ -70,6 +70,31 @@ fn formatting_results(
 }
 
 #[test]
+fn edited_numeric_literal() {
+    let allocator = Allocator::new();
+    let parser = ParserOptions {
+        comments: CommentMode::Flat,
+        preserve_parens: true,
+        ..Default::default()
+    };
+    let mut parsed = Parser::init(&allocator, "0x10;", parser, NoTokenParserConfig).parse();
+    // SAFETY: The handle comes from this program. Editing the value clears its source spelling.
+    let ast = unsafe { parsed.ast.ast_mut() };
+    let statement = ast.root_program().body(ast).get_node(ast, 0).unwrap();
+    let expression = statement
+        .as_expression_statement(ast)
+        .unwrap()
+        .expression(ast);
+    expression
+        .as_numeric_literal(ast)
+        .unwrap()
+        .set_value(ast, 2.5);
+
+    let output = format_ast(&parsed.ast, FormatOptions::prettier()).unwrap();
+    assert_eq!(output, "2.5;\n");
+}
+
+#[test]
 fn nesting_limits() {
     let parser = ParserOptions::default();
     let depth = 256;

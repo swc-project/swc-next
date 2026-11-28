@@ -1196,8 +1196,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ast.get_utf8(name.name(ast)) == "type"
                 }
                 ModuleExportNameData::StringLiteral(literal) => {
-                    let raw = ast.get_utf8(literal.raw(ast));
-                    &raw[1..raw.len() - 1] == "type"
+                    self.string_literal_raw_content(literal) == "type"
                 }
             };
             if attributes.len() == 1 && type_key && self.comments.in_range(list.span).is_empty() {

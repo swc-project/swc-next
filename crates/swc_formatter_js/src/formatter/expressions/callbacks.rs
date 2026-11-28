@@ -816,10 +816,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     ) <= 5;
                 }
                 ExprData::TemplateLiteral(template) => {
-                    if template.quasis(ast).iter().any(|id| {
-                        let quasi = ast.get_node_in_sub_range(id);
-                        ast.get_utf8(quasi.raw(ast)).contains('\n')
-                    }) {
+                    if self
+                        .template_raw_parts(template)
+                        .any(|raw| raw.contains('\n'))
+                    {
                         return false;
                     }
                     return template.expressions(ast).iter().all(|id| {

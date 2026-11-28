@@ -4,7 +4,9 @@ use super::comments::{
     CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, SourceSeparatorTransition,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::arguments::{ArgumentLayout, ElisionLayout, FollowingItem, Separator};
+use super::expressions::arguments::{
+    ArgumentLayout, ArraySlot, ElisionLayout, FollowingItem, Separator, array_slots,
+};
 use super::expressions::assignment::{AssignmentBoundary, InitializerSource, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
@@ -207,33 +209,6 @@ impl PreparedBindingValue {
     fn start(&self) -> u32 {
         self.span().start
     }
-}
-
-struct PreparedBindingSlot {
-    holes: usize,
-    value: Option<PreparedBindingValue>,
-}
-
-struct BindingSlot {
-    holes: usize,
-    binding: Option<BindingPattern>,
-}
-
-fn next_slot(elements: &mut impl Iterator<Item = Option<BindingPattern>>) -> Option<BindingSlot> {
-    let mut holes = 0;
-    for element in elements.by_ref() {
-        if let Some(binding) = element {
-            return Some(BindingSlot {
-                holes,
-                binding: Some(binding),
-            });
-        }
-        holes += 1;
-    }
-    (holes != 0).then_some(BindingSlot {
-        holes,
-        binding: None,
-    })
 }
 
 fn binding_separator(separator: Separator, constraint: LineConstraint, writer: &mut Writer<'_>) {
@@ -1166,21 +1141,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     fn prepare_array_binding_slot(
         &self,
-        slots: &mut std::iter::Peekable<impl Iterator<Item = BindingSlot>>,
+        slots: &mut std::iter::Peekable<impl Iterator<Item = ArraySlot<BindingPattern>>>,
         preceding_end: u32,
         closing: u32,
-    ) -> Result<Option<PreparedBindingSlot>, FormatError> {
-        let Some(BindingSlot { holes, binding }) = slots.next() else {
+    ) -> Result<Option<ArraySlot<PreparedBindingValue>>, FormatError> {
+        let Some(slot) = slots.next() else {
             return Ok(None);
         };
-        let value = if let Some(node) = binding {
+        let value = if let Some(node) = slot.value {
             let span = node.span(self.ast);
             let target = if let BindingPatternData::SimpleAssignmentTarget(target) =
                 self.ast.binding_pattern_data(node)
             {
                 let next_start = slots
                     .peek()
-                    .and_then(|slot| slot.binding)
+                    .and_then(|slot| slot.value)
                     .map_or(closing, |node| node.span(self.ast).start);
                 self.prepare_array_pattern_target(
                     SimpleTarget::new(self.ast, target),
@@ -1197,7 +1172,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             None
         };
-        Ok(Some(PreparedBindingSlot { holes, value }))
+        Ok(Some(ArraySlot {
+            holes: slot.holes,
+            value,
+        }))
     }
 
     fn format_array_binding(
@@ -1208,7 +1186,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let ast = self.ast;
         let span = array.span(ast);
         let content = Span::new(span.start + 1, span.end - 1);
-        let mut elements = array
+        let elements = array
             .elements(ast)
             .iter()
             .map(|id| ast.get_node_in_sub_range(id))
@@ -1217,7 +1195,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     .rest(ast)
                     .map(|rest| Some(BindingPattern::BindingRestElement(rest))),
             );
-        let mut slots = std::iter::from_fn(|| next_slot(&mut elements)).peekable();
+        let mut slots = array_slots(elements).peekable();
         if slots.peek().is_none()
             && self.content_mode(self.comments.in_range(content)) == ContentMode::Verbatim
         {
@@ -1285,16 +1263,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                             writer,
                         );
                     }
-                    let following = match &next {
-                        Some(slot) if slot.holes != 0 => FollowingItem::Elision {
-                            node: slot.value.as_ref().map(PreparedBindingValue::span),
-                            holes: slot.holes,
-                        },
-                        Some(slot) => slot.value.as_ref().map_or(FollowingItem::End, |value| {
-                            FollowingItem::Node(value.span())
-                        }),
-                        None => FollowingItem::End,
-                    };
+                    let following = FollowingItem::array_slot(next.as_ref(), PreparedBindingValue::span);
                     let rest = matches!(
                         value,
                         PreparedBindingValue::Pattern { node, .. }

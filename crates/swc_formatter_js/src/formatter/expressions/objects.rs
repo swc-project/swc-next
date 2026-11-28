@@ -1508,8 +1508,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             return None;
         }
-        let raw = self.ast.get_utf8(literal.raw(self.ast));
-        let content = &raw[1..raw.len() - 1];
+        let content = self.string_literal_raw_content(literal);
         if matches!(context, PropertyKeyContext::TypeMethod) && content == "new" {
             return None;
         }
@@ -1634,8 +1633,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             PropertyKeyData::Expr(expression) => {
                 if let ExprData::StringLiteral(literal) = self.ast.expr_data(expression) {
-                    let raw = self.ast.get_utf8(literal.raw(self.ast));
-                    &raw[1..raw.len() - 1] == "constructor"
+                    self.string_literal_raw_content(literal) == "constructor"
                 } else {
                     false
                 }
@@ -1725,11 +1723,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
             PropertyKeyData::Expr(expression) => match ast.expr_data(expression) {
                 ExprData::StringLiteral(literal) => {
-                    if let Some(content) = self.unquoted_string_key(literal, context, quoting) {
-                        writer.text(content);
-                    } else {
-                        self.format_string_literal(literal, StringContext::Expression, writer);
-                    }
+                    self.format_string_property_name(literal, context, quoting, writer);
                 }
                 ExprData::NumericLiteral(literal)
                     if quoting == PropertyKeyQuoting::Quote && !ast.lang().is_typescript() =>
