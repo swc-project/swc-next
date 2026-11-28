@@ -13880,7 +13880,14 @@ impl<'a, C: ParserConfig> Parser<'a, C> {
             ) {
             None
         } else {
-            Some(self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default())?)
+            // The operand is its own AssignmentExpression, so a typed arrow
+            // there keeps its return type even in a conditional consequent, as
+            // in TypeScript.
+            let ts_context = self.ts_context;
+            self.ts_context.insert(TsContext::ALLOW_ARROW_RETURN_TYPE);
+            let argument = self.parse_expr(Precedence::Assignment, ParseExpressionOpts::default());
+            self.ts_context = ts_context;
+            Some(argument?)
         };
         if delegate && argument.is_none() {
             self.report_expected(
@@ -20566,6 +20573,55 @@ mod tests {
             plain_types
         }
 
+        fn error_spans(source: &str, options: Options) -> Vec<Span> {
+            let allocator = Allocator::new();
+            let parsed = Parser::init(&allocator, source, options, NoTokenParserConfig).parse();
+            parsed.diagnostics.iter().map(|error| error.span).collect()
+        }
+
+        fn yielded(source: &str, options: Options) -> (NodeKind, Vec<String>, Option<String>) {
+            let allocator = Allocator::new();
+            let source = format!("function* f(){{ {source} }}");
+            let ast = parse(&allocator, &source, options);
+            let statements = ast
+                .root_program()
+                .body(&ast)
+                .get_node(&ast, 0)
+                .unwrap()
+                .as_declaration(&ast)
+                .unwrap()
+                .as_function(&ast)
+                .unwrap()
+                .body(&ast)
+                .body(&ast);
+            assert_eq!(statements.len(), 1);
+            let mut expression = statements
+                .get_node(&ast, 0)
+                .unwrap()
+                .as_expression_statement(&ast)
+                .unwrap()
+                .expression(&ast);
+            let mut alternate = None;
+            if let Some(conditional) = expression.as_conditional_expression(&ast) {
+                let identifier = conditional
+                    .alternate(&ast)
+                    .as_identifier_reference(&ast)
+                    .unwrap();
+                alternate = Some(ast.get_utf8(identifier.name(&ast)).to_owned());
+                expression = conditional.consequent(&ast);
+            }
+            let operand = expression
+                .as_yield_expression(&ast)
+                .unwrap()
+                .argument(&ast)
+                .unwrap();
+            (
+                ast.node_kind(operand.node_id()),
+                return_types(&ast, operand),
+                alternate,
+            )
+        }
+
         let ts = Options {
             lang: Lang::Ts,
             ..Options::default()
@@ -20675,33 +20731,35 @@ mod tests {
             .unwrap();
         assert_parenthesized_a(&ast, arrow.body(&ast).as_expr(&ast).unwrap());
 
-        let ast = parse(&allocator, "function* f(){return c ? yield(a) : b=>b}", ts);
-        let declaration = ast
-            .root_program()
-            .body(&ast)
-            .get_node(&ast, 0)
-            .unwrap()
-            .as_declaration(&ast)
-            .unwrap();
-        let function = declaration.as_function(&ast).unwrap();
-        let statement = function
-            .body(&ast)
-            .body(&ast)
-            .get_node(&ast, 0)
-            .unwrap()
-            .as_return_statement(&ast)
-            .unwrap();
-        let expression = statement
-            .argument(&ast)
-            .unwrap()
-            .as_conditional_expression(&ast)
-            .unwrap();
-        assert_alternate(&ast, expression);
-        let yielded = expression
-            .consequent(&ast)
-            .as_yield_expression(&ast)
-            .unwrap();
-        assert_parenthesized_a(&ast, yielded.argument(&ast).unwrap());
+        // The operand of `yield` is its own AssignmentExpression, so a typed
+        // arrow there keeps its return type even in a conditional consequent,
+        // as in TypeScript. `(a): b => b` is then the operand, and the
+        // conditional reports its missing `:` where TypeScript reports TS1005.
+        for options in [ts, tsx] {
+            let errors = error_spans("function* f(){0 ? yield(a) : b=>b;}", options);
+            assert_eq!(errors, [Span::new(33, 34)]);
+
+            let errors = error_spans("function* f(){return c ? yield(a) : b=>b}", options);
+            assert_eq!(errors, [Span::new(40, 41)]);
+
+            let errors = error_spans("function* f(){0 ? yield* (a) : b=>b;}", options);
+            assert_eq!(errors, [Span::new(35, 36)]);
+        }
+
+        let (operand, types, alternate) = yielded("c ? yield (a): T => a : d;", ts);
+        assert_eq!(operand, NodeKind::ArrowFunctionExpression);
+        assert_eq!(types, ["T"]);
+        assert_eq!(alternate.as_deref(), Some("d"));
+
+        let (operand, types, alternate) = yielded("0 ? yield x : y;", ts);
+        assert_eq!(operand, NodeKind::IdentifierReference);
+        assert!(types.is_empty());
+        assert_eq!(alternate.as_deref(), Some("y"));
+
+        let (operand, types, alternate) = yielded("yield (a): T => a;", ts);
+        assert_eq!(operand, NodeKind::ArrowFunctionExpression);
+        assert_eq!(types, ["T"]);
+        assert_eq!(alternate, None);
     }
 
     #[track_caller]
