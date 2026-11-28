@@ -391,7 +391,6 @@ impl<'a> Formatter<'a, '_, '_> {
             return;
         }
         let wrap = if wrap != ProseWrap::Preserve
-            && matches!(block.kind, BlockKind::Paragraph(_))
             && self.text(block.span).contains("]]")
             && self.has_literal_wiki_opening(nodes)
         {
@@ -552,7 +551,12 @@ impl<'a> Formatter<'a, '_, '_> {
                 }
                 InlineKind::Delete(children) => {
                     let context = context.inside_inline();
-                    self.inline_container(block, children, wrap, "~~", context, prose);
+                    let marker = if self.text(node.span).starts_with("~~") {
+                        "~~"
+                    } else {
+                        "~"
+                    };
+                    self.inline_container(block, children, wrap, marker, context, prose);
                 }
                 InlineKind::Link(link) | InlineKind::Image(link) => {
                     let context = context.inside_link();
@@ -610,9 +614,22 @@ impl<'a> Formatter<'a, '_, '_> {
             // syntax and normalize only its whitespace when it is resolved.
             let resolved = self.document.definition(identifier).is_some();
             if resolved && self.reference_label_can_fold(&link.children) {
+                let label = self.inline_source(block, link.label);
+                let preserve_break = !image
+                    && self.reference_label_would_form_wiki_link(
+                        &label,
+                        kind,
+                        node.span.end,
+                        &prose.buffer[prose.start..],
+                    );
+                let label = if preserve_break {
+                    label
+                } else {
+                    collapse_label(label)
+                };
                 prose.atom(brackets);
-                let label = collapse_label(self.inline_source(block, link.label));
-                if !image
+                if !preserve_break
+                    && !image
                     && wrap == ProseWrap::Always
                     && link.children.iter().all(|child| {
                         matches!(
@@ -707,8 +724,33 @@ impl<'a> Formatter<'a, '_, '_> {
         }
     }
 
+    fn reference_label_would_form_wiki_link(
+        &self,
+        label: &str,
+        kind: ReferenceKind,
+        end: usize,
+        prefix: &str,
+    ) -> bool {
+        let Some(prefix) = prefix.strip_suffix('[') else {
+            return false;
+        };
+        if ends_with_unescaped_backslash(prefix) || !label.contains('\n') {
+            return false;
+        }
+        // The first closing bracket must start a pair, even in an escape.
+        // Folding retains a space between brackets that were separated.
+        match label.split_once(']') {
+            Some((_, after)) => after.is_empty() || after.starts_with(']'),
+            None => {
+                kind == ReferenceKind::Shortcut
+                    && self.document.source.as_bytes().get(end) == Some(&b']')
+            }
+        }
+    }
+
     fn reference_label_can_fold(&self, nodes: &[Inline]) -> bool {
         nodes.iter().all(|node| match &node.kind {
+            InlineKind::HardBreak => false,
             // Folding part of an opaque value could change what the link shows.
             InlineKind::CodeSpan { .. }
             | InlineKind::Html

@@ -6,7 +6,7 @@ use swc_next_formatter_host::{
     EmbeddedRequest, FormatContext, FormatSession, InputKind, PreserveReason,
 };
 use swc_next_markdown_parser::{
-    BlockKind, Dialect, InlineKind, ParseOptions, parse, parse_with_options,
+    BlockKind, Dialect, Document, InlineKind, ParseOptions, parse, parse_with_options,
 };
 
 use crate::{MarkdownDocumentProducer, ProseWrap, SyntaxOptions, ast_to_doc, plugin_document};
@@ -37,6 +37,19 @@ fn blocks() {
     let source = "#  heading  #\n";
     let result = format(source, layout, syntax);
     assert_eq!(result, "# heading\n");
+
+    let source = "#  heading ##   ###\n";
+    let result = format(source, layout, syntax);
+    assert_eq!(result, "# heading ## ###\n");
+
+    let source = "> ## # #\n";
+    assert_eq!(format(source, layout, syntax), source);
+
+    let source = "# C# #\n";
+    assert_eq!(format(source, layout, syntax), "# C#\n");
+
+    let source = "# \\# #\n";
+    assert_eq!(format(source, layout, syntax), "# \\#\n");
 
     let source = "> * first\n>   + nested\n>\n> paragraph\n";
     let result = format(source, layout, syntax);
@@ -73,6 +86,37 @@ fn blocks() {
 
 #[test]
 fn prose() {
+    fn assert_bracketed_reference(source: &str) {
+        use swc_next_markdown_parser::{LinkTarget, ReferenceKind};
+
+        let document = parse(source);
+        let inlines = match &document.blocks[0].kind {
+            BlockKind::Heading(heading) => heading.children.as_slice(),
+            BlockKind::Paragraph(inlines) => inlines.as_slice(),
+            _ => panic!("expected a heading or paragraph"),
+        };
+        let [open, link, close] = inlines else {
+            panic!("expected a link surrounded by literal brackets");
+        };
+        assert!(matches!(open.kind, InlineKind::Text));
+        assert!(matches!(close.kind, InlineKind::Text));
+        assert_eq!(document.text(open.span), "[");
+        assert_eq!(document.text(close.span), "]");
+        let InlineKind::Link(link) = &link.kind else {
+            panic!("expected a link");
+        };
+        let LinkTarget::Reference {
+            kind: ReferenceKind::Shortcut,
+            identifier,
+            ..
+        } = &link.target
+        else {
+            panic!("expected a shortcut reference");
+        };
+        let definition = document.definition(identifier).unwrap();
+        assert_eq!(document.text(definition.definition.destination), "target");
+    }
+
     let layout = PrintOptions {
         line_width: 12,
         ..PrintOptions::default()
@@ -123,6 +167,60 @@ fn prose() {
 
     let source = "foo\\\n    | --- |\n";
     assert_eq!(format(source, layout, preserve), source);
+
+    let wide = PrintOptions::default();
+    for syntax in [always, never] {
+        let source = "[[one\ntwo]]\n==\n";
+        assert_eq!(format(source, wide, syntax), source);
+
+        let source = "[[one\ntwo]]\n";
+        assert_eq!(format(source, wide, syntax), source);
+
+        let source = "[[one two]]\n==\n";
+        assert_eq!(format(source, wide, syntax), source);
+
+        let source = "one\ntwo\n==\n";
+        assert_eq!(format(source, wide, syntax), "one two\n==\n");
+    }
+
+    for syntax in [preserve, always, never] {
+        let source = "[[hello\nworld]]\n==\n\n[hello world]: target\n";
+        let result = format(source, wide, syntax);
+        assert_bracketed_reference(&result);
+        assert_eq!(result, source);
+
+        let source = "[[hello\nworld]]\n\n[hello world]: target\n";
+        let result = format(source, wide, syntax);
+        assert_bracketed_reference(&result);
+        assert_eq!(result, source);
+
+        let source = "> - [[hello\n>   world]]\n\n[hello world]: target\n";
+        assert_eq!(format(source, wide, syntax), source);
+
+        let source = "[[hello\nworld\\]]\n\n[hello world\\]]: target\n";
+        assert_eq!(format(source, wide, syntax), source);
+
+        let source = "[[hello\nworld\\]\n]]\n\n[hello world\\]]: target\n";
+        assert_eq!(
+            format(source, wide, syntax),
+            "[[hello world\\] ]]\n\n[hello world\\]]: target\n"
+        );
+
+        let source = "\\[[hello\nworld]]\n\n[hello world]: target\n";
+        assert_eq!(
+            format(source, wide, syntax),
+            "\\[[hello world]]\n\n[hello world]: target\n"
+        );
+
+        let source = "[ [hello\nworld]]\n\n[hello world]: target\n";
+        assert_eq!(
+            format(source, wide, syntax),
+            "[ [hello world]]\n\n[hello world]: target\n"
+        );
+
+        let source = "\\ [[hello\nworld]]\n\n[hello world]: target\n";
+        assert_eq!(format(source, wide, syntax), source);
+    }
 }
 
 #[test]
@@ -265,6 +363,34 @@ fn inline_links() {
         format(source, narrow, wrap),
         "[top]:\n  #topic\n  \"long title\"\n\n[top]\n"
     );
+
+    for prose_wrap in [ProseWrap::Preserve, ProseWrap::Always, ProseWrap::Never] {
+        let syntax = SyntaxOptions {
+            prose_wrap,
+            ..options
+        };
+
+        let source = "[hello  \nworld][]\n\n[hello world]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[hello\\\nworld][]\n\n[hello\\ world]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[*hello  \nworld*]\n\n[*hello world*]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[hello\\\nworld]\n\n[hello\\ world]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+
+        let source = "[hello\nworld][]\n\n[hello world]: target\n";
+        assert_eq!(
+            format(source, layout, syntax),
+            "[hello world][]\n\n[hello world]: target\n"
+        );
+
+        let source = "[hello  \nworld][ref]\n\n[ref]: target\n";
+        assert_eq!(format(source, layout, syntax), source);
+    }
 }
 
 #[test]
@@ -386,33 +512,41 @@ fn verbatim() {
 fn extended_dialect_and_recovery() {
     let session = FormatSession::default();
     let syntax = SyntaxOptions::default();
+    let print = |document: &Document<'_>| {
+        ast_to_doc(document, session.context(), syntax)
+            .unwrap()
+            .print(session.print_options())
+    };
+    let markdown = ParseOptions::default();
+    let extended = ParseOptions {
+        dialect: Dialect::Extended,
+        ..markdown
+    };
 
     let source = "$$\na   +   b\n$$\n";
-    let parsed = parse_with_options(
-        source,
-        ParseOptions {
-            dialect: Dialect::Extended,
-            ..ParseOptions::default()
-        },
-    );
+    let parsed = parse_with_options(source, extended);
     assert!(matches!(parsed.blocks[0].kind, BlockKind::Extension(_)));
-    let result = ast_to_doc(&parsed, session.context(), syntax)
-        .unwrap()
-        .print(session.print_options());
-    assert_eq!(result, source);
+    assert_eq!(print(&parsed), source);
+
+    for options in [markdown, extended] {
+        let format = |source: &str| print(&parse_with_options(source, options));
+
+        let source = "~~literal .~!struck?~. tail\n";
+        assert_eq!(format(source), source);
+
+        let source = "~~start .~!word!~. end~~\n";
+        assert_eq!(format(source), source);
+    }
 
     let source = "\u{feff}#  keep   \n\n";
     let parsed = parse_with_options(
         source,
         ParseOptions {
             max_input_bytes: Some(1),
-            ..ParseOptions::default()
+            ..markdown
         },
     );
-    let result = ast_to_doc(&parsed, session.context(), syntax)
-        .unwrap()
-        .print(session.print_options());
-    assert_eq!(result, "#  keep   \n\n");
+    assert_eq!(print(&parsed), "#  keep   \n\n");
 }
 
 struct TestDispatcher {

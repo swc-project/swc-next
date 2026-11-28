@@ -237,12 +237,23 @@ impl<'a> Formatter<'a, '_, '_> {
                 writer.hard_line();
                 writer.text(self.text(underline));
             }
-        } else {
-            writer.text("#".repeat(usize::from(heading.level)));
-            if !heading.children.is_empty() {
-                writer.space();
-                self.inlines(block, &heading.children, ProseWrap::Never, writer);
-            }
+            return;
+        }
+
+        writer.text("#".repeat(usize::from(heading.level)));
+        let Some(last) = heading.children.last() else {
+            return;
+        };
+        writer.space();
+        self.inlines(block, &heading.children, ProseWrap::Never, writer);
+
+        // A final, space-separated run of literal hashes would become the closer.
+        if let Some(closing) = heading.closing
+            && let Some(before_hash) = self.document.source[..last.span.end].strip_suffix('#')
+            && before_hash.trim_end_matches('#').ends_with([' ', '\t'])
+        {
+            writer.space();
+            writer.text(self.text(closing));
         }
     }
 
