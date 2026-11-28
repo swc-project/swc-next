@@ -178,10 +178,21 @@ pub(in crate::formatter) enum SignatureParameterHug {
     Type,
 }
 
-pub(in crate::formatter) struct SignatureGenerics<'ast> {
-    pub(super) node: TsTypeParameterDeclaration,
-    pub(super) mode: ContentMode,
-    pub(super) following: TypeGap<'ast>,
+pub(in crate::formatter) enum SignatureGenerics<'ast> {
+    InHeader(TsTypeParameterDeclaration),
+    WithParameters {
+        node: TsTypeParameterDeclaration,
+        mode: ContentMode,
+        following: TypeGap<'ast>,
+    },
+}
+
+impl SignatureGenerics<'_> {
+    fn node(&self) -> TsTypeParameterDeclaration {
+        match self {
+            Self::InHeader(node) | Self::WithParameters { node, .. } => *node,
+        }
+    }
 }
 
 pub(in crate::formatter) enum SignatureReturnEolTarget<'mode> {
@@ -510,12 +521,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             SignatureReturnDelimiter::Arrow,
         );
         self.prepare_callable_parameter_tail(&mut parameters, return_type.preceding_mode)?;
-        let can_group_parameters = self.signature_parameters_can_group(
-            parameters.count() == 1,
-            parts.type_parameters,
-            Some(&return_type),
-        );
-        let generics = generic_tail.map(|(node, following)| SignatureGenerics {
+        let generics = generic_tail.map(|(node, following)| SignatureGenerics::WithParameters {
             node,
             mode: generic_mode,
             following,
@@ -539,7 +545,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 parameters,
                 Some(return_type),
                 generics,
-                can_group_parameters,
                 SignatureResultLayout {
                     grouped: false,
                     continuation_width,
@@ -1069,11 +1074,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         parameters: CallableParameters,
         result: Option<SignatureReturn<'ast>>,
         generics: Option<SignatureGenerics<'ast>>,
-        can_group_parameters: bool,
         result_layout: SignatureResultLayout,
         writer: &mut Writer<'ast>,
     ) -> Result<Option<ExpressionTail<'ast>>, FormatError> {
-        if can_group_parameters && let Some(result) = result {
+        if self.signature_parameters_can_group(
+            parameters.count() == 1,
+            generics.as_ref().map(SignatureGenerics::node),
+            result.as_ref(),
+        ) && let Some(result) = result
+        {
             let (parameters, ()) = writer.record_group_with_value(|writer| {
                 self.format_callable_signature_parameters(parameters, generics, writer)
             })?;
@@ -1185,14 +1194,14 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         generics: Option<SignatureGenerics<'ast>>,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        if let Some(generic) = generics {
-            self.format_type_parameters(
-                generic.node,
-                TypeParameterContext::Callable,
-                generic.mode,
-                writer,
-            )?;
-            self.format_type_gap(generic.following, FlatSeparator::Empty, writer)?;
+        if let Some(SignatureGenerics::WithParameters {
+            node,
+            mode,
+            following,
+        }) = generics
+        {
+            self.format_type_parameters(node, TypeParameterContext::Callable, mode, writer)?;
+            self.format_type_gap(following, FlatSeparator::Empty, writer)?;
         }
         self.format_callable_parameters(parameters, writer)
     }

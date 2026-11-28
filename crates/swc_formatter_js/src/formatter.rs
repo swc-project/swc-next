@@ -1,5 +1,6 @@
 //! Formatting context and the program entry point.
 
+mod array_slots;
 mod bindings;
 mod classes;
 mod comments;

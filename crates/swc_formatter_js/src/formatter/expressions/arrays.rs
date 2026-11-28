@@ -6,11 +6,9 @@ use swc_next_ecma_ast::{
 };
 
 use super::Formatter;
-use super::arguments::{
-    ArgumentLayout, ArrayArgumentSlot, ElisionLayout, FollowingItem, Separator,
-    TrailingCommaPolicy, array_slots,
-};
+use super::arguments::{ArgumentLayout, TrailingCommaPolicy};
 use super::parentheses::NumericContentView;
+use crate::formatter::array_slots::{ArrayListLayout, array_slots};
 use crate::formatter::comments::{ArrayCommentOwner, CommentRunLayout};
 use crate::formatter::diagnostics::{FlatSeparator, LineConstraint, TerminalCloseBoundary};
 use crate::formatter::suppression::ContentMode;
@@ -506,14 +504,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             .elements(ast)
             .iter()
             .map(|id| ast.get_node_in_sub_range(id));
-        let mut items = array_slots(elements).peekable();
-        let mut previous_end = span.start;
-        let mut has_slot = false;
-        let mut transition = None;
-        let mut separator = Separator::Line;
-        let mut following_mode = None;
-        let mut elisions = ElisionLayout::Formatted;
-        let mut terminal_close = None;
+        let mut slots = array_slots(elements);
         let trailing_comma = if self.options.trailing_commas == TrailingCommas::None {
             TrailingCommaPolicy::Forbidden
         } else {
@@ -521,79 +512,24 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 group.map_or(ConditionTarget::Current, ConditionTarget::Group),
             )
         };
-        while let Some(item) = items.next() {
-            // Resolve the initial source prefix before its elisions claim comments.
-            // Later real items receive their binding from the preceding source gap.
-            let mode = item.value.map_or(ContentMode::Formatted, |argument| {
-                following_mode.unwrap_or_else(|| {
-                    if self.has_suppression {
-                        self.content_mode(
-                            self.comments
-                                .in_range(Span::new(span.start, argument.span(ast).start)),
-                        )
-                    } else {
-                        ContentMode::Formatted
-                    }
-                })
-            });
-            if item.holes != 0 {
-                (previous_end, separator) = self.format_array_elisions(
-                    item.holes,
-                    Span::new(
-                        previous_end,
-                        item.value
-                            .map_or(span.end, |argument| argument.span(ast).start),
-                    ),
-                    elisions,
-                    has_slot.then_some(separator),
-                    layout,
-                    writer,
-                )?;
-                has_slot = true;
-            }
-            let Some(argument) = item.value else {
-                continue;
-            };
-            let argument_span = argument.span(ast);
-            if has_slot {
-                let next_start = self
-                    .comments
-                    .between(Span::new(previous_end, argument_span.start))?
-                    .first()
-                    .map_or(argument_span.start, |comment| comment.span.start);
-                layout.separator(
-                    separator,
-                    self.source_separator_constraint(previous_end, next_start, transition.as_ref()),
-                    writer,
-                );
-            }
-            let boundary = layout.entry(writer, |writer| {
-                let next = items.peek();
-                self.format_argument_item_with_array_comments(
-                    ArrayArgumentSlot {
-                        argument,
-                        mode,
-                        layout,
-                        transition,
-                        closing: next.is_none().then_some(source.closing),
-                        following: FollowingItem::array_slot(next, |argument| argument.span(ast)),
-                    },
-                    Span::new(previous_end, span.end),
+        let ending = self.format_array_slots(
+            span,
+            ArrayListLayout::Expression(layout),
+            |_, _| Ok(slots.next()),
+            |argument: &Argument| argument.span(ast),
+            |formatter, item, writer| {
+                formatter.format_argument_item_with_array_comments(
+                    item,
+                    source.closing,
                     trailing_comma,
                     protect_runtime_items,
                     numeric_comments.as_deref_mut(),
                     writer,
                 )
-            })?;
-            previous_end = boundary.end;
-            separator = boundary.separator;
-            transition = boundary.transition;
-            following_mode = Some(boundary.following_mode);
-            elisions = boundary.elisions;
-            terminal_close = boundary.terminal_close;
-            has_slot = true;
-        }
-        let dangling = self.comments.between(Span::new(previous_end, span.end))?;
+            },
+            writer,
+        )?;
+        let dangling = self.comments.between(Span::new(ending.end, span.end))?;
         let dangling = self.comments.take(dangling.len());
         if dangling
             .iter()
@@ -601,8 +537,10 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         {
             writer.break_parent();
         }
-        if has_slot && let Some(first) = dangling.first() {
-            self.comment_gap(previous_end, first.span.start, writer);
+        if ending.has_slot
+            && let Some(first) = dangling.first()
+        {
+            self.comment_gap(ending.end, first.span.start, writer);
         }
         self.format_comment_run_with_array_comments(
             dangling,
@@ -612,8 +550,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         )?;
         let end = dangling
             .last()
-            .map_or(previous_end, |comment| comment.span.end);
-        Ok(terminal_close
+            .map_or(ending.end, |comment| comment.span.end);
+        Ok(ending
+            .terminal_close
             .filter(|_| dangling.is_empty())
             .unwrap_or_else(|| self.terminal_close_constraint(source.closing, end)))
     }

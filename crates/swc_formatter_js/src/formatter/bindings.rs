@@ -1,12 +1,11 @@
 //! Binding and assignment patterns with source-owned defaults and delimiters.
 use super::Formatter;
+use super::array_slots::{ArrayListLayout, ArraySlot, array_slots};
 use super::comments::{
     CommentBinding, CommentRunLayout, ExpressionTail, NodeHead, SourceSeparatorTransition,
 };
 use super::diagnostics::{FlatSeparator, LineConstraint};
-use super::expressions::arguments::{
-    ArgumentLayout, ArraySlot, ElisionLayout, FollowingItem, Separator, array_slots,
-};
+use super::expressions::arguments::{ArgumentLayout, FollowingItem, Separator};
 use super::expressions::assignment::{AssignmentBoundary, InitializerSource, RhsLayout};
 use super::expressions::objects::{PropertyKeyContext, PropertyKeyQuoting};
 use super::expressions::targets::{PreparedTarget, SimpleTarget};
@@ -1212,81 +1211,34 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                         Writer::soft_line,
                     );
                 }
-                let mut end = content.start;
-                let mut transition = None;
-                let mut separator = Separator::Line;
-                let mut has_slot = false;
-                let mut following_mode = None;
-                let mut elisions = ElisionLayout::Formatted;
-                let mut next =
-                    self.prepare_array_binding_slot(&mut slots, content.start, content.end)?;
-                while let Some(slot) = next.take() {
-                    let span = slot.value.as_ref().map(PreparedBindingValue::span);
-                    let start = span.map_or(content.end, |span| span.start);
-                    let mode = following_mode.unwrap_or_else(|| {
-                        if self.has_suppression && span.is_some() {
-                            self.content_mode(
-                                self.comments.in_range(Span::new(content.start, start)),
-                            )
-                        } else {
-                            ContentMode::Formatted
-                        }
-                    });
-                    if slot.holes != 0 {
-                        if matches!(separator, Separator::EmptyLine) {
-                            writer.break_parent();
-                        }
-                        (end, separator) = self.format_array_elisions(
-                            slot.holes,
-                            Span::new(end, start),
-                            elisions,
-                            has_slot.then_some(separator),
-                            ArgumentLayout::Lines,
+                let ending = self.format_array_slots(
+                    content,
+                    ArrayListLayout::Binding,
+                    |formatter, previous_end| {
+                        formatter.prepare_array_binding_slot(&mut slots, previous_end, content.end)
+                    },
+                    PreparedBindingValue::span,
+                    |formatter, slot, writer| {
+                        let rest = matches!(
+                            slot.value,
+                            PreparedBindingValue::Pattern { node, .. }
+                                if matches!(ast.binding_pattern_data(node), BindingPatternData::BindingRestElement(_))
+                        );
+                        let mut item = formatter.prepare_delimited_item(
+                            slot.span,
+                            slot.following,
+                            slot.remaining,
+                            !rest && formatter.options.trailing_commas != TrailingCommas::None,
+                            slot.transition,
                             writer,
                         )?;
-                        has_slot = true;
-                    }
-                    let Some(value) = slot.value else {
-                        break;
-                    };
-                    let value_span = value.span();
-                    next = self.prepare_array_binding_slot(&mut slots, value_span.end, content.end)?;
-                    if has_slot {
-                        let next = self
-                            .comments
-                            .between(Span::new(end, start))?
-                            .first()
-                            .map_or(start, |comment| comment.span.start);
-                        binding_separator(
-                            separator,
-                            self.source_separator_constraint(end, next, transition.as_ref()),
-                            writer,
-                        );
-                    }
-                    let following = FollowingItem::array_slot(next.as_ref(), PreparedBindingValue::span);
-                    let rest = matches!(
-                        value,
-                        PreparedBindingValue::Pattern { node, .. }
-                            if matches!(ast.binding_pattern_data(node), BindingPatternData::BindingRestElement(_))
-                    );
-                    let mut item = self.prepare_delimited_item(
-                        value_span,
-                        following,
-                        Span::new(end, content.end),
-                        !rest && self.options.trailing_commas != TrailingCommas::None,
-                        transition,
-                        writer,
-                    )?;
-                    item.set_leading_mode(mode);
-                    let tail = self.format_binding_value(value, item.mode, writer)?;
-                    let boundary = self.finish_delimited_item(item, tail, writer)?;
-                    end = boundary.end;
-                    separator = boundary.separator;
-                    transition = boundary.transition;
-                    following_mode = Some(boundary.following_mode);
-                    elisions = boundary.elisions;
-                    has_slot = true;
-                }
+                        item.set_leading_mode(slot.mode);
+                        let tail = formatter.format_binding_value(slot.value, item.mode, writer)?;
+                        formatter.finish_delimited_item(item, tail, writer)
+                    },
+                    writer,
+                )?;
+                let end = ending.end;
                 let dangling = self.comments.between(Span::new(end, content.end))?;
                 self.comments.claim(dangling)?;
                 if dangling
