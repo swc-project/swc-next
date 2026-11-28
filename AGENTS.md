@@ -49,6 +49,13 @@
 - File issues found in bulk by static analysis of source code, or by similar methods, in
   [swc-project/swc-next-issues](https://github.com/swc-project/swc-next-issues). Do not file them
   in this repository.
+- Do not file issues that are not worth fixing in real-world use. Skip these cases:
+  - The input is contrived: code that people and tools do not write or generate, such as comments
+    in unusual positions, unusual combinations of directive comments, idempotency that fails only
+    on the second pass of an unusual construct, lone surrogates, or inputs with tens of thousands
+    of nested or chained nodes.
+  - The change has no user-visible effect: test harnesses, CI scripts, example binaries, internal
+    APIs with no known caller, documentation wording, or duplicates of an existing issue.
 - Set the `Priority` and `Effort` GitHub issue fields on each issue in swc-next-issues. Do not use
   labels for them. Set them with the `setIssueFieldValue` GraphQL mutation; get the field and
   option IDs from the `issueFields` of the `swc-project` organization.
