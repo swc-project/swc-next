@@ -1,3 +1,15 @@
+use swc_next_type_strip::{Lang, UnsupportedSyntaxKind, strip_types};
+
+use crate::options;
+
+fn unsupported_kind(input: &str) -> Option<UnsupportedSyntaxKind> {
+    let result = strip_types(input, options(Lang::Ts));
+    assert!(!result.diagnostics.is_empty());
+    result
+        .unsupported_syntax
+        .map(|unsupported| unsupported.kind)
+}
+
 #[test]
 fn enums() {
     assert_strip_with_error!("enum E { A }", ";           ");
@@ -258,4 +270,61 @@ fn module_syntax() {
         "import type Model = require('model');\nrun();",
         ";                                    \nrun();",
     );
+}
+
+#[test]
+fn unsupported_syntax_kinds() {
+    assert_eq!(
+        unsupported_kind("enum E { A }"),
+        Some(UnsupportedSyntaxKind::Enum)
+    );
+
+    assert_eq!(
+        unsupported_kind("namespace N { let x; }"),
+        Some(UnsupportedSyntaxKind::Namespace)
+    );
+
+    assert_eq!(
+        unsupported_kind("export module M { const x = 1; }"),
+        Some(UnsupportedSyntaxKind::Namespace)
+    );
+
+    assert_eq!(
+        unsupported_kind("namespace N { const enum E { A } }"),
+        Some(UnsupportedSyntaxKind::Enum)
+    );
+
+    assert_eq!(
+        unsupported_kind("namespace N { interface I { [<number>1]: string; } }"),
+        Some(UnsupportedSyntaxKind::TypeAssertion)
+    );
+
+    assert_eq!(
+        unsupported_kind("import lib = require('lib');"),
+        Some(UnsupportedSyntaxKind::ImportEquals)
+    );
+
+    assert_eq!(
+        unsupported_kind("import type Model = require('model');"),
+        Some(UnsupportedSyntaxKind::ImportEquals)
+    );
+
+    assert_eq!(
+        unsupported_kind("export = value;"),
+        Some(UnsupportedSyntaxKind::ExportAssignment)
+    );
+
+    assert_eq!(
+        unsupported_kind("class C { constructor(public x: number) {} }"),
+        Some(UnsupportedSyntaxKind::ParameterProperty)
+    );
+
+    assert_eq!(
+        unsupported_kind("<number>value;"),
+        Some(UnsupportedSyntaxKind::TypeAssertion)
+    );
+
+    assert_eq!(unsupported_kind("'use strict' as any;"), None);
+
+    assert_eq!(unsupported_kind("let x = ;"), None);
 }
