@@ -487,10 +487,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         };
         if self.has_suppression
             && let Some(source) = self.statement_source_terminator(span)
-            && self.content_mode(
-                self.comments
-                    .in_range(Span::new(content_end, source.start())),
-            ) == ContentMode::Verbatim
+            && self.source_content_mode(Span::new(content_end, source.start()))
+                == ContentMode::Verbatim
         {
             return StatementPunctuation::Source(source);
         }

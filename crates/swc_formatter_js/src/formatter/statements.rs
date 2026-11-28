@@ -745,11 +745,11 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ref annotation_tail,
                 empty_binding: _,
             } = prepared;
-            let leading = self.comments.between(Span::new(
+            let leading_gap = Span::new(
                 previous.map_or(span.start, StatementBoundary::end),
                 statement_span.start,
-            ))?;
-            let leading_mode = self.content_mode(leading);
+            );
+            let leading_mode = self.source_content_mode(leading_gap);
             let mut omitted: Option<Span> = None;
             while let Some(next) = pending.as_ref() {
                 if !next.can_omit(ast, header_barrier, &preparation.source_line) {
@@ -845,7 +845,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 // Ignore targets skip empty owners even when an annotation retains one.
                 next.mode = ContentMode::Verbatim;
             }
-            let leading = self.comments.take(leading.len());
+            let leading = self.comments.claim_between(leading_gap)?;
             let mut expression_start =
                 StatementBoundary::expression_start(previous, source_line, self.options.semicolons);
             if first_statement
@@ -1425,7 +1425,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let empty_binding = if empty.is_some() {
             // Only direct statement gaps can contain this owner's leading packet.
             // Descendant comments belong to the preceding child's own sequence.
-            let leading = self.comments.in_range(Span::new(gap_start, span.start));
+            let leading = self.source_comments_in_range(Span::new(gap_start, span.start));
             self.empty_statement_binding(leading, span)
         } else {
             CommentBinding::Unbound
@@ -1480,9 +1480,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
     ) -> Option<StatementAnnotationTail<'ast>> {
         let following = following?;
         let following_start = following.span(self.ast).start;
-        let comments = self
-            .comments
-            .in_range(Span::new(statement_span.end, following_start));
+        let comments =
+            self.source_comments_in_range(Span::new(statement_span.end, following_start));
         if comments.is_empty() {
             return None;
         }

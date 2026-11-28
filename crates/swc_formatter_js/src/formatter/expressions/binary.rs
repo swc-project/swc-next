@@ -578,20 +578,21 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             self.binary_head_start(expression, &self.expression_content(expression))?
         };
-        let comments = self.comments.between(Span::new(start, end))?;
-        let binding = if comments.is_empty() {
+        let gap = Span::new(start, end);
+        let source_comments = self.source_comments_in_range(gap);
+        let binding = if source_comments.is_empty() {
             CommentBinding::Unbound
         } else {
             let expression = owner.expression;
             let prepared = owner.prepare(self);
-            let binding = self.expression_head_binding(comments, expression);
+            let binding = self.expression_head_binding(source_comments, expression);
             prepared
                 .content
                 .parentheses
                 .map_or(binding, |removed| binding.combine(removed.head.binding))
         };
         if self.has_type_casts
-            && !comments.is_empty()
+            && !source_comments.is_empty()
             && entry.left_mode() == ContentMode::Formatted
             && context.parentheses_owner == super::ParenthesesOwner::Expression
         {
@@ -600,7 +601,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             prepared.enclosure = self.generated_enclosure_owner(
                 expression,
                 prepared.content.data,
-                comments,
+                source_comments,
                 end,
                 binding,
                 ExpressionContext {
@@ -618,7 +619,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 OperandScope::Expression
             };
         }
-        let comments = self.comments.take(comments.len());
+        let comments = self.comments.claim_between(gap)?;
         let start = if self.has_target_annotations
             && context.expression_start.needs_asi_guard()
             && !comments.is_empty()
@@ -1396,17 +1397,18 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             }
         };
         let boundary = Span::new(left_end, right_start);
+        let source_comments = self.source_comments_in_range(boundary);
         let comments = self.comments.between(boundary)?;
         let operator = entry.binary.operator.as_str();
         if entry.suppression.is_some()
             || self.diagnostic_line_is_sensitive(left_end)
             || self.diagnostic_line_is_sensitive(right_start)
-            || comments
+            || source_comments
                 .iter()
                 .any(|&comment| self.comment_is_diagnostic_directive(comment))
         {
             let operator_span = entry.suppression.map(|source| source.operator).or_else(|| {
-                let start = self.find_token(boundary, comments, operator)?;
+                let start = self.find_token(boundary, source_comments, operator)?;
                 Some(Span::new(start, start + operator.len() as u32))
             });
             let Some(operator_span) = operator_span else {
@@ -1417,7 +1419,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ));
             };
             let operator_start = operator_span.start;
-            let comments = self.comments.take(comments.len());
+            let operator_end = operator_span.end;
+            let mode = entry.suppression.map_or_else(
+                || {
+                    let split = source_comments
+                        .partition_point(|comment| comment.span.end <= operator_start);
+                    self.content_mode(&source_comments[split..])
+                },
+                |source| source.right_mode,
+            );
+            self.comments.claim(comments)?;
             let split = comments.partition_point(|comment| comment.span.end <= operator_start);
             let (before, after) = comments.split_at(split);
             self.format_comment_run(before, CommentRunLayout::SourceAfter(left_end), writer)?;
@@ -1429,7 +1440,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             };
             constraint.write(writer, FlatSeparator::Space, Writer::space);
             writer.text(operator);
-            let operator_end = operator_span.end;
             self.format_comment_run(after, CommentRunLayout::SourceAfter(operator_end), writer)?;
             let previous = after
                 .last()
@@ -1446,15 +1456,13 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     self.line_constraint_after_comments(after, operator_end, right_start)
                 },
                 inline,
-                mode: entry
-                    .suppression
-                    .map_or_else(|| self.content_mode(after), |source| source.right_mode),
+                mode,
             });
         }
         let comparison_gap = self.comparison_list_operator_gap(entry.binary);
         let break_before =
             !inline && matches!(comparison_gap, Some(ComparisonOperatorGap::BreakBefore));
-        if comments.is_empty() {
+        if source_comments.is_empty() {
             if break_before {
                 writer.line();
                 writer.text(operator);
@@ -1468,15 +1476,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 OperandBoundary::Break
             });
         }
-        let Some(operator_start) = self.find_token(boundary, comments, operator) else {
+        let Some(operator_start) = self.find_token(boundary, source_comments, operator) else {
             return Err(FormatError::unsupported(
                 "binary operator boundary",
                 None,
                 boundary,
             ));
         };
-        let before_count = comments.partition_point(|comment| comment.span.end <= operator_start);
-        let after = &comments[before_count..];
+        let split = source_comments.partition_point(|comment| comment.span.end <= operator_start);
+        let after = &source_comments[split..];
         let mode = self.content_mode(after);
         if self.has_type_casts && !after.is_empty() && mode == ContentMode::Formatted {
             let prepared = owner.prepare(self);
@@ -1503,6 +1511,8 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 OperandScope::Expression
             };
         }
+        self.comments.claim(comments)?;
+        let before_count = comments.partition_point(|comment| comment.span.end <= operator_start);
         // A real source target or resolved emitted owner keeps this exterior run
         // next to the operand's opener instead of before the operator.
         let trailing_limit = if before_count < comments.len()
@@ -1512,7 +1522,6 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         } else {
             comments.len()
         };
-        let comments = self.comments.take(comments.len());
         let before_operator = &comments[..before_count];
         let retains_operator_gap = matches!(
             comparison_gap,

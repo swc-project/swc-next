@@ -566,7 +566,9 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 ExprData::TsInstantiationExpression(_) => return true,
                 ExprData::UnaryExpression(node) => {
                     if mode == ContentMode::Formatted
-                        && !self.comments.in_range(node.span(self.ast)).is_empty()
+                        && !self
+                            .source_comments_in_range(node.span(self.ast))
+                            .is_empty()
                     {
                         let Some(operand_mode) = self.unary_tail_operand_mode(node) else {
                             return false;
@@ -583,7 +585,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                     if check_suppression {
                         let gap =
                             Span::new(node.span(self.ast).start + 5, argument.span(self.ast).start);
-                        child_mode = self.content_mode(self.comments.in_range(gap));
+                        child_mode = self.source_content_mode(gap);
                     }
                     (argument, ExpressionPosition::AwaitArgument)
                 }
@@ -1296,7 +1298,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             node.type_annotation(self.ast).span(self.ast).end,
             node.expression(self.ast).span(self.ast).start,
         );
-        let comments = self.comments.in_range(gap);
+        let comments = self.source_comments_in_range(gap);
         let closing = self
             .find_token(gap, comments, ">")
             .ok_or_else(|| self.unsupported("type assertion closing token", node))?;
@@ -2016,4 +2018,41 @@ fn instantiation_tail_conflicts(operator: BinaryOperator) -> bool {
             | BinaryOperator::RightShift
             | BinaryOperator::UnsignedRightShift
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_next_ecma_ast::{ExprData, StmtData};
+
+    use super::{ContentMode, Formatter};
+    use crate::formatter::with_first_statement;
+
+    #[test]
+    fn binary_operand_comments() {
+        with_first_statement(
+            "(await /* prettier-ignore */ (fn<T>)) - b;",
+            |formatter, statement| {
+                let ast = formatter.ast;
+                let StmtData::ExpressionStatement(statement) = ast.stmt_data(statement) else {
+                    unreachable!()
+                };
+                let ExprData::BinaryExpression(binary) = ast.expr_data(statement.expression(ast))
+                else {
+                    unreachable!()
+                };
+                let left = formatter.expression_data(binary.left(ast));
+                let exposed = |f: &Formatter<'_, '_>| {
+                    f.binary_left_exposes_type_arguments(
+                        left,
+                        binary.operator(ast),
+                        ContentMode::Formatted,
+                    )
+                };
+
+                assert!(!exposed(formatter));
+                formatter.comments.claim(ast.comments()).unwrap();
+                assert!(!exposed(formatter));
+            },
+        );
+    }
 }

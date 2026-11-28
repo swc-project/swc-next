@@ -927,6 +927,11 @@ impl<'ast> CommentCursor<'ast> {
         Ok(&self.remaining[..count])
     }
 
+    pub(super) fn claim_between(&mut self, span: Span) -> Result<&'ast [Comment], FormatError> {
+        let count = self.between(span)?.len();
+        Ok(self.take(count))
+    }
+
     pub(super) fn take(&mut self, count: usize) -> &'ast [Comment] {
         let (claimed, remaining) = self.remaining.split_at(count);
         self.remaining = remaining;
@@ -951,7 +956,16 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
 
     /// Queries the complete source packet, including comments already claimed by a child.
     pub(super) fn source_comments_in_range(&self, span: Span) -> &'ast [Comment] {
-        comments_in_range(self.ast.comments(), span)
+        let all = self.ast.comments();
+        let (claimed, _) = all.split_at(all.len() - self.comments.remaining.len());
+        // The pending suffix suffices only when the entire claimed prefix precedes the range.
+        if claimed
+            .last()
+            .is_none_or(|comment| comment.span.start < span.start)
+        {
+            return self.comments.in_range(span);
+        }
+        comments_in_range(all, span)
     }
 
     /// Source-bound punctuation keeps its geometry without making its comments

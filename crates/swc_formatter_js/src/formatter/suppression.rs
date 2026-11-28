@@ -254,6 +254,15 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         }
     }
 
+    /// Whether this source gap selects verbatim content, even after its comments were printed.
+    pub(super) fn source_content_mode(&self, gap: Span) -> ContentMode {
+        if self.has_suppression {
+            self.content_mode(self.source_comments_in_range(gap))
+        } else {
+            ContentMode::Formatted
+        }
+    }
+
     pub(super) fn delimited_suppression(
         &self,
         target: Span,
@@ -387,8 +396,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         if gap.break_parent {
             writer.break_parent();
         }
-        let comments = self.comments.between(gap.source)?;
-        self.comments.claim(comments)?;
+        let comments = self.comments.claim_between(gap.source)?;
         let mut start = gap.source.start;
         for &comment in comments {
             let prefix = self.source(Span::new(start, comment.span.start));
@@ -482,8 +490,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         span: Span,
         writer: &mut Writer<'ast>,
     ) -> Result<(), FormatError> {
-        let comments = self.comments.between(span)?;
-        self.comments.claim(comments)?;
+        self.comments.claim_between(span)?;
         self.write_verbatim_source(span, writer);
         Ok(())
     }

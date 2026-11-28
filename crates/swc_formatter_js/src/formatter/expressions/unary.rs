@@ -99,7 +99,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
             return Ok(None);
         }
         let operator_end = span.start + unary.operator(self.ast).as_str().len() as u32;
-        let packet = self.comments.in_range(Span::new(operator_end, span.end));
+        let packet = self.source_comments_in_range(Span::new(operator_end, span.end));
         if packet.is_empty() {
             return Ok(None);
         }
@@ -129,7 +129,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
         let content = self.expression_content(source_argument);
         let span = unary.span(self.ast);
         let argument_span = content.expression.span(self.ast);
-        let leading = self.comments.in_range(Span::new(
+        let leading = self.source_comments_in_range(Span::new(
             span.start + operator.as_str().len() as u32,
             argument_span.start,
         ));
@@ -139,9 +139,7 @@ impl<'ast, 'source> Formatter<'ast, 'source> {
                 .with_content_mode(mode),
             &content,
         );
-        let trailing = self
-            .comments
-            .in_range(Span::new(argument_span.end, span.end));
+        let trailing = self.source_comments_in_range(Span::new(argument_span.end, span.end));
         let leading_end = match content.parentheses.map(|removed| removed.source) {
             Some(boundary)
                 if mode == ContentMode::Verbatim
