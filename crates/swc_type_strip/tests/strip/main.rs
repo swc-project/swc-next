@@ -53,6 +53,10 @@ fn assert_strip_error(input: &str, expected: &str, source_fragment: Option<&str>
     assert_eq!(result.diagnostics.len(), 1);
     let diagnostic = &result.diagnostics[0];
     assert_eq!(diagnostic.severity, Severity::Error);
+    if let Some(unsupported) = result.unsupported_syntax {
+        assert_eq!(unsupported.span, diagnostic.span);
+        assert_eq!(diagnostic.message, unsupported.kind.message());
+    }
     if let Some(source_fragment) = source_fragment {
         let span = diagnostic.span;
         assert_eq!(

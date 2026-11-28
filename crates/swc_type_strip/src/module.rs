@@ -4,11 +4,16 @@ use swc_next_ecma_ast::{
     Visit, VisitWith,
 };
 
-pub(super) fn check(module: TsModuleDeclaration, ast: &Ast<'_>) -> Option<Span> {
+use crate::{UnsupportedSyntax, UnsupportedSyntaxKind};
+
+pub(super) fn check(module: TsModuleDeclaration, ast: &Ast<'_>) -> Option<UnsupportedSyntax> {
     check_declaration(module, ast, !module.declare(ast))
 }
 
-pub(super) fn check_global(global: TsGlobalDeclaration, ast: &Ast<'_>) -> Option<Span> {
+pub(super) fn check_global(
+    global: TsGlobalDeclaration,
+    ast: &Ast<'_>,
+) -> Option<UnsupportedSyntax> {
     check_declaration(global, ast, !global.declare(ast))
 }
 
@@ -16,7 +21,7 @@ fn check_declaration<'ast, N>(
     node: N,
     ast: &'ast Ast<'ast>,
     check_instantiation: bool,
-) -> Option<Span>
+) -> Option<UnsupportedSyntax>
 where
     N: GetSpan + VisitWith<'ast, ModuleChecker<'ast>>,
 {
@@ -31,7 +36,10 @@ where
     };
     node.visit_with(&mut checker);
     if checker.instantiation.instantiated {
-        return Some(span);
+        return Some(UnsupportedSyntax {
+            kind: UnsupportedSyntaxKind::Namespace,
+            span,
+        });
     }
 
     // Only the namespace structure can override an inner diagnostic. Resume
@@ -207,36 +215,44 @@ impl InstantiationChecker {
 #[derive(Default)]
 struct ErasableSyntaxChecker {
     ambient_depth: u32,
-    diagnostic: Option<Span>,
+    diagnostic: Option<UnsupportedSyntax>,
 }
 
 impl ErasableSyntaxChecker {
     fn precedes_diagnostic(&self, span: Span) -> bool {
         self.diagnostic
-            .is_none_or(|diagnostic| span.start < diagnostic.start)
+            .is_none_or(|diagnostic| span.start < diagnostic.span.start)
     }
 
     fn enter_node(&mut self, node: NodeKindData, ast: &Ast<'_>) {
         if declares_ambient_context(node, ast) {
             self.ambient_depth += 1;
         }
-        let span = match node {
+        let (kind, span) = match node {
             NodeKindData::TsEnumDeclaration(enumeration) if self.ambient_depth == 0 => {
-                enumeration.span(ast)
+                (UnsupportedSyntaxKind::Enum, enumeration.span(ast))
             }
             NodeKindData::TsImportEqualsDeclaration(import) if self.ambient_depth == 0 => {
-                import.span(ast)
+                (UnsupportedSyntaxKind::ImportEquals, import.span(ast))
             }
-            NodeKindData::TsExportAssignment(export) if self.ambient_depth == 0 => export.span(ast),
-            NodeKindData::TsParameterProperty(parameter) => parameter.span(ast),
-            NodeKindData::TsTypeAssertion(assertion) => Span::new(
-                assertion.span(ast).start,
-                assertion.expression(ast).span(ast).start,
+            NodeKindData::TsExportAssignment(export) if self.ambient_depth == 0 => {
+                (UnsupportedSyntaxKind::ExportAssignment, export.span(ast))
+            }
+            NodeKindData::TsParameterProperty(parameter) => (
+                UnsupportedSyntaxKind::ParameterProperty,
+                parameter.span(ast),
+            ),
+            NodeKindData::TsTypeAssertion(assertion) => (
+                UnsupportedSyntaxKind::TypeAssertion,
+                Span::new(
+                    assertion.span(ast).start,
+                    assertion.expression(ast).span(ast).start,
+                ),
             ),
             _ => return,
         };
         if self.precedes_diagnostic(span) {
-            self.diagnostic = Some(span);
+            self.diagnostic = Some(UnsupportedSyntax { kind, span });
         }
     }
 

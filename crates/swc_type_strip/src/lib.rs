@@ -37,8 +37,67 @@ mod module;
 mod token_cursor;
 
 const UNSUPPORTED_LANG_MESSAGE: &str = "TypeError: Unsupported lang variant";
-const ERASABLE_SYNTAX_ONLY_MESSAGE: &str =
-    "SyntaxError: This syntax is not allowed when `erasableSyntaxOnly` is enabled";
+const TYPE_ASSERTION_HELP: &str = "Use `expr as T` instead.";
+
+/// Kind of TypeScript syntax that [`strip_types`] cannot erase, because it has
+/// runtime semantics.
+///
+/// These are the constructs that TypeScript's `erasableSyntaxOnly` option
+/// rejects.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
+pub enum UnsupportedSyntaxKind {
+    /// A non-ambient `enum` or `const enum` declaration.
+    Enum,
+    /// An instantiated `namespace`, `module`, or `global` declaration.
+    Namespace,
+    /// An `import =` declaration, including `import type X = ...`.
+    ImportEquals,
+    /// An `export =` assignment.
+    ExportAssignment,
+    /// A constructor parameter with an accessibility or `readonly` modifier.
+    ParameterProperty,
+    /// An angle-bracket type assertion, `<T>expr`.
+    TypeAssertion,
+}
+
+impl UnsupportedSyntaxKind {
+    /// Returns the message of the diagnostic for this kind.
+    pub fn message(self) -> &'static str {
+        match self {
+            Self::Enum => {
+                "SyntaxError: TypeScript enum declarations are not supported in type stripping"
+            }
+            Self::Namespace => {
+                "SyntaxError: TypeScript namespace declarations with runtime code are not \
+                 supported in type stripping"
+            }
+            Self::ImportEquals => {
+                "SyntaxError: TypeScript `import =` declarations are not supported in type \
+                 stripping"
+            }
+            Self::ExportAssignment => {
+                "SyntaxError: TypeScript `export =` assignments are not supported in type stripping"
+            }
+            Self::ParameterProperty => {
+                "SyntaxError: TypeScript parameter properties are not supported in type stripping"
+            }
+            Self::TypeAssertion => {
+                "SyntaxError: TypeScript angle-bracket type assertions are not supported in type \
+                 stripping"
+            }
+        }
+    }
+}
+
+/// Non-erasable TypeScript syntax that [`strip_types`] reported.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UnsupportedSyntax {
+    /// Kind of the syntax.
+    pub kind: UnsupportedSyntaxKind,
+    /// Span of the reported diagnostic.
+    pub span: Span,
+}
 
 /// Options for [`strip_types`].
 ///
@@ -86,10 +145,15 @@ pub struct StripResult<'source> {
     pub code: Cow<'source, str>,
     /// Diagnostics in source order.
     ///
-    /// Contains parser diagnostics and at most one `erasableSyntaxOnly` error for
-    /// syntax that cannot be safely erased. When non-empty, [`Self::code`] is
-    /// recovery output and may not preserve program semantics.
+    /// Contains parser diagnostics and at most one error for syntax that cannot be
+    /// safely erased. When non-empty, [`Self::code`] is recovery output and may not
+    /// preserve program semantics.
     pub diagnostics: Vec<Diagnostic>,
+    /// Non-erasable syntax reported in [`Self::diagnostics`], if any.
+    ///
+    /// Its diagnostic has the same span and the message from
+    /// [`UnsupportedSyntaxKind::message`].
+    pub unsupported_syntax: Option<UnsupportedSyntax>,
 }
 
 /// Strips erasable TypeScript syntax from `source` while preserving UTF-16 offsets
@@ -117,6 +181,7 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
         return StripResult {
             code: Cow::Borrowed(source),
             diagnostics: vec![Diagnostic::error(UNSUPPORTED_LANG_MESSAGE, Span::new(0, 0))],
+            unsupported_syntax: None,
         };
     }
 
@@ -139,12 +204,16 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
         restricted_argument: None,
         edits: EditPlan::default(),
         diagnostic: None,
+        unsupported_syntax: None,
         item_context: ItemContext::default(),
         expr_frames: ArenaVec::new_in(&allocator),
     };
     program.visit_with(&mut eraser);
     let TypeEraser {
-        edits, diagnostic, ..
+        edits,
+        diagnostic,
+        unsupported_syntax,
+        ..
     } = eraser;
     diagnostics.extend(diagnostic);
     diagnostics.sort_by_key(|diagnostic| (diagnostic.span.start, diagnostic.span.end));
@@ -152,6 +221,7 @@ pub fn strip_types(source: &str, options: Options) -> StripResult<'_> {
     StripResult {
         code: edits.render(source),
         diagnostics,
+        unsupported_syntax,
     }
 }
 
@@ -178,6 +248,8 @@ struct TypeEraser<'ast, 'tokens> {
     restricted_argument: Option<Span>,
     edits: EditPlan,
     diagnostic: Option<Diagnostic>,
+    /// Set when [`Self::diagnostic`] reports non-erasable syntax.
+    unsupported_syntax: Option<UnsupportedSyntax>,
     item_context: ItemContext,
     expr_frames: ArenaVec<'ast, ExprFrame>,
 }
@@ -388,8 +460,15 @@ impl TypeEraser<'_, '_> {
         }
     }
 
-    fn report_erasable_syntax_only(&mut self, span: Span) {
-        self.report_strip_error(ERASABLE_SYNTAX_ONLY_MESSAGE, span);
+    fn report_unsupported_syntax(&mut self, kind: UnsupportedSyntaxKind, span: Span) {
+        if self.diagnostic.is_none() {
+            let mut diagnostic = Diagnostic::error(kind.message(), span);
+            if kind == UnsupportedSyntaxKind::TypeAssertion {
+                diagnostic.help = Some(Cow::Borrowed(TYPE_ASSERTION_HELP));
+            }
+            self.diagnostic = Some(diagnostic);
+            self.unsupported_syntax = Some(UnsupportedSyntax { kind, span });
+        }
     }
 
     fn report_strip_error(&mut self, message: &'static str, span: Span) {
@@ -739,31 +818,31 @@ impl TypeEraser<'_, '_> {
     fn erase_enum(&mut self, node: TsEnumDeclaration, statement_span: Span) {
         self.erase_statement(statement_span);
         if !node.declare(self.ast) {
-            self.report_erasable_syntax_only(node.span(self.ast));
+            self.report_unsupported_syntax(UnsupportedSyntaxKind::Enum, node.span(self.ast));
         }
     }
 
     fn erase_module(&mut self, node: TsModuleDeclaration, statement_span: Span) {
         self.erase_statement(statement_span);
         if self.diagnostic.is_none()
-            && let Some(span) = module::check(node, self.ast)
+            && let Some(unsupported) = module::check(node, self.ast)
         {
-            self.report_erasable_syntax_only(span);
+            self.report_unsupported_syntax(unsupported.kind, unsupported.span);
         }
     }
 
     fn erase_global(&mut self, node: TsGlobalDeclaration, statement_span: Span) {
         self.erase_statement(statement_span);
         if self.diagnostic.is_none()
-            && let Some(span) = module::check_global(node, self.ast)
+            && let Some(unsupported) = module::check_global(node, self.ast)
         {
-            self.report_erasable_syntax_only(span);
+            self.report_unsupported_syntax(unsupported.kind, unsupported.span);
         }
     }
 
     fn erase_import_equals(&mut self, node: TsImportEqualsDeclaration, statement_span: Span) {
         self.erase_statement(statement_span);
-        self.report_erasable_syntax_only(node.span(self.ast));
+        self.report_unsupported_syntax(UnsupportedSyntaxKind::ImportEquals, node.span(self.ast));
     }
 }
 
@@ -1154,7 +1233,10 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
                 .tokens
                 .first_in_range(modifiers_start, parameter_start)
                 .map_or(span, |modifier| modifier.span());
-            self.report_erasable_syntax_only(diagnostic_span);
+            self.report_unsupported_syntax(
+                UnsupportedSyntaxKind::ParameterProperty,
+                diagnostic_span,
+            );
         }
         self.edits
             .blank(Span::new(modifiers_start, parameter_start));
@@ -1163,7 +1245,10 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
 
     fn visit_ts_export_assignment(&mut self, node: TsExportAssignment) {
         self.erase_statement(node.span(self.ast));
-        self.report_erasable_syntax_only(node.span(self.ast));
+        self.report_unsupported_syntax(
+            UnsupportedSyntaxKind::ExportAssignment,
+            node.span(self.ast),
+        );
     }
 
     fn visit_ts_import_equals_declaration(&mut self, node: TsImportEqualsDeclaration) {
@@ -1331,7 +1416,10 @@ impl<'ast> Visit<'ast> for TypeEraser<'ast, '_> {
     fn visit_ts_type_assertion(&mut self, node: TsTypeAssertion) {
         let wrapper_start = node.span(self.ast).start;
         let expression_start = node.expression(self.ast).span(self.ast).start;
-        self.report_erasable_syntax_only(Span::new(wrapper_start, expression_start));
+        self.report_unsupported_syntax(
+            UnsupportedSyntaxKind::TypeAssertion,
+            Span::new(wrapper_start, expression_start),
+        );
         self.edits.blank(Span::new(wrapper_start, expression_start));
         node.expression(self.ast).visit_with(self);
     }
